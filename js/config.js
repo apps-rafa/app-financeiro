@@ -7,8 +7,8 @@
 // Banco de dados (substitui o Google Apps Script + Google Sheets).
 // A chave abaixo é a "publishable key" (role anon) — pode ficar no front-end.
 // O acesso é controlado por RLS no Supabase (ver supabase/schema.sql).
-const SUPABASE_URL = 'https://lbfnjxzthbclvgnszway.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_vFArls_InXSynj3uzIFNwA_RPcT-Tx7';
+const SUPABASE_URL = 'https://hhmuqgkabknquvhxafmf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_TBLXpqgQRkHgaRFGDL17uA_KOkc_Q_F';
 
 // Cliente global (supabase-js carregado via <script> no index.html)
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);

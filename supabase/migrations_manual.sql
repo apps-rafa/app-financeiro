@@ -1,9 +1,11 @@
 -- ============================================================
--- Rodar UMA VEZ no Supabase SQL Editor:
--- https://supabase.com/dashboard/project/lbfnjxzthbclvgnszway/sql/new
---
--- 1) Remove as tabelas do projeto antigo (não usadas pelo app novo)
--- 2) Troca o RLS de "anon" para "authenticated" (magic link)
+-- Histórico de migrações já aplicadas (registro, não rodar de novo).
+-- Até 2026-09-11 rodava contra o projeto lbfnjxzthbclvgnszway
+-- (compartilhado com o app-financeiro-of); a partir daí este app
+-- (o "plano B") passou a ter o próprio projeto Supabase, separado:
+-- https://supabase.com/dashboard/project/hhmuqgkabknquvhxafmf/sql/new
+-- Esse novo projeto já nasceu com o schema atual (supabase/schema.sql),
+-- então nada abaixo precisa ser reaplicado nele.
 -- ============================================================
 
 -- 1) Limpeza do projeto antigo -------------------------------
