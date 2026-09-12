@@ -456,13 +456,11 @@ function iniciarEdicaoTransacao(trans, tipoTransacao) {
     const btn = document.querySelector('.btn-submit');
     if (btn) btn.textContent = 'Salvar alterações';
 
-    const cancelar = document.getElementById('cancelarEdicao');
-    if (cancelar) cancelar.hidden = false;
     const excluir = document.getElementById('excluirEdicao');
     if (excluir) excluir.hidden = false;
 }
 
-/** Sai do modo edição e limpa o formulário */
+/** Sai do modo edição e limpa o formulário (chamado pelo "×" do formulário) */
 function cancelarEdicaoTransacao(voltarParaOrigem = true) {
     const origem = estadoApp.abaOrigemEdicao;
     estadoApp.editandoId = null;
@@ -471,8 +469,6 @@ function cancelarEdicaoTransacao(voltarParaOrigem = true) {
     limparFormulario();
     const btn = document.querySelector('.btn-submit');
     if (btn) btn.textContent = 'Adicionar';
-    const cancelar = document.getElementById('cancelarEdicao');
-    if (cancelar) cancelar.hidden = true;
     const excluir = document.getElementById('excluirEdicao');
     if (excluir) excluir.hidden = true;
     // Cancelar pelo botão: volta para a tela onde o usuário estava
@@ -495,8 +491,6 @@ async function excluirEdicaoTransacao() {
     limparFormulario();
     const submitBtn = document.querySelector('.btn-submit');
     if (submitBtn) submitBtn.textContent = 'Adicionar';
-    const cancelar = document.getElementById('cancelarEdicao');
-    if (cancelar) cancelar.hidden = true;
     btn.hidden = true;
     if (voltarPara && typeof mudarAba === 'function') mudarAba(voltarPara);
 }
