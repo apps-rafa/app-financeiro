@@ -52,9 +52,12 @@
   gap: 8px;
 }
 
-/* "+" ao lado do título da seção */
+/* "+" ao lado do título da seção. Quando "A→Z" e "+" aparecem juntos, só o
+   PRIMEIRO botão empurra pra direita (margin-left:auto) — se os dois
+   tivessem auto, o flexbox reparte o espaço livre entre os dois e eles
+   ficam longe um do outro em vez de colados. */
 .h3-add {
-  margin-left: auto;
+  margin-left: 0;
   width: 1.9rem;
   height: 1.9rem;
   border-radius: 999px;
@@ -66,33 +69,40 @@
   line-height: 1;
   cursor: pointer;
 }
+.menu-section h3 .h3-add:first-of-type { margin-left: auto; }
 .h3-add:hover { background: var(--surface-3); }
 
-/* "A→Z" tem texto, não cabe no círculo do "+" — vira uma pílula discreta */
-.h3-az {
+/* "A→Z" tem texto, não cabe no círculo do "+" — vira uma pílula discreta.
+   Precisa de 2 classes (mesmo peso de ".cat-coluna-topo .h3-add") pra não
+   perder a caixa/fonte de volta pro tamanho do "+" dentro dessa seção. */
+.h3-add.h3-az {
   width: auto;
   height: auto;
-  padding: .12rem .4rem;
-  font-size: .6rem;
+  padding: .1rem .35rem;
+  font-size: .58rem;
   font-weight: 600;
   border-radius: 999px;
   color: var(--text-muted);
+  flex: none;
 }
 .h3-az:hover { color: var(--primary); }
 
-/* Setinhas ▲▼ pra reordenar manualmente um item da lista — lado a lado */
+/* Setinhas ▲▼ pra reordenar manualmente um item da lista — lado a lado.
+   ".btn-icon.btn-mini-seta" (2 classes) pra não perder o tamanho de volta
+   pro ".btn-icon" genérico (32px) — os dois têm 1 classe cada, então sem
+   isso quem ganha é só quem vier depois no arquivo. */
 .item-ordem {
   display: flex;
   flex-direction: row;
   gap: 2px;
   flex: none;
 }
-.btn-mini-seta {
-  min-width: 14px;
-  width: 14px;
-  height: 14px;
+.btn-icon.btn-mini-seta {
+  min-width: 13px;
+  width: 13px;
+  height: 13px;
   padding: 0;
-  font-size: 8px;
+  font-size: 7px;
   line-height: 1;
   background: var(--surface-2);
   border: 1px solid var(--border-strong);
@@ -142,6 +152,13 @@
   height: 1.25rem;
   font-size: .85rem;
   flex: none;
+}
+/* A pílula "A→Z" não segue o círculo do "+" nem aqui dentro do summary */
+.cat-coluna-topo .h3-add.h3-az {
+  width: auto;
+  height: auto;
+  padding: .1rem .35rem;
+  font-size: .58rem;
 }
 .cat-coluna .menu-list {
   margin: 0;
