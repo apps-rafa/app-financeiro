@@ -116,6 +116,10 @@
     #linhaRecorrencia,
     #linhaCampos {
         flex-direction: column;
+        /* em coluna, align-items controla a largura (eixo cruzado agora é
+           o horizontal) — sem isto os blocos ficavam do tamanho do
+           conteúdo em vez de ocupar 100% */
+        align-items: stretch;
     }
 }
 
