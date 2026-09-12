@@ -76,10 +76,6 @@ function configurarEventListeners() {
     const metodo = document.querySelector(SELECTORS.metodo);
     if (metodo) metodo.addEventListener('change', atualizarCampoCredito);
 
-    // Cancelar edição de transação
-    const cancelar = document.getElementById('cancelarEdicao');
-    if (cancelar) cancelar.addEventListener('click', cancelarEdicaoTransacao);
-
     // Apagar o lançamento direto da tela de edição
     const excluirEdicao = document.getElementById('excluirEdicao');
     if (excluirEdicao) excluirEdicao.addEventListener('click', excluirEdicaoTransacao);
