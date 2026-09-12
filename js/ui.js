@@ -86,44 +86,65 @@ function diasRestantesMesVigente() {
     return Math.max(1, ultimoDia - hoje.getDate() + 1);
 }
 
-function atualizarEntradasLista() {
-    renderListaAgrupada(document.querySelector(SELECTORS.entradasLista),
-        estadoApp.transacoes.entradas, 'entrada', 'Nenhuma receita neste mês');
+/** Lê de localStorage o modo salvo pra essa lista, validando contra as opções atuais. */
+function _modoListaSalvo(chave, validos) {
+    try {
+        const salvo = localStorage.getItem(chave);
+        return validos.includes(salvo) ? salvo : 'recorrencia';
+    } catch (_) { return 'recorrencia'; }
 }
 
-// 'recorrencia' (padrão) | 'metodo' | 'categoria' — visão da aba Despesas
-const MODOS_LISTA_SAIDAS = ['recorrencia', 'metodo', 'categoria'];
-let modoListaSaidas = (() => {
-    try {
-        const salvo = localStorage.getItem('modoListaSaidas');
-        return MODOS_LISTA_SAIDAS.includes(salvo) ? salvo : 'recorrencia';
-    } catch (_) { return 'recorrencia'; }
-})();
+/** Escolhe a renderização certa pro modo de visualização selecionado — usado
+ *  tanto por Receitas quanto por Despesas. */
+function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
+    if (modo === 'metodo') {
+        renderListaPorMetodo(container, transacoes, tipoUI, msgVazia);
+    } else if (modo === 'categoria') {
+        renderListaPorCategoria(container, transacoes, tipoUI, msgVazia);
+    } else if (modo === 'cronologica') {
+        renderListaCronologica(container, transacoes, tipoUI, msgVazia);
+    } else {
+        renderListaAgrupada(container, transacoes, tipoUI, msgVazia);
+    }
+}
+
+// 'recorrencia' (padrão) | 'categoria' | 'cronologica' — visão da aba Receitas
+const MODOS_LISTA_ENTRADAS = ['recorrencia', 'categoria', 'cronologica'];
+let modoListaEntradas = _modoListaSalvo('modoListaEntradas', MODOS_LISTA_ENTRADAS);
+
+function definirModoListaEntradas(modo) {
+    modoListaEntradas = MODOS_LISTA_ENTRADAS.includes(modo) ? modo : 'recorrencia';
+    try { localStorage.setItem('modoListaEntradas', modoListaEntradas); } catch (_) {}
+    atualizarEntradasLista();
+}
+
+function atualizarEntradasLista() {
+    document.querySelectorAll('#modoEntradas .modo-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.modo === modoListaEntradas));
+    renderListaPorModo(document.querySelector(SELECTORS.entradasLista),
+        estadoApp.transacoes.entradas, 'entrada', modoListaEntradas, 'Nenhuma receita neste mês');
+}
+
+// 'recorrencia' (padrão) | 'metodo' | 'categoria' | 'cronologica' — visão da aba Despesas
+const MODOS_LISTA_SAIDAS = ['recorrencia', 'metodo', 'categoria', 'cronologica'];
+let modoListaSaidas = _modoListaSalvo('modoListaSaidas', MODOS_LISTA_SAIDAS);
 
 function definirModoListaSaidas(modo) {
     modoListaSaidas = MODOS_LISTA_SAIDAS.includes(modo) ? modo : 'recorrencia';
     try { localStorage.setItem('modoListaSaidas', modoListaSaidas); } catch (_) {}
-    document.querySelectorAll('#modoSaidas .modo-btn').forEach(b =>
-        b.classList.toggle('active', b.dataset.modo === modoListaSaidas));
     atualizarSaidasLista();
 }
 
 function atualizarSaidasLista() {
     document.querySelectorAll('#modoSaidas .modo-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.modo === modoListaSaidas));
-    const el = document.querySelector(SELECTORS.saidasLista);
-    if (modoListaSaidas === 'metodo') {
-        renderListaPorMetodo(el, estadoApp.transacoes.saidas, 'Nenhuma despesa neste mês');
-    } else if (modoListaSaidas === 'categoria') {
-        renderListaPorCategoria(el, estadoApp.transacoes.saidas, 'Nenhuma despesa neste mês');
-    } else {
-        renderListaAgrupada(el, estadoApp.transacoes.saidas, 'saida', 'Nenhuma despesa neste mês');
-    }
+    renderListaPorModo(document.querySelector(SELECTORS.saidasLista),
+        estadoApp.transacoes.saidas, 'saida', modoListaSaidas, 'Nenhuma despesa neste mês');
 }
 
 /** Agrupa e renderiza `transacoes` por `chaveDe(t)`, ordenado por total (maior primeiro).
  *  Usado por "Por método" e "Por categoria" — mesmo formato de card recolhível. */
-function _renderListaAgrupadaPorTotal(container, transacoes, msgVazia, { chaveDe, semChave, cores, gerarOpts }) {
+function _renderListaAgrupadaPorTotal(container, transacoes, tipoUI, msgVazia, { chaveDe, semChave, cores, gerarOpts }) {
     if (!container) return;
     if (!transacoes || !transacoes.length) {
         container.innerHTML = `<p class="empty-message">${msgVazia}</p>`;
@@ -155,7 +176,7 @@ function _renderListaAgrupadaPorTotal(container, transacoes, msgVazia, { chaveDe
             <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${pct}%` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
-            ${itens.map(t => gerarHTMLTransacao(t, 'saida', gerarOpts)).join('')}
+            ${itens.map(t => gerarHTMLTransacao(t, tipoUI, gerarOpts)).join('')}
           </div>
         </details>`;
     }).join('');
@@ -163,10 +184,10 @@ function _renderListaAgrupadaPorTotal(container, transacoes, msgVazia, { chaveDe
     container.onclick = onListaTransacaoClick;
 }
 
-/** Despesas agrupadas por método de pagamento, ordenadas por total (maior primeiro) */
-function renderListaPorMetodo(container, transacoes, msgVazia) {
+/** Transações agrupadas por método de pagamento, ordenadas por total (maior primeiro) */
+function renderListaPorMetodo(container, transacoes, tipoUI, msgVazia) {
     const cores = (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.metodo) || {};
-    _renderListaAgrupadaPorTotal(container, transacoes, msgVazia, {
+    _renderListaAgrupadaPorTotal(container, transacoes, tipoUI, msgVazia, {
         chaveDe: t => t.metodo,
         semChave: 'Sem método',
         cores,
@@ -174,15 +195,28 @@ function renderListaPorMetodo(container, transacoes, msgVazia) {
     });
 }
 
-/** Despesas agrupadas por categoria, ordenadas por total (maior primeiro) */
-function renderListaPorCategoria(container, transacoes, msgVazia) {
+/** Transações agrupadas por categoria, ordenadas por total (maior primeiro) */
+function renderListaPorCategoria(container, transacoes, tipoUI, msgVazia) {
     const cores = (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.categoria) || {};
-    _renderListaAgrupadaPorTotal(container, transacoes, msgVazia, {
+    _renderListaAgrupadaPorTotal(container, transacoes, tipoUI, msgVazia, {
         chaveDe: t => t.categoria,
         semChave: 'Sem categoria',
         cores,
         gerarOpts: { semCategoriaChip: true }
     });
+}
+
+/** Lista simples, sem agrupamento — mais recente primeiro. */
+function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
+    if (!container) return;
+    if (!transacoes || !transacoes.length) {
+        container.innerHTML = `<p class="empty-message">${msgVazia}</p>`;
+        container.onclick = null;
+        return;
+    }
+    const itens = [...transacoes].sort(_porDataDesc);
+    container.innerHTML = itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('');
+    container.onclick = onListaTransacaoClick;
 }
 
 const _porDataDesc = (a, b) => new Date(b.data) - new Date(a.data);
