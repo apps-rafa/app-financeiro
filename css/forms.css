@@ -99,15 +99,25 @@
     margin-bottom: 0.85rem;
 }
 
-/* Linha "Categoria | Descrição" — sempre as duas dividindo 100%, sem
-   sobrar espaço (empilha só em telas bem estreitas). */
+/* Linha "Categoria | Descrição" — sempre as duas dividindo 100%. */
 #linhaCampos {
     display: flex;
-    flex-wrap: wrap;
     gap: .75rem;
     margin-bottom: 0.85rem;
 }
-#linhaCampos > .form-group { flex: 1 1 12rem; min-width: 0; margin: 0; }
+#linhaCampos > .form-group { flex: 1 1 0; min-width: 0; margin: 0; }
+
+/* Telas estreitas: cada linha do formulário vira 1 campo por linha —
+   cada "bloco" (ex.: Valor, Método) continua podendo ter seus próprios
+   sub-campos lado a lado (ex.: Valor + Total), só as linhas de fora que
+   deixam de dividir espaço entre os dois blocos. */
+@media (max-width: 560px) {
+    #linhaValorMetodo,
+    #linhaRecorrencia,
+    #linhaCampos {
+        flex-direction: column;
+    }
+}
 
 .form-group {
     position: relative;
@@ -470,10 +480,10 @@
     align-items: center;
     margin: 0;
     padding: .12rem .5rem;
-    border: 1px solid var(--border-strong, #D1D5DB);
+    border: 1px solid var(--border-strong);
     border-radius: 999px;
-    background: #fff;
-    color: var(--text-muted, #6B7280);
+    background: var(--surface-2);
+    color: var(--text-muted);
     font-size: .68rem;
     line-height: 1.4;
     white-space: nowrap;
@@ -483,9 +493,9 @@
 }
 .chip-toggle:hover { border-color: var(--primary); color: var(--primary); }
 .chip-toggle:has(input:checked) {
-    background: var(--primary, #4F46E5);
-    border-color: var(--primary, #4F46E5);
-    color: #fff;
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-contrast);
 }
 
 /* 2º rótulo dentro do mesmo form-group (ex.: "Data (automática)") */
