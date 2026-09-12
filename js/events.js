@@ -60,6 +60,13 @@ function configurarEventListeners() {
         if (btn && typeof definirModoListaEntradas === 'function') definirModoListaEntradas(btn.dataset.modo);
     });
 
+    // Aba Próximas: mesmos 4 modos de Despesas
+    const modoProximas = document.getElementById('modoProximas');
+    if (modoProximas) modoProximas.addEventListener('click', e => {
+        const btn = e.target.closest('.modo-btn');
+        if (btn && typeof definirModoListaProximas === 'function') definirModoListaProximas(btn.dataset.modo);
+    });
+
     // Cards de Receitas/Despesas do dashboard abrem a aba correspondente (sem toggle)
     const abrirAba = alvo => {
         if (document.querySelector('.tab-content.active')?.id !== alvo) mudarAba(alvo);

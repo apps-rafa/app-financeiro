@@ -614,13 +614,28 @@ async function atualizarGrafico() {
     container.innerHTML = html;
 }
 
+// 'recorrencia' (padrão) | 'metodo' | 'categoria' | 'cronologica' — visão da aba Próximas
+const MODOS_LISTA_PROXIMAS = ['recorrencia', 'metodo', 'categoria', 'cronologica'];
+let modoListaProximas = _modoListaSalvo('modoListaProximas', MODOS_LISTA_PROXIMAS);
+
+function definirModoListaProximas(modo) {
+    modoListaProximas = MODOS_LISTA_PROXIMAS.includes(modo) ? modo : 'recorrencia';
+    try { localStorage.setItem('modoListaProximas', modoListaProximas); } catch (_) {}
+    atualizarProximasTransacoes();
+}
+
+const _porDataAsc = (a, b) => new Date(a.data) - new Date(b.data);
+
 /**
  * Atualiza lista de próximas transações
  */
 async function atualizarProximasTransacoes() {
     const container = document.querySelector(SELECTORS.proximasLista);
     if (!container) return;
-    
+
+    document.querySelectorAll('#modoProximas .modo-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.modo === modoListaProximas));
+
     try {
         // Próximas do MÊS em exibição
         const mRef = (typeof estadoApp !== 'undefined' && estadoApp.mesAtual) ? estadoApp.mesAtual : new Date();
@@ -629,7 +644,7 @@ async function atualizarProximasTransacoes() {
         if (elTit) elTit.textContent = `Próximas em ${obterMesAnoFormatado(mRef)}`;
         const proximasEntradas = await carregarProximas('entradas', mes, ano);
         const proximasSaidas = await carregarProximas('saidas', mes, ano);
-        
+
         const proximas = [...proximasEntradas, ...proximasSaidas]
             .sort((a, b) => new Date(a.data) - new Date(b.data));
 
@@ -651,14 +666,97 @@ async function atualizarProximasTransacoes() {
             return { trans: { ...trans }, tipoUI, opts: { quando, semAcoes: true } };
         });
 
-        container.innerHTML = faturasHTML + _proximasCtx
-            .map(c => gerarHTMLTransacao(c.trans, c.tipoUI, c.opts))
-            .join('');
+        const corpoHTML = modoListaProximas === 'metodo'
+            ? _agruparProximasPorTotal(_proximasCtx, {
+                chaveDe: c => c.trans.metodo, semChave: 'Sem método',
+                cores: (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.metodo) || {},
+                extraOpts: { comRecorrenciaChip: true }
+            })
+            : modoListaProximas === 'categoria'
+            ? _agruparProximasPorTotal(_proximasCtx, {
+                chaveDe: c => c.trans.categoria, semChave: 'Sem categoria',
+                cores: (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.categoria) || {},
+                extraOpts: { semCategoriaChip: true }
+            })
+            : modoListaProximas === 'recorrencia'
+            ? _agruparProximasPorRecorrencia(_proximasCtx)
+            : _proximasCtx.map(c => gerarHTMLTransacao(c.trans, c.tipoUI, c.opts)).join('');
+
+        container.innerHTML = faturasHTML + corpoHTML;
         container.onclick = onListaTransacaoClick;
     } catch (error) {
         console.error('Erro ao atualizar próximas transações:', error);
         container.innerHTML = '<p class="empty-message">Erro ao carregar próximas transações</p>';
     }
+}
+
+/** "Próximas" agrupadas por método ou categoria (ordenado por total, maior
+ *  primeiro) — mistura entrada/saída, então cada item usa o tipoUI/opts que
+ *  já vêm prontos no seu próprio contexto (c.trans/c.tipoUI/c.opts). */
+function _agruparProximasPorTotal(ctxList, { chaveDe, semChave, cores, extraOpts }) {
+    const valorDe = c => (c.trans.valorMes != null ? c.trans.valorMes : c.trans.valor) || 0;
+    const mapa = new Map();
+    ctxList.forEach(c => {
+        const k = chaveDe(c) || semChave;
+        if (!mapa.has(k)) mapa.set(k, []);
+        mapa.get(k).push(c);
+    });
+    const grupos = [...mapa.entries()]
+        .map(([nome, itens]) => [nome, itens.sort((a, b) => _porDataAsc(a.trans, b.trans)), itens.reduce((s, c) => s + valorDe(c), 0)])
+        .sort((a, b) => b[2] - a[2]);
+    const totalGeral = grupos.reduce((s, g) => s + g[2], 0);
+
+    return grupos.map(([nome, itens, total]) => {
+        const c = cores[nome] || corPadraoChip(nome);
+        const pct = totalGeral ? Math.round((total / totalGeral) * 100) : 0;
+        return `
+        <details class="rec-grupo" style="--cor-rec:${c}">
+          <summary>
+            <span class="rec-grupo-nome">${nome}</span>
+            <span class="rec-grupo-contagem">${itens.length}</span>
+            <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${pct}%` : ''}</span>
+          </summary>
+          <div class="rec-grupo-itens">
+            ${itens.map(c2 => gerarHTMLTransacao(c2.trans, c2.tipoUI, { ...c2.opts, ...extraOpts })).join('')}
+          </div>
+        </details>`;
+    }).join('');
+}
+
+/** "Próximas" agrupadas por tipo de recorrência, na ordem fixa de sempre
+ *  (Pontual primeiro) — mesma ideia de renderListaAgrupada, mas por cima do
+ *  contexto misto entrada/saída de _proximasCtx. */
+function _agruparProximasPorRecorrencia(ctxList) {
+    const cores = (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.recorrencia) || {};
+    const chaveDe = c => c.trans.tipoRecorrencia || 'Pontual';
+    const ordem = ['Pontual', ...ORDEM_RECORRENCIA.filter(t => t !== 'Pontual')];
+    const conhecidos = new Set(ordem);
+
+    const grupos = [];
+    ordem.forEach(tipoRec => {
+        const itens = ctxList.filter(c => chaveDe(c) === tipoRec).sort((a, b) => _porDataAsc(a.trans, b.trans));
+        if (itens.length) grupos.push([tipoRec, itens]);
+    });
+    const resto = ctxList.filter(c => !conhecidos.has(chaveDe(c))).sort((a, b) => _porDataAsc(a.trans, b.trans));
+    if (resto.length) grupos.push(['Outros', resto]);
+
+    const totalGrupo = arr => arr.reduce((s, c) => s + ((c.trans.valorMes != null ? c.trans.valorMes : c.trans.valor) || 0), 0);
+
+    return grupos.map(([tipoRec, itens]) => {
+        const rotulo = (typeof rotuloRecorrencia === 'function') ? rotuloRecorrencia(tipoRec, false) : tipoRec;
+        const c = cores[tipoRec] || corPadraoChip(tipoRec);
+        return `
+        <details class="rec-grupo" style="--cor-rec:${c}">
+          <summary>
+            <span class="rec-grupo-nome">${rotulo}</span>
+            <span class="rec-grupo-contagem">${itens.length}</span>
+            <span class="rec-grupo-total">${formatarMoeda(totalGrupo(itens))}</span>
+          </summary>
+          <div class="rec-grupo-itens">
+            ${itens.map(c2 => gerarHTMLTransacao(c2.trans, c2.tipoUI, c2.opts)).join('')}
+          </div>
+        </details>`;
+    }).join('');
 }
 
 /** Bloco "Faturas de cartão" no topo das Próximas: cada cartão de crédito

@@ -26,22 +26,23 @@
 .fatura-venc { font-size: .72rem; color: var(--text-muted); white-space: nowrap; }
 .fatura-total { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-/* Alternância de visão das abas Receitas/Despesas: recorrência / método /
-   categoria / ordem cronológica — quebra em 2 linhas se não couber (a de
-   "Ordem cronológica", a mais longa, é a que mais aperta em telas estreitas). */
+/* Alternância de visão das abas Receitas/Despesas/Próximas: recorrência /
+   método / categoria / ordem cronológica — sempre numa linha só (a fonte
+   encolhe pra caber; "Ordem cronológica", a mais longa, é quem mais aperta
+   em telas estreitas). */
 .modo-lista {
     display: flex;
-    flex-wrap: wrap;
-    gap: .35rem;
+    flex-wrap: nowrap;
+    gap: .3rem;
     background: var(--surface-3);
     padding: .25rem;
     border-radius: var(--radius-sm);
     margin: 0 0 var(--spacing-md);
 }
 .modo-lista .modo-btn {
-    flex: 1 1 45%;
+    flex: 1 1 0;
     min-width: 0;
-    padding: .4rem .5rem;
+    padding: .4rem .3rem;
     border: 1px solid transparent;
     border-radius: var(--radius-xs);
     background: transparent;
@@ -52,6 +53,12 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+@media (max-width: 480px) {
+    .modo-lista .modo-btn { font-size: .62rem; padding: .35rem .15rem; }
+}
+@media (max-width: 360px) {
+    .modo-lista .modo-btn { font-size: .56rem; }
 }
 .modo-lista .modo-btn.active {
     background: var(--surface);
