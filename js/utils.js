@@ -401,12 +401,12 @@ function limparFormulario() {
     if (form) {
         form.reset();
         aplicarDataPadrao(true);
-        // Tipo volta para "Receita" — e os BOTÕES acompanham (evita botão dizer
-        // "Despesa" enquanto os campos mostram "Receita")
-        document.querySelector(SELECTORS.tipoTransacao).value = 'entradas';
-        if (typeof estadoApp !== 'undefined') estadoApp.tipoAtual = 'entradas';
+        // Tipo volta para "Despesa" — e os BOTÕES acompanham (evita botão dizer
+        // "Receita" enquanto os campos mostram "Despesa")
+        document.querySelector(SELECTORS.tipoTransacao).value = 'saidas';
+        if (typeof estadoApp !== 'undefined') estadoApp.tipoAtual = 'saidas';
         document.querySelectorAll('.tipo-btn').forEach(b =>
-            b.classList.toggle('active', b.dataset.tipo === 'entradas'));
+            b.classList.toggle('active', b.dataset.tipo === 'saidas'));
         const pv = document.getElementById('pagarVencimento');
         if (pv) pv.checked = false;
         const dataEl = document.querySelector(SELECTORS.data);

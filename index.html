@@ -152,16 +152,16 @@
                     <div class="form-header">
                         <h2>Novo lançamento</h2>
                         <div class="tipo-selector">
-                            <button type="button" class="tipo-btn" data-tipo="saidas">
+                            <button type="button" class="tipo-btn active" data-tipo="saidas">
                                 📤 Despesa
                             </button>
-                            <button type="button" class="tipo-btn active" data-tipo="entradas">
+                            <button type="button" class="tipo-btn" data-tipo="entradas">
                                 📥 Receita
                             </button>
                         </div>
                     </div>
-                    
-                    <input type="hidden" id="tipoTransacao" value="entradas">
+
+                    <input type="hidden" id="tipoTransacao" value="saidas">
 
                     <!-- Linha 1: Valor + Método (só despesa; Valor ocupa 100% na receita) -->
                     <div class="form-row" id="linhaValorMetodo">
