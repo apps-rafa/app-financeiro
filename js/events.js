@@ -80,6 +80,10 @@ function configurarEventListeners() {
     const cancelar = document.getElementById('cancelarEdicao');
     if (cancelar) cancelar.addEventListener('click', cancelarEdicaoTransacao);
 
+    // Apagar o lançamento direto da tela de edição
+    const excluirEdicao = document.getElementById('excluirEdicao');
+    if (excluirEdicao) excluirEdicao.addEventListener('click', excluirEdicaoTransacao);
+
     // Botão "×" do formulário: em edição volta para a origem; senão, só fecha
     const btnLimparForm = document.getElementById('btnLimparForm');
     if (btnLimparForm) btnLimparForm.addEventListener('click', () => {
@@ -145,10 +149,20 @@ function configurarEventListeners() {
     const diaSem = document.getElementById('diaSemana');
     if (diaSem) diaSem.addEventListener('change', atualizarCamposRecorrencia);
     const valorInput = document.querySelector(SELECTORS.valor);
-    if (valorInput) valorInput.addEventListener('input', () => {
-        if (typeof atualizarResumoSemanas === 'function') atualizarResumoSemanas();
-        if (typeof atualizarValorTotal === 'function') atualizarValorTotal();
-    });
+    if (valorInput) {
+        // type="number" ainda deixa passar "e"/"+"/"-" (notação científica/negativo,
+        // que não fazem sentido pra um valor de lançamento) — bloqueia na digitação.
+        valorInput.addEventListener('keydown', e => {
+            if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+        });
+        valorInput.addEventListener('input', () => {
+            // Cobre o caso de colar "1e5" (válido pro <input type=number>, mas
+            // sem sentido aqui) — se sobrou "e"/"+"/"-", zera o valor.
+            if (/[eE+-]/.test(valorInput.value)) valorInput.value = '';
+            if (typeof atualizarResumoSemanas === 'function') atualizarResumoSemanas();
+            if (typeof atualizarValorTotal === 'function') atualizarValorTotal();
+        });
+    }
     // Parcelada: nº de parcelas (só números, 2 dígitos) -> recalcula o total
     const parcInput = document.getElementById('parcelas');
     if (parcInput) parcInput.addEventListener('input', () => {

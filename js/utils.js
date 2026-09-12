@@ -439,9 +439,18 @@ function obterDadosFormulario() {
     // Semanal não tem campo de data: usa a 1ª semana marcada (ou o mês em exibição)
     const semanasSel = typeof semanasMarcadas !== 'undefined' ? [...semanasMarcadas].sort() : [];
     let dataISO = dataCampoParaISO(document.querySelector(SELECTORS.data).value);
+
+    // O select "Comp." só é populado/mostrado pra despesa no cartão de crédito
+    // (ver atualizarCampoCredito, em js/ui.js) — pra qualquer outro método ele
+    // nunca foi tocado e fica preso na 1ª <option> ("01"/Janeiro) do HTML. Ler
+    // esse valor fora do contexto de crédito jogava a competência pra Janeiro
+    // de qualquer lançamento (Dinheiro, PIX, Semanal, Pontual sem cartão...).
+    const _met = typeof metodoSelecionado === 'function' ? metodoSelecionado() : null;
+    const ehCreditoDespesa = !ehEntrada && !!_met && _met.metodoKind === 'Crédito';
+
     let compISO = ehDiaUtil
         ? competenciaDeMes(document.getElementById('compRecorrente')?.value || '')
-        : competenciaDeMes(document.getElementById('competencia')?.value || '');
+        : (ehCreditoDespesa ? competenciaDeMes(document.getElementById('competencia')?.value || '') : '');
     if (tipoRecorrencia === 'Semanal') {
         dataISO = semanasSel[0] || mesExib;
     } else if (ehEntrada && (tipoRecorrencia === 'Mensal' || tipoRecorrencia === 'Parcelada')) {
@@ -456,9 +465,8 @@ function obterDadosFormulario() {
     // (não a data da compra), então competência já veio certa do campo
     // "Comp." (calculada em cima do mês em exibição, não da data travada —
     // senão o fechamento seria aplicado 2x e a competência pularia de mês).
-    const _met = typeof metodoSelecionado === 'function' ? metodoSelecionado() : null;
     const _comDiaCredito = tipoRecorrencia === 'Mensal' || tipoRecorrencia === 'Parcelada';
-    if (!ehEntrada && _met && _met.metodoKind === 'Crédito' && dataISO && !ehDiaUtil && !_comDiaCredito) {
+    if (ehCreditoDespesa && dataISO && !ehDiaUtil && !_comDiaCredito) {
         compISO = competenciaDe(dataISO, _met.diaFechamento || null);
     }
     // Última rede: se ainda não há competência, usa o mês em exibição
