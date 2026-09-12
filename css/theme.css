@@ -93,6 +93,19 @@ h1, h2, h3, h4, label, .item-nome, .despesa-categoria, .amount { color: var(--te
 .form-group textarea::placeholder,
 .dialogo-corpo input::placeholder { color: var(--text-muted); }
 
+/* Autofill do navegador (Chrome/Edge) força fundo branco + texto preto
+   por conta própria, ignorando o CSS da página — sem isto, um campo
+   autopreenchido (ex.: "Data") destoava do tema (claro num fundo escuro). */
+.form-group input:-webkit-autofill,
+.form-group input:-webkit-autofill:hover,
+.form-group input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--text);
+    -webkit-box-shadow: 0 0 0 1000px var(--surface-2) inset;
+    box-shadow: 0 0 0 1000px var(--surface-2) inset;
+    /* atrasa a transição de cor que o navegador tenta aplicar sozinho */
+    transition: background-color 5000s ease-in-out 0s;
+}
+
 input.campo-travado,
 .form-group input.campo-travado {
     background-color: var(--surface-3);
