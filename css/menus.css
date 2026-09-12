@@ -68,6 +68,37 @@
 }
 .h3-add:hover { background: var(--surface-3); }
 
+/* "A→Z" tem texto, não cabe no círculo do "+" — vira uma pílula */
+.h3-az {
+  width: auto;
+  padding: 0 .5rem;
+  font-size: .68rem;
+  font-weight: 700;
+}
+
+/* Setinhas ▲▼ pra reordenar manualmente um item da lista */
+.item-ordem {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: none;
+}
+.btn-mini-seta {
+  min-width: 18px;
+  width: 18px;
+  height: 14px;
+  padding: 0;
+  font-size: 9px;
+  line-height: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.btn-mini-seta:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
+.btn-mini-seta:disabled { opacity: .3; cursor: default; }
+
 /* Categorias: Despesa | Receita lado a lado */
 .menu-section--cols {
   display: flex;
@@ -132,6 +163,7 @@
 }
 .menu-section--cols .item-actions .cor-swatch { width: 1rem; height: 1rem; }
 .menu-section--cols .item-status { display: none; }
+.menu-section--cols .btn-mini-seta { width: 15px; min-width: 15px; height: 12px; font-size: 8px; }
 
 @media (max-width: 460px) {
   .menu-section--cols { flex-direction: column; }

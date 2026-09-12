@@ -86,7 +86,8 @@ function mapearItemMenu(row) {
         banco: row.banco || '',
         diaFechamento: row.dia_fechamento || null,
         diaVencimento: row.dia_vencimento || null,
-        melhorDiaCompra: row.melhor_dia_compra || null
+        melhorDiaCompra: row.melhor_dia_compra || null,
+        ordem: row.ordem ?? null   // posição manual na lista (menor = mais acima)
     };
 }
 
@@ -105,6 +106,7 @@ async function carregarMenusCompleto() {
         const { data, error } = await sb
             .from('menu_itens')
             .select('*')
+            .order('ordem', { ascending: true, nullsFirst: false })
             .order('nome', { ascending: true });
 
         if (error) throw error;
@@ -153,9 +155,21 @@ async function obterItensPorTipo(tipo) {
  */
 async function adicionarItemMenuAPI(tipo, nome, extra = {}) {
     try {
+        // Novo item entra no fim da lista (maior ordem do grupo + 1), a
+        // menos que já tenha vindo com uma ordem explícita.
+        let ordem = extra.ordem;
+        if (ordem == null) {
+            let query = sb.from('menu_itens').select('ordem').eq('tipo', tipo);
+            query = extra.categoria_tipo
+                ? query.eq('categoria_tipo', extra.categoria_tipo)
+                : query.is('categoria_tipo', null);
+            const { data: existentes } = await query.order('ordem', { ascending: false }).limit(1);
+            ordem = (existentes && existentes[0] && existentes[0].ordem != null) ? existentes[0].ordem + 1 : 1;
+        }
+
         const { error } = await sb
             .from('menu_itens')
-            .insert({ tipo, nome, ...extra });
+            .insert({ tipo, nome, ordem, ...extra });
 
         if (error) throw error;
         mostrarNotificacao(`${nome} adicionado com sucesso!`, 'sucesso');
@@ -213,6 +227,25 @@ async function desativarItemMenuAPI(linha) {
  */
 async function ativarItemMenuAPI(linha) {
     return _mudarStatusItem(linha, 'Ativo', 'Item ativado com sucesso!');
+}
+
+/**
+ * Salva uma nova ordem pra vários itens de uma vez (reordenar manual ou
+ * "A→Z"). Sem notificação por item — só uma, no fim, feita por quem chama.
+ * @param {{id:number, ordem:number}[]} atualizacoes
+ */
+async function salvarOrdemMenuAPI(atualizacoes) {
+    try {
+        for (const { id, ordem } of atualizacoes) {
+            const { error } = await sb.from('menu_itens').update({ ordem }).eq('id', id);
+            if (error) throw error;
+        }
+        return true;
+    } catch (error) {
+        console.error('Erro ao salvar ordem:', error);
+        mostrarNotificacao('Erro ao salvar a ordem', 'erro');
+        return false;
+    }
 }
 
 async function _mudarStatusItem(linha, status, msgOk) {

@@ -51,6 +51,7 @@ async function carregarAbaMenus() {
         <details class="cat-coluna">
           <summary class="cat-coluna-topo">
             <span class="cat-subgrupo-titulo">📥 Receita</span>
+            <button type="button" class="h3-add h3-az" onclick="event.preventDefault();event.stopPropagation();ordenarAlfabetico('categoriasReceita')" title="Ordenar de A a Z">A→Z</button>
             <button type="button" class="h3-add" onclick="event.preventDefault();event.stopPropagation();abrirNovaCategoria('entradas')" title="Nova categoria de receita">+</button>
           </summary>
           <div class="menu-list" id="categoriasReceitaList"></div>
@@ -58,6 +59,7 @@ async function carregarAbaMenus() {
         <details class="cat-coluna">
           <summary class="cat-coluna-topo">
             <span class="cat-subgrupo-titulo">📤 Despesa</span>
+            <button type="button" class="h3-add h3-az" onclick="event.preventDefault();event.stopPropagation();ordenarAlfabetico('categoriasDespesa')" title="Ordenar de A a Z">A→Z</button>
             <button type="button" class="h3-add" onclick="event.preventDefault();event.stopPropagation();abrirNovaCategoria('saidas')" title="Nova categoria de despesa">+</button>
           </summary>
           <div class="menu-list" id="categoriasDespesaList"></div>
@@ -66,8 +68,10 @@ async function carregarAbaMenus() {
 
       <div class="menu-section" data-sub="met" hidden>
         <h3>💳 Métodos de pagamento
+          <button type="button" class="h3-add h3-az" onclick="ordenarAlfabetico('metodos')" title="Ordenar de A a Z">A→Z</button>
           <button type="button" class="h3-add" onclick="abrirNovoMetodo()" title="Novo método">+</button>
         </h3>
+        <p class="menu-hint">Use as setinhas ▲▼ pra reordenar do jeito que você quiser — é essa ordem que aparece no dropdown do lançamento.</p>
         <div class="menu-list" id="metodosList"></div>
       </div>
 
@@ -133,9 +137,9 @@ async function carregarAbaMenus() {
   configurarSubtabsConfig();
   mostrarSubConfig(subConfigAtiva);
 
-  renderizarItemsMenu('Categoria', 'categoriasDespesaList', menus.categoriasDespesa);
-  renderizarItemsMenu('Categoria', 'categoriasReceitaList', menus.categoriasReceita);
-  renderizarItemsMenu('Método', 'metodosList', menus.metodos);
+  renderizarItemsMenu('Categoria', 'categoriasDespesaList', menus.categoriasDespesa, 'categoriasDespesa');
+  renderizarItemsMenu('Categoria', 'categoriasReceitaList', menus.categoriasReceita, 'categoriasReceita');
+  renderizarItemsMenu('Método', 'metodosList', menus.metodos, 'metodos');
 
   const recList = document.getElementById('recorrenciasList');
   if (recList) recList.onclick = onMenuListClick;
@@ -307,7 +311,7 @@ function configurarSubtabsConfig() {
 
 /* ---------- Render ---------- */
 
-function renderizarItemsMenu(tipo, containerId, itens) {
+function renderizarItemsMenu(tipo, containerId, itens, grupo) {
   const container = document.getElementById(containerId);
   if (!itens || !itens.length) {
     container.innerHTML = `<p class="empty-text">Nada cadastrado</p>`;
@@ -315,16 +319,13 @@ function renderizarItemsMenu(tipo, containerId, itens) {
     return;
   }
 
-  // Métodos: ordem fixa Dinheiro -> PIX/Débito -> Crédito (depois por nome)
-  if (tipo === 'Método') {
-    const rank = m => (m.metodoKind === 'Dinheiro' || m.nome === 'Dinheiro') ? 0
-      : m.metodoKind === 'PIX/Débito' ? 1
-      : m.metodoKind === 'Crédito' ? 2 : 3;
-    itens = [...itens].sort((a, b) =>
-      rank(a) - rank(b) || String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
-  }
+  // Ordem manual do usuário (coluna "ordem"); item sem ordem definida vai pro fim.
+  itens = [...itens].sort((a, b) => {
+    const oa = a.ordem ?? Infinity, ob = b.ordem ?? Infinity;
+    return oa - ob || String(a.nome).localeCompare(String(b.nome), 'pt-BR');
+  });
 
-  container.innerHTML = itens.map(item => {
+  container.innerHTML = itens.map((item, i) => {
     const statusClass = item.status === 'Ativo' ? 'ativo' : 'inativo';
     const statusLabel = item.status === 'Ativo' ? '✓ Ativo' : '✗ Inativo';
 
@@ -347,30 +348,39 @@ function renderizarItemsMenu(tipo, containerId, itens) {
       }
     }
 
-    // Dinheiro é método fixo: sem edição/remoção (mas ainda escolhe cor)
-    const fixo = tipo === 'Método' && (item.metodoKind === 'Dinheiro' || item.nome === 'Dinheiro');
+    // Dinheiro é método fixo: nunca pode ser removido nem editado (não tem
+    // campo pra configurar mesmo), mas pode ser desativado como qualquer um.
+    const semRemocao = tipo === 'Método' && (item.metodoKind === 'Dinheiro' || item.nome === 'Dinheiro');
 
     const swatch = `<button class="cor-swatch" style="background:${corDoItemMenu(item)}"
         data-act="cor" data-tipo="${tipo}" data-id="${item.linha}" data-nome="${item.nome}" title="Cor do chip"></button>`;
 
+    const setinhas = grupo ? `
+        <div class="item-ordem">
+          <button class="btn-icon btn-mini-seta" data-act="mover-cima" data-grupo="${grupo}" data-id="${item.linha}"
+                  title="Mover pra cima" ${i === 0 ? 'disabled' : ''}>▲</button>
+          <button class="btn-icon btn-mini-seta" data-act="mover-baixo" data-grupo="${grupo}" data-id="${item.linha}"
+                  title="Mover pra baixo" ${i === itens.length - 1 ? 'disabled' : ''}>▼</button>
+        </div>` : '';
+
     const acoes = `
       <div class="item-actions">
         ${swatch}
-        ${fixo ? '' : `
-        <button class="btn-icon" data-act="editar" data-tipo="${tipo}" data-id="${item.linha}" title="Editar">✏️</button>
+        ${semRemocao ? '' : `<button class="btn-icon" data-act="editar" data-tipo="${tipo}" data-id="${item.linha}" title="Editar">✏️</button>`}
         <button class="btn-icon ${item.status === 'Ativo' ? 'btn-warning' : 'btn-success'}"
                 data-act="${item.status === 'Ativo' ? 'desativar' : 'ativar'}" data-id="${item.linha}"
                 title="${item.status === 'Ativo' ? 'Desativar' : 'Ativar'}">${item.status === 'Ativo' ? '⊘' : '↻'}</button>
-        <button class="btn-icon btn-danger" data-act="remover" data-id="${item.linha}" title="Remover">🗑️</button>`}
+        ${semRemocao ? '' : `<button class="btn-icon btn-danger" data-act="remover" data-id="${item.linha}" title="Remover">🗑️</button>`}
       </div>`;
 
     return `
       <div class="menu-item ${statusClass}" data-id="${item.linha}" data-tipo="${tipo}">
+        ${setinhas}
         <div class="item-info">
           <div class="item-nome">${titulo}</div>
           ${sub ? `<div class="item-descricao">${sub}</div>` : ''}
         </div>
-        <div class="item-status">${fixo ? 'fixo' : statusLabel}</div>
+        <div class="item-status">${semRemocao ? 'fixo' : statusLabel}</div>
         ${acoes}
       </div>
     `;
@@ -389,11 +399,54 @@ function onMenuListClick(e) {
   const tipo = btn.dataset.tipo;
   const row = btn.closest('.menu-item');
 
-  if (act === 'cor')       return abrirSeletorCor(btn);
-  if (act === 'ativar')    return acaoMenu(() => ativarItemMenuAPI(id));
-  if (act === 'desativar') return acaoMenu(() => desativarItemMenuAPI(id));
-  if (act === 'remover')   return confirmarRemocao(btn, id);
-  if (act === 'editar')    return abrirEdicaoInline(row, id, tipo);
+  if (act === 'cor')         return abrirSeletorCor(btn);
+  if (act === 'ativar')      return acaoMenu(() => ativarItemMenuAPI(id));
+  if (act === 'desativar')   return acaoMenu(() => desativarItemMenuAPI(id));
+  if (act === 'remover')     return confirmarRemocao(btn, id);
+  if (act === 'editar')      return abrirEdicaoInline(row, id, tipo);
+  if (act === 'mover-cima')  return moverItemMenu(btn.dataset.grupo, id, -1);
+  if (act === 'mover-baixo') return moverItemMenu(btn.dataset.grupo, id, 1);
+}
+
+/** Lista (já ordenada por "ordem") de um grupo reordenável. */
+function _itensDoGrupo(grupo) {
+  if (!menusAtual) return [];
+  const base = grupo === 'categoriasReceita' ? menusAtual.categoriasReceita
+    : grupo === 'categoriasDespesa' ? menusAtual.categoriasDespesa
+    : grupo === 'metodos' ? menusAtual.metodos
+    : [];
+  return [...(base || [])].sort((a, b) => {
+    const oa = a.ordem ?? Infinity, ob = b.ordem ?? Infinity;
+    return oa - ob || String(a.nome).localeCompare(String(b.nome), 'pt-BR');
+  });
+}
+
+/** Move um item uma posição pra cima (-1) ou pra baixo (+1) na lista, trocando a "ordem" com o vizinho. */
+async function moverItemMenu(grupo, id, direcao) {
+  const itens = _itensDoGrupo(grupo);
+  const i = itens.findIndex(it => it.linha === id);
+  const j = i + direcao;
+  if (i < 0 || j < 0 || j >= itens.length) return;
+
+  const a = itens[i], b = itens[j];
+  const ordemA = a.ordem ?? (i + 1), ordemB = b.ordem ?? (j + 1);
+  const ok = await salvarOrdemMenuAPI([
+    { id: a.linha, ordem: ordemB },
+    { id: b.linha, ordem: ordemA }
+  ]);
+  if (ok) await recarregarMenus();
+}
+
+/** Reordena um grupo inteiro em ordem alfabética (A→Z) e persiste. */
+async function ordenarAlfabetico(grupo) {
+  const itens = [...(_itensDoGrupo(grupo))]
+    .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+  const atualizacoes = itens.map((item, i) => ({ id: item.linha, ordem: i + 1 }));
+  const ok = await salvarOrdemMenuAPI(atualizacoes);
+  if (ok) {
+    mostrarNotificacao('Ordenado de A a Z', 'sucesso');
+    await recarregarMenus();
+  }
 }
 
 /** Seletor de cor do "chip" (paleta + cor livre). Único campo editável em Recorrências. */
