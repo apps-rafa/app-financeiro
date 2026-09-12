@@ -163,13 +163,19 @@ function aplicarDataPadrao(force) {
     const el = document.querySelector(SELECTORS.data);
     if (!el) return;
     if (typeof estadoApp !== 'undefined' && estadoApp.editandoId) return;
-    if (!force && el.value && el.value !== el.dataset.padrao) return;
+    // Campo travado (readOnly) nunca foi digitado pelo usuário — o valor ali é
+    // sempre calculado (vencimento do cartão, próximo dia útil etc.), então
+    // sempre pode ser recalculado pro mês novo, mesmo sem force=true.
+    if (!force && !el.readOnly && el.value && el.value !== el.dataset.padrao) return;
     const nova = dataPadraoDiaMes();
     el.value = nova;
     el.dataset.padrao = nova;
     el.dataset.qtdDigitos = String((nova.match(/\d/g) || []).length);
     delete el.dataset.userVal;
     if (typeof recalcularCompetencia === 'function') recalcularCompetencia();
+    // Recorrência/cartão de crédito: refaz o vencimento travado (dia do cartão)
+    // em cima do novo mês em exibição.
+    if (typeof atualizarCamposRecorrencia === 'function') atualizarCamposRecorrencia();
 }
 
 /** Liga a máscara de data num input: keydown (backspace na "/") + sincroniza o
