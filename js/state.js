@@ -6,7 +6,7 @@
 let estadoApp = {
     // Navegação
     mesAtual: new Date(),
-    tipoAtual: 'entradas', // 'entradas' ou 'saidas'
+    tipoAtual: 'saidas', // 'entradas' ou 'saidas'
     
     // Dados de transações
     transacoes: {
