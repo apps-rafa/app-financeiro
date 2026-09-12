@@ -165,7 +165,9 @@
     display: flex;
     align-items: center;
     gap: .45rem;
-    height: 1.15rem;   /* = altura de um label normal (.form-group label) */
+    height: 1.22rem;   /* = altura real de um label normal (.form-group label);
+                          medido via getBoundingClientRect — 1.15rem estava
+                          ~1px menor, jogando a "Data" pra cima da "Recorrência" */
     margin-bottom: .25rem;
 }
 #dataGroup .label-linha > * { margin: 0 !important; }
