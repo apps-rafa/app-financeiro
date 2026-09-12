@@ -76,29 +76,48 @@ async function carregarAbaMenus() {
       </div>
 
       <div class="menu-section" data-sub="rec" hidden>
-        <h3>🔁 Tipos de recorrência</h3>
-        <p class="menu-hint">Tipos fixos do sistema. O único campo editável é a cor do chip.</p>
+        <h3>🔁 Tipos de recorrência
+          <button type="button" class="h3-add h3-az" onclick="ordenarAlfabetico('recorrencias')" title="Ordenar de A a Z">A→Z</button>
+        </h3>
+        <p class="menu-hint">Tipos fixos do sistema: não dá pra criar, editar nem remover. Mas dá pra desativar e reordenar — é essa ordem que aparece no dropdown do lançamento.</p>
         <div class="menu-list menu-list--livre" id="recorrenciasList">
-          ${RECORRENCIAS_INFO.map(([kind, desc]) => {
-            // rótulo exibido x nome real do tipo (kind é o valor interno)
-            const rotulo = kind === 'Mensal'
-              ? 'Mensal / Contas'
-              : (typeof rotuloRecorrencia === 'function' ? rotuloRecorrencia(kind) : kind);
-            const linha = (menus.recorrencias || []).find(r => r.nome === kind);
-            const c = linha ? corDoItemMenu(linha) : corPadraoChip(kind);
-            const id = linha ? linha.linha : '';
-            return `
-            <div class="menu-item ativo">
-              <div class="item-info">
-                <div class="item-nome">${rotulo}</div>
-                <div class="item-descricao item-descricao--full">${desc}</div>
-              </div>
-              <div class="item-actions">
-                <button class="cor-swatch" style="background:${c}" data-act="cor" data-tipo="Recorrência"
-                        data-id="${id}" data-nome="${kind}" title="Cor do chip"></button>
-              </div>
-            </div>`;
-          }).join('')}
+          ${(() => {
+            const itens = [...(menus.recorrencias || [])].sort((a, b) => {
+              const oa = a.ordem ?? Infinity, ob = b.ordem ?? Infinity;
+              return oa - ob || String(a.nome).localeCompare(String(b.nome), 'pt-BR');
+            });
+            return itens.map((linha, i) => {
+              const kind = linha.nome;
+              const desc = (RECORRENCIAS_INFO.find(([k]) => k === kind) || [])[1] || '';
+              const rotulo = kind === 'Mensal'
+                ? 'Mensal / Contas'
+                : (typeof rotuloRecorrencia === 'function' ? rotuloRecorrencia(kind) : kind);
+              const c = corDoItemMenu(linha);
+              const statusClass = linha.status === 'Ativo' ? 'ativo' : 'inativo';
+              const statusLabel = linha.status === 'Ativo' ? '✓ Ativo' : '✗ Inativo';
+              return `
+              <div class="menu-item ${statusClass}" data-id="${linha.linha}" data-tipo="Recorrência">
+                <div class="item-ordem">
+                  <button class="btn-icon btn-mini-seta" data-act="mover-cima" data-grupo="recorrencias" data-id="${linha.linha}"
+                          title="Mover pra cima" ${i === 0 ? 'disabled' : ''}>▲</button>
+                  <button class="btn-icon btn-mini-seta" data-act="mover-baixo" data-grupo="recorrencias" data-id="${linha.linha}"
+                          title="Mover pra baixo" ${i === itens.length - 1 ? 'disabled' : ''}>▼</button>
+                </div>
+                <div class="item-info">
+                  <div class="item-nome">${rotulo}</div>
+                  <div class="item-descricao item-descricao--full">${desc}</div>
+                </div>
+                <div class="item-status">${statusLabel}</div>
+                <div class="item-actions">
+                  <button class="cor-swatch" style="background:${c}" data-act="cor" data-tipo="Recorrência"
+                          data-id="${linha.linha}" data-nome="${kind}" title="Cor do chip"></button>
+                  <button class="btn-icon ${linha.status === 'Ativo' ? 'btn-warning' : 'btn-success'}"
+                          data-act="${linha.status === 'Ativo' ? 'desativar' : 'ativar'}" data-id="${linha.linha}"
+                          title="${linha.status === 'Ativo' ? 'Desativar' : 'Ativar'}">${linha.status === 'Ativo' ? '⊘' : '↻'}</button>
+                </div>
+              </div>`;
+            }).join('');
+          })()}
         </div>
       </div>
 
@@ -414,6 +433,7 @@ function _itensDoGrupo(grupo) {
   const base = grupo === 'categoriasReceita' ? menusAtual.categoriasReceita
     : grupo === 'categoriasDespesa' ? menusAtual.categoriasDespesa
     : grupo === 'metodos' ? menusAtual.metodos
+    : grupo === 'recorrencias' ? menusAtual.recorrencias
     : [];
   return [...(base || [])].sort((a, b) => {
     const oa = a.ordem ?? Infinity, ob = b.ordem ?? Infinity;

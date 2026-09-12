@@ -225,7 +225,14 @@ function preencherDropdownRecorrencias() {
     const ehDespesa = document.querySelector(SELECTORS.tipoTransacao)?.value === 'saidas';
     // Despesa não usa os tipos de "dia útil fixo" (só receita)
     const soReceita = typeof RECORRENCIA_DIA_UTIL !== 'undefined' ? RECORRENCIA_DIA_UTIL : [];
-    const disponiveis = ORDEM_RECORRENCIA.filter(t => !(ehDespesa && soReceita.includes(t)));
+    // Ordem/ativação vêm do banco (estadoApp.menus.recorrencias já filtra status='Ativo'
+    // e ordena por "ordem"); ORDEM_RECORRENCIA só serve de fallback antes do 1º carregamento.
+    const ativos = (estadoApp.menus && estadoApp.menus.recorrencias && estadoApp.menus.recorrencias.length)
+        ? estadoApp.menus.recorrencias
+        : ORDEM_RECORRENCIA;
+    // "Pontual" é o valor padrão do formulário — nunca pode sumir do dropdown
+    const base = ativos.includes('Pontual') ? ativos : ['Pontual', ...ativos];
+    const disponiveis = base.filter(t => !(ehDespesa && soReceita.includes(t)));
 
     sel.innerHTML = '';
     disponiveis.forEach(t => {
