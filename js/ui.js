@@ -347,12 +347,14 @@ function onListaTransacaoClick(e) {
     }
 }
 
+/** @returns {Promise<boolean>} true se realmente apagou */
 async function excluirTransacao(id) {
     try {
         await deletarTransacaoAPI(id);
         mostrarNotificacao('Transação excluída', 'sucesso');
         await recarregarDados();
         atualizarUI();
+        return true;
     } catch (e) {
         if (e && e.detalhe && e.detalhe.tipo === 'parcela-nao-original') {
             const comp = e.detalhe.competenciaOriginal;
@@ -365,10 +367,11 @@ async function excluirTransacao(id) {
                     { label: 'Fechar' }
                 ]
             });
-            return;
+            return false;
         }
         console.error(e);
         mostrarNotificacao('Erro ao excluir', 'erro');
+        return false;
     }
 }
 
@@ -455,6 +458,8 @@ function iniciarEdicaoTransacao(trans, tipoTransacao) {
 
     const cancelar = document.getElementById('cancelarEdicao');
     if (cancelar) cancelar.hidden = false;
+    const excluir = document.getElementById('excluirEdicao');
+    if (excluir) excluir.hidden = false;
 }
 
 /** Sai do modo edição e limpa o formulário */
@@ -468,8 +473,42 @@ function cancelarEdicaoTransacao(voltarParaOrigem = true) {
     if (btn) btn.textContent = 'Adicionar';
     const cancelar = document.getElementById('cancelarEdicao');
     if (cancelar) cancelar.hidden = true;
+    const excluir = document.getElementById('excluirEdicao');
+    if (excluir) { excluir.hidden = true; delete excluir.dataset.armed; excluir.textContent = '🗑 Apagar'; excluir.classList.remove('armed'); }
     // Cancelar pelo botão: volta para a tela onde o usuário estava
     if (voltarParaOrigem && origem && typeof mudarAba === 'function') mudarAba(origem);
+}
+
+/** Botão "Apagar" dentro do formulário de edição — mesmo arme de 2 cliques da lista */
+async function excluirEdicaoTransacao() {
+    const btn = document.getElementById('excluirEdicao');
+    if (!btn || !estadoApp.editandoId) return;
+    if (!btn.dataset.armed) {
+        btn.dataset.armed = '1';
+        btn.textContent = 'Confirmar exclusão?';
+        btn.classList.add('armed');
+        setTimeout(() => {
+            if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = '🗑 Apagar'; btn.classList.remove('armed'); }
+        }, 3000);
+        return;
+    }
+    const id = estadoApp.editandoId;
+    const voltarPara = estadoApp.abaOrigemEdicao;
+    const apagou = await excluirTransacao(id);
+    delete btn.dataset.armed;
+    btn.textContent = '🗑 Apagar';
+    btn.classList.remove('armed');
+    if (!apagou) return; // erro real, ou o diálogo "só a 1ª parcela" — segue em edição
+
+    estadoApp.editandoId = null;
+    estadoApp.abaOrigemEdicao = null;
+    limparFormulario();
+    const submitBtn = document.querySelector('.btn-submit');
+    if (submitBtn) submitBtn.textContent = 'Adicionar';
+    const cancelar = document.getElementById('cancelarEdicao');
+    if (cancelar) cancelar.hidden = true;
+    btn.hidden = true;
+    if (voltarPara && typeof mudarAba === 'function') mudarAba(voltarPara);
 }
 
 /**

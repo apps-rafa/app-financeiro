@@ -538,6 +538,20 @@
   font-size: .95rem;
 }
 
+/* "Apagar" o lançamento em edição: fica separado do Adicionar/Cancelar,
+   com aviso vermelho — mesmo arme de 2 cliques usado nas listas. */
+.btn-excluir-lancamento {
+  margin-left: auto;
+  border-color: var(--danger, #DC2626);
+  color: var(--danger, #DC2626);
+}
+.btn-excluir-lancamento:hover { background: rgba(220, 38, 38, .1); }
+.btn-excluir-lancamento.armed {
+  background: var(--danger, #DC2626);
+  color: #fff;
+  font-weight: 700;
+}
+
 /* Chips de semanas (recorrência Semanal) */
 .hint-inline { font-weight: 400; color: #6B7280; font-size: .85em; }
 .semanas-chips {
