@@ -474,32 +474,20 @@ function cancelarEdicaoTransacao(voltarParaOrigem = true) {
     const cancelar = document.getElementById('cancelarEdicao');
     if (cancelar) cancelar.hidden = true;
     const excluir = document.getElementById('excluirEdicao');
-    if (excluir) { excluir.hidden = true; delete excluir.dataset.armed; excluir.textContent = '🗑'; excluir.title = 'Apagar este lançamento'; excluir.classList.remove('armed'); }
+    if (excluir) excluir.hidden = true;
     // Cancelar pelo botão: volta para a tela onde o usuário estava
     if (voltarParaOrigem && origem && typeof mudarAba === 'function') mudarAba(origem);
 }
 
-/** Botão "Apagar" dentro do formulário de edição — mesmo arme de 2 cliques da lista */
+/** Botão "Apagar" dentro do formulário de edição — confirmação nativa (confirm) */
 async function excluirEdicaoTransacao() {
     const btn = document.getElementById('excluirEdicao');
     if (!btn || !estadoApp.editandoId) return;
-    if (!btn.dataset.armed) {
-        btn.dataset.armed = '1';
-        btn.textContent = '❓';
-        btn.title = 'Confirmar exclusão?';
-        btn.classList.add('armed');
-        setTimeout(() => {
-            if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = '🗑'; btn.title = 'Apagar este lançamento'; btn.classList.remove('armed'); }
-        }, 3000);
-        return;
-    }
+    if (!confirm('Apagar este lançamento? Não dá para desfazer.')) return;
+
     const id = estadoApp.editandoId;
     const voltarPara = estadoApp.abaOrigemEdicao;
     const apagou = await excluirTransacao(id);
-    delete btn.dataset.armed;
-    btn.textContent = '🗑';
-    btn.title = 'Apagar este lançamento';
-    btn.classList.remove('armed');
     if (!apagou) return; // erro real, ou o diálogo "só a 1ª parcela" — segue em edição
 
     estadoApp.editandoId = null;
