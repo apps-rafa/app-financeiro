@@ -56,17 +56,8 @@
         padding: var(--spacing-lg);
     }
 
-    .form-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
     .form-row {
         grid-template-columns: 1fr;
-    }
-
-    .tipo-selector {
-        width: 100%;
     }
 
     .tipo-btn {
@@ -186,16 +177,6 @@
         border-radius: var(--radius-sm);
     }
 
-    .tipo-selector {
-        gap: var(--spacing-xs);
-        padding: var(--spacing-xs);
-    }
-
-    .tipo-btn {
-        padding: 0.4rem 0.6rem;
-        font-size: 0.75rem;
-    }
-
     /* Transações */
     .despesa-item {
         padding: var(--spacing-md);
@@ -305,6 +286,20 @@
     .form-group input,
     .form-group select {
         font-size: 0.85rem;
+    }
+
+    .form-header {
+        padding-right: 1.9rem;
+        gap: 0.25rem;
+    }
+
+    .form-header h2 {
+        font-size: 0.66rem;
+    }
+
+    .tipo-btn {
+        padding: 0.3rem 0.05rem;
+        font-size: 0.56rem;
     }
 }
 
