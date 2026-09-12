@@ -758,8 +758,10 @@ function atualizarLabelsPorTipo() {
     const ehReceita = document.querySelector(SELECTORS.tipoTransacao)?.value === 'entradas';
 
     const metodoSel = document.querySelector(SELECTORS.metodo);
-    const grpMetodo = metodoSel?.closest('.form-group');
-    if (grpMetodo) grpMetodo.hidden = ehReceita;
+    // Esconde o bloco inteiro (não só o form-group do método) pra "Valor"
+    // ocupar 100% da linha quando é receita, em vez de sobrar um buraco.
+    const blocoMetodo = document.getElementById('metodoBloco');
+    if (blocoMetodo) blocoMetodo.hidden = ehReceita;
     if (metodoSel) {
         metodoSel.required = !ehReceita;
         if (ehReceita) metodoSel.value = '';

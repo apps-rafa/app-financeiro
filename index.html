@@ -162,8 +162,8 @@
                     
                     <input type="hidden" id="tipoTransacao" value="entradas">
 
-                    <!-- Valor em primeiro, sozinho na linha -->
-                    <div class="form-row" id="linhaValor">
+                    <!-- Linha 1: Valor + Método (só despesa; Valor ocupa 100% na receita) -->
+                    <div class="form-row" id="linhaValorMetodo">
                         <div id="valorBloco">
                             <div class="form-group" id="valorGroup">
                                 <label for="valor">Valor</label>
@@ -174,11 +174,51 @@
                                 <input type="text" id="valorTotal" class="campo-travado" readonly tabindex="-1">
                             </div>
                         </div>
+                        <div id="metodoBloco">
+                            <div class="form-group" id="metodoGroup">
+                                <label for="metodo">Método</label>
+                                <div class="campo-com-add">
+                                    <select id="metodo" required>
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                    <button type="button" id="btnNovoMetodo" class="btn-mini-add" title="Novo método">+</button>
+                                </div>
+                            </div>
+                            <div class="form-group campo-mini" id="competenciaGroup" hidden>
+                                <label for="competencia">Comp.</label>
+                                <select id="competencia">
+                                    <option value="01">JAN</option><option value="02">FEV</option>
+                                    <option value="03">MAR</option><option value="04">ABR</option>
+                                    <option value="05">MAI</option><option value="06">JUN</option>
+                                    <option value="07">JUL</option><option value="08">AGO</option>
+                                    <option value="09">SET</option><option value="10">OUT</option>
+                                    <option value="11">NOV</option><option value="12">DEZ</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Linha da recorrência: metade "Recorrência" (dividida com o
-                         campo auxiliar, se houver) + metade "Data" (largura fixa) -->
+                    <!-- Linha 2: Data + Recorrência (a "Recorrência" carrega seu campo
+                         auxiliar, se houver: Qtd./Vcto./dia/mês-ref) -->
                     <div class="form-row" id="linhaRecorrencia">
+                        <div id="dataBloco">
+                            <div class="form-group" id="dataGroup">
+                                <div class="label-linha">
+                                    <label for="data">Data</label>
+                                    <label class="chip-toggle" id="pagarVencimentoWrap" hidden><input type="checkbox" id="pagarVencimento" hidden><span id="pagarVencimentoLabel">pagar no vcto.</span></label>
+                                </div>
+                                <input type="text" id="data" inputmode="numeric" placeholder="dd/mm" maxlength="5" autocomplete="off" required>
+                            </div>
+                            <div class="form-group" id="dataCalculadaGroup" hidden>
+                                <label for="dataCalculada">Data</label>
+                                <input type="text" id="dataCalculada" class="campo-travado" readonly tabindex="-1">
+                            </div>
+                            <div class="form-group" id="semanasChipsGroup" hidden>
+                                <label>Semanas do mês</label>
+                                <div id="semanasChips" class="semanas-chips"></div>
+                                <div id="semanasResumo" class="semanas-resumo"></div>
+                            </div>
+                        </div>
                         <div id="recorrenciaBloco">
                             <div class="form-group" id="recorrenciaGroup">
                                 <label for="tipoRecorrencia">Recorrência</label>
@@ -217,50 +257,10 @@
                                 </select>
                             </div>
                         </div>
-                        <div id="dataBloco">
-                            <div class="form-group" id="dataGroup">
-                                <div class="label-linha">
-                                    <label for="data">Data</label>
-                                    <label class="chip-toggle" id="pagarVencimentoWrap" hidden><input type="checkbox" id="pagarVencimento" hidden><span id="pagarVencimentoLabel">pagar no vcto.</span></label>
-                                </div>
-                                <input type="text" id="data" inputmode="numeric" placeholder="dd/mm" maxlength="5" autocomplete="off" required>
-                            </div>
-                            <div class="form-group" id="dataCalculadaGroup" hidden>
-                                <label for="dataCalculada">Data</label>
-                                <input type="text" id="dataCalculada" class="campo-travado" readonly tabindex="-1">
-                            </div>
-                            <div class="form-group" id="semanasChipsGroup" hidden>
-                                <label>Semanas do mês</label>
-                                <div id="semanasChips" class="semanas-chips"></div>
-                                <div id="semanasResumo" class="semanas-resumo"></div>
-                            </div>
-                        </div>
                     </div>
 
-                    <!-- Demais campos: empilhado / 2 col / 3 col conforme a largura -->
+                    <!-- Linha 3: Categoria + Descrição -->
                     <div class="form-row" id="linhaCampos">
-                        <div id="metodoBloco">
-                            <div class="form-group" id="metodoGroup">
-                                <label for="metodo">Método</label>
-                                <div class="campo-com-add">
-                                    <select id="metodo" required>
-                                        <option value="">Selecione...</option>
-                                    </select>
-                                    <button type="button" id="btnNovoMetodo" class="btn-mini-add" title="Novo método">+</button>
-                                </div>
-                            </div>
-                            <div class="form-group campo-mini" id="competenciaGroup" hidden>
-                                <label for="competencia">Comp.</label>
-                                <select id="competencia">
-                                    <option value="01">JAN</option><option value="02">FEV</option>
-                                    <option value="03">MAR</option><option value="04">ABR</option>
-                                    <option value="05">MAI</option><option value="06">JUN</option>
-                                    <option value="07">JUL</option><option value="08">AGO</option>
-                                    <option value="09">SET</option><option value="10">OUT</option>
-                                    <option value="11">NOV</option><option value="12">DEZ</option>
-                                </select>
-                            </div>
-                        </div>
                         <div class="form-group">
                             <label for="categoria">Categoria</label>
                             <div class="campo-com-add">
