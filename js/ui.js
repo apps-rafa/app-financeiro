@@ -474,7 +474,7 @@ function cancelarEdicaoTransacao(voltarParaOrigem = true) {
     const cancelar = document.getElementById('cancelarEdicao');
     if (cancelar) cancelar.hidden = true;
     const excluir = document.getElementById('excluirEdicao');
-    if (excluir) { excluir.hidden = true; delete excluir.dataset.armed; excluir.textContent = '🗑 Apagar'; excluir.classList.remove('armed'); }
+    if (excluir) { excluir.hidden = true; delete excluir.dataset.armed; excluir.textContent = '🗑'; excluir.title = 'Apagar este lançamento'; excluir.classList.remove('armed'); }
     // Cancelar pelo botão: volta para a tela onde o usuário estava
     if (voltarParaOrigem && origem && typeof mudarAba === 'function') mudarAba(origem);
 }
@@ -485,10 +485,11 @@ async function excluirEdicaoTransacao() {
     if (!btn || !estadoApp.editandoId) return;
     if (!btn.dataset.armed) {
         btn.dataset.armed = '1';
-        btn.textContent = 'Confirmar exclusão?';
+        btn.textContent = '❓';
+        btn.title = 'Confirmar exclusão?';
         btn.classList.add('armed');
         setTimeout(() => {
-            if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = '🗑 Apagar'; btn.classList.remove('armed'); }
+            if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = '🗑'; btn.title = 'Apagar este lançamento'; btn.classList.remove('armed'); }
         }, 3000);
         return;
     }
@@ -496,7 +497,8 @@ async function excluirEdicaoTransacao() {
     const voltarPara = estadoApp.abaOrigemEdicao;
     const apagou = await excluirTransacao(id);
     delete btn.dataset.armed;
-    btn.textContent = '🗑 Apagar';
+    btn.textContent = '🗑';
+    btn.title = 'Apagar este lançamento';
     btn.classList.remove('armed');
     if (!apagou) return; // erro real, ou o diálogo "só a 1ª parcela" — segue em edição
 

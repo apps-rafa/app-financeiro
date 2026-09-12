@@ -538,10 +538,19 @@
   font-size: .95rem;
 }
 
-/* "Apagar" o lançamento em edição: fica separado do Adicionar/Cancelar,
-   com aviso vermelho — mesmo arme de 2 cliques usado nas listas. */
+/* "Apagar" o lançamento em edição: só o ícone, quadrado e discreto — fica
+   separado do Adicionar/Cancelar, com aviso vermelho no arme de 2 cliques
+   (mesmo padrão usado nas listas). */
 .btn-excluir-lancamento {
   margin-left: auto;
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
   border-color: var(--danger, #DC2626);
   color: var(--danger, #DC2626);
 }
