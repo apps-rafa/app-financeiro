@@ -107,22 +107,6 @@
 }
 #linhaCampos > .form-group { flex: 1 1 0; min-width: 0; margin: 0; }
 
-/* Telas estreitas: cada linha do formulário vira 1 campo por linha —
-   cada "bloco" (ex.: Valor, Método) continua podendo ter seus próprios
-   sub-campos lado a lado (ex.: Valor + Total), só as linhas de fora que
-   deixam de dividir espaço entre os dois blocos. */
-@media (max-width: 560px) {
-    #linhaValorMetodo,
-    #linhaRecorrencia,
-    #linhaCampos {
-        flex-direction: column;
-        /* em coluna, align-items controla a largura (eixo cruzado agora é
-           o horizontal) — sem isto os blocos ficavam do tamanho do
-           conteúdo em vez de ocupar 100% */
-        align-items: stretch;
-    }
-}
-
 .form-group {
     position: relative;
 }
@@ -263,6 +247,11 @@
 .form-group textarea {
     width: 100%;
     padding: 0.5rem 0.7rem;
+    /* line-height explícito: sem isto o <select> renderiza um pouco mais
+       baixo/alto que o <input> em alguns navegadores (herdam line-height
+       padrão diferentes por padrão do UA), ficando desalinhado quando
+       os dois estão lado a lado numa mesma linha. */
+    line-height: 1.2;
     border: 1px solid var(--light);
     border-radius: var(--radius-sm);
     font-size: 0.82rem;
@@ -620,3 +609,22 @@
 }
 .dialogo-corpo .dialogo-linha { display: flex; gap: .4rem; flex-wrap: wrap; }
 .dialogo-corpo .dialogo-linha input { flex: 1 1 6rem; }
+
+/* Telas estreitas: cada linha do formulário vira 1 campo por linha —
+   cada "bloco" (ex.: Valor, Método) continua podendo ter seus próprios
+   sub-campos lado a lado (ex.: Valor + Total), só as linhas de fora que
+   deixam de dividir espaço entre os dois blocos. Precisa vir DEPOIS das
+   regras base de #linhaValorMetodo/#linhaRecorrencia no arquivo — mesma
+   especificidade (ID), então quem vier por último no CSS que decide, e
+   isto tem que ganhar delas quando a media query estiver ativa. */
+@media (max-width: 560px) {
+    #linhaValorMetodo,
+    #linhaRecorrencia,
+    #linhaCampos {
+        flex-direction: column;
+        /* em coluna, align-items controla a largura (eixo cruzado agora é
+           o horizontal) — sem isto os blocos ficavam do tamanho do
+           conteúdo em vez de ocupar 100% */
+        align-items: stretch;
+    }
+}
