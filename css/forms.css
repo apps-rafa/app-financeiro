@@ -99,24 +99,37 @@
     margin-bottom: 0.85rem;
 }
 
-/* Campos do lançamento (Valor tem linha própria, ver #linhaValor):
-   - até ~560px: empilhado (1 coluna)
-   - ~560–900px: 2 colunas -> pares (Método|Categoria, Descrição sozinha)
-   - >=900px: 3 colunas (Método|Categoria|Descrição) */
-#linhaCampos { grid-template-columns: 1fr; align-items: start; }
-@media (min-width: 560px) {
-    #linhaCampos { grid-template-columns: 1fr 1fr; }
+/* Linha "Categoria | Descrição" — sempre as duas dividindo 100%, sem
+   sobrar espaço (empilha só em telas bem estreitas). */
+#linhaCampos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    margin-bottom: 0.85rem;
 }
-@media (min-width: 900px) {
-    #linhaCampos { grid-template-columns: 1fr 1fr 1fr; }
-}
+#linhaCampos > .form-group { flex: 1 1 12rem; min-width: 0; margin: 0; }
 
 .form-group {
     position: relative;
 }
 
-/* Linha da recorrência: duas metades — "Recorrência" (dividida com o campo
-   auxiliar, se houver) e "Data" (largura fixa, sempre a mesma). */
+/* Linha 1: "Valor" + "Método" (Método só aparece em despesa; escondido
+   ele, o Valor ocupa os 100% da linha sozinho — ver atualizarLabelsPorTipo). */
+#linhaValorMetodo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: .5rem;
+    margin-bottom: 0.85rem;
+}
+#linhaValorMetodo > #valorBloco,
+#linhaValorMetodo > #metodoBloco {
+    flex: 1 1 0;
+    min-width: 8rem;
+}
+
+/* Linha 2: duas metades — "Data" (largura fixa, sempre a mesma) e
+   "Recorrência" (dividida com o campo auxiliar, se houver). */
 #linhaRecorrencia {
     display: flex;
     flex-wrap: wrap;
@@ -204,11 +217,6 @@
 #dataBloco > #semanasChipsGroup .semanas-chips { gap: .25rem; }
 
 .form-group.full-width {
-    grid-column: 1 / -1;
-}
-
-/* Campo/célula que sobrou sozinho na última linha do grid -> ocupa 100% */
-#linhaCampos > .solo {
     grid-column: 1 / -1;
 }
 
