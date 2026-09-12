@@ -146,6 +146,8 @@ function mostrarTelaLogin() {
     document.getElementById('authOverlay').hidden = false;
     const logout = document.getElementById('btnLogout');
     if (logout) logout.hidden = true;
+    const email = document.getElementById('userEmail');
+    if (email) email.hidden = true;
 }
 
 function esconderTelaLogin() {
@@ -154,6 +156,20 @@ function esconderTelaLogin() {
     const logout = document.getElementById('btnLogout');
     if (logout) logout.hidden = false;
     atualizarModoTeste();
+    atualizarEmailLogado();
+}
+
+/** Mostra o e-mail da sessão no header (sessão anônima não tem e-mail: fica oculto) */
+async function atualizarEmailLogado() {
+    const el = document.getElementById('userEmail');
+    if (!el) return;
+    let email = null;
+    try {
+        const { data } = await sb.auth.getUser();
+        email = data?.user?.email || null;
+    } catch (e) {}
+    el.textContent = email || '';
+    el.hidden = !email;
 }
 
 /** Mostra o selo "modo teste" e o botão de apagar tudo quando a sessão é anônima */

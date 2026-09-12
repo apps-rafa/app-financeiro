@@ -217,6 +217,19 @@ input.campo-travado,
 #btnTema:hover,
 #btnLogout:hover { background: rgba(255, 255, 255, 0.28); }
 
+.user-email {
+    color: var(--header-text);
+    opacity: .75;
+    background: transparent;
+    padding: 0.26rem 0.15rem;
+    max-width: 11rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+@media (max-width: 460px) {
+    .user-email { display: none; }
+}
+
 /* ---------- Notificação (mostrarNotificacao usa cor inline; ok) ---------- */
 .notificacao { color: #fff; }
 
