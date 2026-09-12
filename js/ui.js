@@ -662,11 +662,35 @@ function atualizarCamposRecorrencia() {
     // Valor se divide em 2 (informado + total) em Semanal e Parcelada
     set('valorTotalGroup', ehSemanal || tipo === 'Parcelada');
 
-    // Checkbox "pagar no vencimento": só despesa com dia de vencimento (Contas/Parcelada)
+    const metodoAtual = typeof metodoSelecionado === 'function' ? metodoSelecionado() : null;
+    const ehCredito = !ehReceita && !!metodoAtual && metodoAtual.metodoKind === 'Crédito';
+    const credito = ehCredito && comDia;
+
+    // "Comp." (competência): não existe uma única competência pra Parcelada —
+    // cada parcela cai num mês diferente — então some da tela nesse caso. O
+    // select continua sendo recalculado (recalcularCompetencia) mesmo escondido,
+    // porque a data de vencimento do cartão ainda precisa saber o mês de referência.
+    const compGrupo = document.getElementById('competenciaGroup');
+    if (compGrupo) compGrupo.hidden = !ehCredito || tipo === 'Parcelada';
+
+    // Checkbox "pagar no vencimento": só despesa com dia de vencimento (Contas/Parcelada).
+    // No cartão de crédito isso deixa de ser opcional — quem manda é o vencimento do
+    // cartão, então o checkbox some e o comportamento fica sempre ligado.
     const chkWrap = document.getElementById('pagarVencimentoWrap');
-    if (chkWrap) chkWrap.hidden = ehReceita || !comDia;
+    if (chkWrap) chkWrap.hidden = ehReceita || !comDia || credito;
     const chk = document.getElementById('pagarVencimento');
-    if ((ehReceita || !comDia) && chk) chk.checked = false;
+    if (chk) {
+        if (credito) {
+            chk.checked = true;
+            chk.dataset.forcadoCredito = '1';
+        } else if (ehReceita || !comDia || chk.dataset.forcadoCredito) {
+            // Some das telas de Receita/sem-dia, ou deixou de ser cartão de
+            // crédito: se o "check" tinha sido ligado à força por causa do
+            // cartão (e não pelo usuário), desliga de volta.
+            chk.checked = false;
+            delete chk.dataset.forcadoCredito;
+        }
+    }
 
     // Campo "Data" livre: escondido para dia-útil fixo e Semanal
     const mostrarData = !ehCalculada && !ehSemanal;
@@ -688,11 +712,22 @@ function atualizarCamposRecorrencia() {
     definirLabelResp('label[for="parcelas"]', 'qtd.', 'qtd.');
     atualizarValorTotal();
 
-    // Prefill do dia de vencimento/pagamento com o dia da data digitada, se vazio
+    // Cartão de crédito: o dia de vencimento é o do cartão, não dá pra escolher.
+    // Fora isso, só um prefill (com o dia da data digitada) pra quem ainda não mexeu.
     const diaInput = document.getElementById('diaRecorrencia');
-    if (comDia && diaInput && !diaInput.value) {
-        const iso = dataCampoParaISO(document.querySelector(SELECTORS.data).value);
-        if (iso) diaInput.value = String(parseInt(iso.slice(8, 10), 10));
+    if (diaInput) {
+        if (credito) {
+            diaInput.value = metodoAtual.diaVencimento != null ? String(metodoAtual.diaVencimento) : '';
+            diaInput.readOnly = true;
+            diaInput.classList.add('campo-travado');
+        } else {
+            diaInput.readOnly = false;
+            diaInput.classList.remove('campo-travado');
+            if (comDia && !diaInput.value) {
+                const iso = dataCampoParaISO(document.querySelector(SELECTORS.data).value);
+                if (iso) diaInput.value = String(parseInt(iso.slice(8, 10), 10));
+            }
+        }
     }
 
     // Guarda a data livre atual antes de qualquer cálculo automático sobrescrevê-la
@@ -742,6 +777,11 @@ function atualizarCamposRecorrencia() {
 
     // Semanal: chips por semana (numeradas), dentro da metade da "Data"
     if (ehSemanal) renderSemanasChips();
+
+    // Recalcula a competência só agora, com a "Data" já no valor final (livre,
+    // travada por vencimento, etc.) — precisa vir antes de aplicarPagarVencimento(),
+    // que lê o mês daqui pra calcular a data de vencimento do cartão.
+    if (ehCredito && typeof recalcularCompetencia === 'function') recalcularCompetencia();
 
     // "Pagar no vencimento": trava a data do lançamento no dia do vencimento (despesa)
     aplicarPagarVencimento();
@@ -1030,15 +1070,13 @@ function atualizarValorTotal() {
 }
 
 /**
- * Mostra/esconde o campo Competência (só para método do tipo Crédito)
- * e recalcula seu valor.
+ * Chamado quando o Método muda. O campo Competência (visibilidade + valor) e
+ * o vencimento do cartão (dia travado + data de pagamento) dependem tanto do
+ * método quanto da recorrência escolhida, então tudo isso é recalculado
+ * junto em atualizarCamposRecorrencia().
  */
 function atualizarCampoCredito() {
-    const metodo = typeof metodoSelecionado === 'function' ? metodoSelecionado() : null;
-    const ehCredito = !!metodo && metodo.metodoKind === 'Crédito';
-    const grupo = document.getElementById('competenciaGroup');
-    if (grupo) grupo.hidden = !ehCredito;
-    if (ehCredito) recalcularCompetencia();
+    if (typeof atualizarCamposRecorrencia === 'function') atualizarCamposRecorrencia();
 }
 
 /**
