@@ -91,14 +91,17 @@ function atualizarEntradasLista() {
         estadoApp.transacoes.entradas, 'entrada', 'Nenhuma receita neste mês');
 }
 
-// 'recorrencia' (padrão) | 'metodo' — visão da aba Despesas
+// 'recorrencia' (padrão) | 'metodo' | 'categoria' — visão da aba Despesas
+const MODOS_LISTA_SAIDAS = ['recorrencia', 'metodo', 'categoria'];
 let modoListaSaidas = (() => {
-    try { return localStorage.getItem('modoListaSaidas') || 'recorrencia'; }
-    catch (_) { return 'recorrencia'; }
+    try {
+        const salvo = localStorage.getItem('modoListaSaidas');
+        return MODOS_LISTA_SAIDAS.includes(salvo) ? salvo : 'recorrencia';
+    } catch (_) { return 'recorrencia'; }
 })();
 
 function definirModoListaSaidas(modo) {
-    modoListaSaidas = (modo === 'metodo') ? 'metodo' : 'recorrencia';
+    modoListaSaidas = MODOS_LISTA_SAIDAS.includes(modo) ? modo : 'recorrencia';
     try { localStorage.setItem('modoListaSaidas', modoListaSaidas); } catch (_) {}
     document.querySelectorAll('#modoSaidas .modo-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.modo === modoListaSaidas));
@@ -111,25 +114,27 @@ function atualizarSaidasLista() {
     const el = document.querySelector(SELECTORS.saidasLista);
     if (modoListaSaidas === 'metodo') {
         renderListaPorMetodo(el, estadoApp.transacoes.saidas, 'Nenhuma despesa neste mês');
+    } else if (modoListaSaidas === 'categoria') {
+        renderListaPorCategoria(el, estadoApp.transacoes.saidas, 'Nenhuma despesa neste mês');
     } else {
         renderListaAgrupada(el, estadoApp.transacoes.saidas, 'saida', 'Nenhuma despesa neste mês');
     }
 }
 
-/** Despesas agrupadas por método de pagamento, ordenadas por total (maior primeiro) */
-function renderListaPorMetodo(container, transacoes, msgVazia) {
+/** Agrupa e renderiza `transacoes` por `chaveDe(t)`, ordenado por total (maior primeiro).
+ *  Usado por "Por método" e "Por categoria" — mesmo formato de card recolhível. */
+function _renderListaAgrupadaPorTotal(container, transacoes, msgVazia, { chaveDe, semChave, cores, gerarOpts }) {
     if (!container) return;
     if (!transacoes || !transacoes.length) {
         container.innerHTML = `<p class="empty-message">${msgVazia}</p>`;
         container.onclick = null;
         return;
     }
-    const cores = (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.metodo) || {};
     const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
 
     const mapa = new Map();
     transacoes.forEach(t => {
-        const k = t.metodo || 'Sem método';
+        const k = chaveDe(t) || semChave;
         if (!mapa.has(k)) mapa.set(k, []);
         mapa.get(k).push(t);
     });
@@ -150,12 +155,34 @@ function renderListaPorMetodo(container, transacoes, msgVazia) {
             <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${pct}%` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
-            ${itens.map(t => gerarHTMLTransacao(t, 'saida', { comRecorrenciaChip: true })).join('')}
+            ${itens.map(t => gerarHTMLTransacao(t, 'saida', gerarOpts)).join('')}
           </div>
         </details>`;
     }).join('');
 
     container.onclick = onListaTransacaoClick;
+}
+
+/** Despesas agrupadas por método de pagamento, ordenadas por total (maior primeiro) */
+function renderListaPorMetodo(container, transacoes, msgVazia) {
+    const cores = (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.metodo) || {};
+    _renderListaAgrupadaPorTotal(container, transacoes, msgVazia, {
+        chaveDe: t => t.metodo,
+        semChave: 'Sem método',
+        cores,
+        gerarOpts: { comRecorrenciaChip: true }
+    });
+}
+
+/** Despesas agrupadas por categoria, ordenadas por total (maior primeiro) */
+function renderListaPorCategoria(container, transacoes, msgVazia) {
+    const cores = (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.categoria) || {};
+    _renderListaAgrupadaPorTotal(container, transacoes, msgVazia, {
+        chaveDe: t => t.categoria,
+        semChave: 'Sem categoria',
+        cores,
+        gerarOpts: { semCategoriaChip: true }
+    });
 }
 
 const _porDataDesc = (a, b) => new Date(b.data) - new Date(a.data);
@@ -215,6 +242,7 @@ let _proximasCtx = [];
  * Layout: DIA DOW — VALOR MÉTODO CATEGORIA DESCRIÇÃO (linha que quebra).
  * opts.semMetodoChip: não mostra o chip de método (ex.: visão "Por método").
  * opts.comRecorrenciaChip: mostra o chip da recorrência no lugar do método.
+ * opts.semCategoriaChip: não mostra o chip de categoria (visão "Por categoria").
  */
 function gerarHTMLTransacao(trans, tipo, opts = {}) {
     const ehSemanalChips = trans.tipoRecorrencia === 'Semanal' && Array.isArray(trans.semanas) && trans.semanas.length;
@@ -267,7 +295,8 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
             metaChip = `<span class="chip chip--neutro">${trans.formaPagamento}</span>`;
         }
     }
-    const catChip = trans.categoria ? chip(cor(cores.categoria, trans.categoria), trans.categoria) : '';
+    const catChip = (!opts.semCategoriaChip && trans.categoria)
+        ? chip(cor(cores.categoria, trans.categoria), trans.categoria) : '';
     const descTxt = trans.descricao
         ? `<span class="despesa-desc">${trans.descricao}</span>` : '';
 

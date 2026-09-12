@@ -469,7 +469,11 @@
 .inline-check span { font-size: inherit; font-style: inherit; }
 
 /* "pagar no vcto." como chip toggle (não selecionado por default) */
-.chip-toggle {
+/* ".form-group label.chip-toggle" (2 classes + elemento) pra vencer
+   ".form-group label" (2 classes) — sem isso o chip herdava o
+   font-size/weight do label normal (0.76rem/600) em vez do dele próprio. */
+.chip-toggle,
+.form-group label.chip-toggle {
     display: inline-flex;
     align-items: center;
     margin: 0;
