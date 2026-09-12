@@ -46,11 +46,18 @@ function configurarEventListeners() {
     const btnConfig = document.getElementById('btnConfig');
     if (btnConfig) btnConfig.addEventListener('click', () => mudarAba('menus'));
 
-    // Aba Despesas: alternar "Por recorrência" / "Por método"
+    // Aba Despesas: alternar "Por recorrência" / "Por método" / "Por categoria" / "Ordem cronológica"
     const modoSaidas = document.getElementById('modoSaidas');
     if (modoSaidas) modoSaidas.addEventListener('click', e => {
         const btn = e.target.closest('.modo-btn');
         if (btn && typeof definirModoListaSaidas === 'function') definirModoListaSaidas(btn.dataset.modo);
+    });
+
+    // Aba Receitas: alternar "Por recorrência" / "Por categoria" / "Ordem cronológica"
+    const modoEntradas = document.getElementById('modoEntradas');
+    if (modoEntradas) modoEntradas.addEventListener('click', e => {
+        const btn = e.target.closest('.modo-btn');
+        if (btn && typeof definirModoListaEntradas === 'function') definirModoListaEntradas(btn.dataset.modo);
     });
 
     // Cards de Receitas/Despesas do dashboard abrem a aba correspondente (sem toggle)

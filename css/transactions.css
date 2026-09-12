@@ -26,9 +26,12 @@
 .fatura-venc { font-size: .72rem; color: var(--text-muted); white-space: nowrap; }
 .fatura-total { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-/* Alternância de visão da aba Despesas: Por recorrência / Por método */
+/* Alternância de visão das abas Receitas/Despesas: recorrência / método /
+   categoria / ordem cronológica — quebra em 2 linhas se não couber (a de
+   "Ordem cronológica", a mais longa, é a que mais aperta em telas estreitas). */
 .modo-lista {
     display: flex;
+    flex-wrap: wrap;
     gap: .35rem;
     background: var(--surface-3);
     padding: .25rem;
@@ -36,7 +39,8 @@
     margin: 0 0 var(--spacing-md);
 }
 .modo-lista .modo-btn {
-    flex: 1;
+    flex: 1 1 45%;
+    min-width: 0;
     padding: .4rem .5rem;
     border: 1px solid transparent;
     border-radius: var(--radius-xs);
@@ -46,6 +50,8 @@
     font-weight: var(--font-weight-semibold);
     cursor: pointer;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .modo-lista .modo-btn.active {
     background: var(--surface);
