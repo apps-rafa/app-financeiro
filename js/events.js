@@ -102,13 +102,19 @@ function configurarEventListeners() {
             if (!dataInput.readOnly) dataInput.dataset.userVal = dataInput.value;
             recalcularCompetencia();
             atualizarCamposRecorrencia();
+            // Digitou um mês diferente do que tá navegado no topo? A navegação acompanha.
+            const m = String(dataInput.value || '').match(/^\d{1,2}\/(\d{1,2})$/);
+            if (m) sincronizarMesComFormulario(parseInt(m[1], 10));
         });
     }
 
     // Competência (mês): select de tricode; marca como editado manualmente
     const compInput = document.getElementById('competencia');
     if (compInput) {
-        compInput.addEventListener('change', () => { compInput.dataset.editado = '1'; });
+        compInput.addEventListener('change', () => {
+            compInput.dataset.editado = '1';
+            sincronizarMesComFormulario(parseInt(compInput.value, 10));
+        });
     }
 
     // Dia da recorrência: só números, 2 dígitos; recalcula "pagar no vencimento"
@@ -124,7 +130,10 @@ function configurarEventListeners() {
 
     // Recorrências "dia útil fixo": mês de referência (select de tricode)
     const compRec = document.getElementById('compRecorrente');
-    if (compRec) compRec.addEventListener('change', () => atualizarCamposRecorrencia());
+    if (compRec) compRec.addEventListener('change', () => {
+        atualizarCamposRecorrencia();
+        sincronizarMesComFormulario(parseInt(compRec.value, 10));
+    });
 
     // Botões "+" para criar categoria/método sem sair do lançamento
     const btnCat = document.getElementById('btnNovaCategoria');
@@ -184,6 +193,21 @@ function mesAnterior() {
 function proximoMes() {
     estadoApp.mesAtual.setMonth(estadoApp.mesAtual.getMonth() + 1);
     recarregarDados();
+}
+
+/**
+ * Se o mês "digitado"/escolhido no formulário de lançamento for diferente do
+ * mês em exibição no topo, a navegação acompanha (some meses no formulário
+ * — Data, Comp., mês de referência do dia útil — não têm campo de ano; o
+ * ano usado é sempre o do mês em exibição, só o mês pode mudar por aqui).
+ * Não mexe durante edição de um lançamento existente.
+ */
+function sincronizarMesComFormulario(mes) {
+    if (typeof estadoApp === 'undefined' || !estadoApp.mesAtual || estadoApp.editandoId) return;
+    if (!(mes >= 1 && mes <= 12)) return;
+    if (estadoApp.mesAtual.getMonth() + 1 === mes) return;
+    estadoApp.mesAtual = new Date(estadoApp.mesAtual.getFullYear(), mes - 1, 1);
+    if (typeof recarregarDados === 'function') recarregarDados();
 }
 
 /**
