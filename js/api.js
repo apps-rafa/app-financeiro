@@ -129,6 +129,7 @@ async function carregarMenusAPI() {
             .from('menu_itens')
             .select('*')
             .eq('status', 'Ativo')
+            .order('ordem', { ascending: true, nullsFirst: false })
             .order('nome', { ascending: true });
 
         if (error) throw error;
