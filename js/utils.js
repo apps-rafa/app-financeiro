@@ -444,10 +444,15 @@ function obterDadosFormulario() {
         dataISO = dataReceitaMensal(compISO, diaRecorrencia);
     }
 
-    // Crédito (à vista ou parcelada): a competência é sempre derivada da data da
+    // Crédito à vista (Pontual): a competência é sempre derivada da data da
     // compra + fechamento do cartão — nunca depende de campo obrigatório.
+    // Mensal/Parcelada não entra aqui: ali a "Data" já é o vencimento travado
+    // (não a data da compra), então competência já veio certa do campo
+    // "Comp." (calculada em cima do mês em exibição, não da data travada —
+    // senão o fechamento seria aplicado 2x e a competência pularia de mês).
     const _met = typeof metodoSelecionado === 'function' ? metodoSelecionado() : null;
-    if (!ehEntrada && _met && _met.metodoKind === 'Crédito' && dataISO && !ehDiaUtil) {
+    const _comDiaCredito = tipoRecorrencia === 'Mensal' || tipoRecorrencia === 'Parcelada';
+    if (!ehEntrada && _met && _met.metodoKind === 'Crédito' && dataISO && !ehDiaUtil && !_comDiaCredito) {
         compISO = competenciaDe(dataISO, _met.diaFechamento || null);
     }
     // Última rede: se ainda não há competência, usa o mês em exibição
