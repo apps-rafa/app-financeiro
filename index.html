@@ -151,16 +151,30 @@
                     <div class="form-header">
                         <h2>Novo lançamento</h2>
                         <div class="tipo-selector">
-                            <button type="button" class="tipo-btn active" data-tipo="entradas">
-                                📥 Receita
-                            </button>
                             <button type="button" class="tipo-btn" data-tipo="saidas">
                                 📤 Despesa
+                            </button>
+                            <button type="button" class="tipo-btn active" data-tipo="entradas">
+                                📥 Receita
                             </button>
                         </div>
                     </div>
                     
                     <input type="hidden" id="tipoTransacao" value="entradas">
+
+                    <!-- Valor em primeiro, sozinho na linha -->
+                    <div class="form-row" id="linhaValor">
+                        <div id="valorBloco">
+                            <div class="form-group" id="valorGroup">
+                                <label for="valor">Valor</label>
+                                <input type="number" id="valor" step="0.01" placeholder="0,00" required>
+                            </div>
+                            <div class="form-group" id="valorTotalGroup" hidden>
+                                <label for="valorTotal">Total</label>
+                                <input type="text" id="valorTotal" class="campo-travado" readonly tabindex="-1">
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Linha da recorrência: metade "Recorrência" (dividida com o
                          campo auxiliar, se houver) + metade "Data" (largura fixa) -->
@@ -245,16 +259,6 @@
                                     <option value="09">SET</option><option value="10">OUT</option>
                                     <option value="11">NOV</option><option value="12">DEZ</option>
                                 </select>
-                            </div>
-                        </div>
-                        <div id="valorBloco">
-                            <div class="form-group" id="valorGroup">
-                                <label for="valor">Valor</label>
-                                <input type="number" id="valor" step="0.01" placeholder="0,00" required>
-                            </div>
-                            <div class="form-group" id="valorTotalGroup" hidden>
-                                <label for="valorTotal">Total</label>
-                                <input type="text" id="valorTotal" class="campo-travado" readonly tabindex="-1">
                             </div>
                         </div>
                         <div class="form-group">

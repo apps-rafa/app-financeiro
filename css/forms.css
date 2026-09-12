@@ -99,10 +99,10 @@
     margin-bottom: 0.85rem;
 }
 
-/* Campos do lançamento:
+/* Campos do lançamento (Valor tem linha própria, ver #linhaValor):
    - até ~560px: empilhado (1 coluna)
-   - ~560–900px: 2 colunas -> pares (Recorrência|Data, Método|Valor, Categoria|Descrição)
-   - >=900px: 3 colunas (Recorrência|Data|Método, Valor|Categoria|Descrição) */
+   - ~560–900px: 2 colunas -> pares (Método|Categoria, Descrição sozinha)
+   - >=900px: 3 colunas (Método|Categoria|Descrição) */
 #linhaCampos { grid-template-columns: 1fr; align-items: start; }
 @media (min-width: 560px) {
     #linhaCampos { grid-template-columns: 1fr 1fr; }
