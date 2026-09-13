@@ -106,18 +106,19 @@
     font-variant-numeric: tabular-nums;
 }
 .despesa-dia {
-    font-size: 1.05rem;
+    font-size: .88rem;
     line-height: 1;
     font-weight: var(--font-weight-bold);
     color: var(--text);
 }
 .despesa-dow {
-    font-size: 1.05rem;
+    font-size: .88rem;
     font-weight: var(--font-weight-medium);
     color: var(--text-muted);
 }
 
 .despesa-valor {
+    font-size: .88rem;
     font-weight: var(--font-weight-semibold);
     white-space: nowrap;
 }
@@ -133,7 +134,7 @@
 /* "Chip" / tarjinha colorida para método / categoria / recorrência */
 .chip {
     display: inline-block;
-    font-size: 0.72rem;
+    font-size: 0.64rem;
     color: #fff;
     background: var(--primary);
     padding: 0.1rem 0.5rem;
@@ -149,7 +150,7 @@
 
 /* Info da parcela: "3/12" */
 .parcela-tag {
-    font-size: .68rem;
+    font-size: .62rem;
     font-weight: 700;
     color: var(--text-muted);
     background: var(--surface-3);
@@ -204,6 +205,7 @@
     align-items: center;
     gap: .5rem;
     padding: .55rem .7rem;
+    font-size: .85rem;
     font-weight: var(--font-weight-semibold);
     color: var(--text);
 }
@@ -391,7 +393,16 @@
   transform: translateY(-50%);
   display: flex;
   align-items: center;
-  gap: .25rem;
+  gap: .15rem;
+}
+/* animations.css zera qualquer transform em :hover (regra global,
+   !important, pra evitar "pulos" de outros elementos) — como :hover se
+   aplica a ela também ao passar o mouse num ícone lá dentro, sem essa
+   linha (mais específica, vence mesmo com !important dos dois lados) os
+   ícones perdiam a correção de -50% e pulavam pra baixo (metade da
+   própria altura) ao passar o mouse. */
+.despesa-actions:hover, .despesa-actions:active, .despesa-actions:focus-within {
+  transform: translateY(-50%) !important;
 }
 .despesa-actions .btn-icon.armed {
   width: auto;
@@ -437,7 +448,7 @@
   display: inline-flex;
   align-items: center;
   gap: .3rem;
-  font-size: .8rem;
+  font-size: .68rem;
   color: #6B7280;
   white-space: nowrap;
   cursor: pointer;

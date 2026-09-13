@@ -28,8 +28,18 @@ function atualizarUI() {
 let mesesJanelaOffset = 0;
 
 // Tamanhos possíveis da janela (sempre ímpar/simétrico: N pra trás, atual, N
-// pra frente), da mais larga pra mais estreita.
-const TAMANHOS_JANELA_MESES = [7, 5, 3, 1];
+// pra frente) x formato do rótulo, do mais largo pro mais estreito. Encolhe
+// 7 -> 5 -> 3 (tricode "SET"); se ainda não couber, troca pro número do mês
+// ("9") em vez de encolher a janela pra 1 só — no pior caso extremo (3
+// números) já é bem mais compacto que 1 tricode, então só cai pra 1 número
+// se nem isso couber.
+const TAMANHOS_JANELA_MESES = [
+    { tamanho: 7, numerico: false },
+    { tamanho: 5, numerico: false },
+    { tamanho: 3, numerico: false },
+    { tamanho: 3, numerico: true },
+    { tamanho: 1, numerico: true }
+];
 
 /**
  * (Re)desenha a tira de meses + o ano no calendário do topo, tudo numa
@@ -58,13 +68,15 @@ function atualizarCalendarioNav() {
 
     if (anoLabel) anoLabel.textContent = String(anoVigente);
 
-    const montarBtn = abs => {
+    const montarBtn = (abs, numerico) => {
         const ano = Math.floor(abs / 12);
         const mes = ((abs % 12) + 12) % 12;
         const selecionado = abs === absSelecionado;
         const ehHoje = abs === absHoje;
-        const classes = ['mes-btn', selecionado && 'selecionado', ehHoje && 'hoje'].filter(Boolean).join(' ');
-        const rotulo = MESES_TRI[mes] + (ano === anoVigente ? '' : '/' + String(ano).slice(-2));
+        const classes = ['mes-btn', numerico && 'numerico', selecionado && 'selecionado', ehHoje && 'hoje'].filter(Boolean).join(' ');
+        const rotulo = numerico
+            ? String(mes + 1)
+            : MESES_TRI[mes] + (ano === anoVigente ? '' : '/' + String(ano).slice(-2));
         return `<button type="button" class="${classes}" data-ano="${ano}" data-mes="${mes}" data-abs="${abs}">${rotulo}</button>`;
     };
 
@@ -75,16 +87,18 @@ function atualizarCalendarioNav() {
         return idxs;
     };
 
-    const renderJanela = idxs => { lista.innerHTML = idxs.map(montarBtn).join(''); };
+    const renderJanela = (idxs, numerico) => { lista.innerHTML = idxs.map(a => montarBtn(a, numerico)).join(''); };
 
-    renderJanela(idxsDaJanela(TAMANHOS_JANELA_MESES[0]));
+    renderJanela(idxsDaJanela(TAMANHOS_JANELA_MESES[0].tamanho), TAMANHOS_JANELA_MESES[0].numerico);
 
-    // Mede depois do layout: se estourou, encolhe a janela até caber.
+    // Mede depois do layout: se estourou, encolhe a janela (e depois troca
+    // pro rótulo numérico) até caber.
     requestAnimationFrame(() => {
-        let idxsFinal = idxsDaJanela(TAMANHOS_JANELA_MESES[0]);
+        let idxsFinal = idxsDaJanela(TAMANHOS_JANELA_MESES[0].tamanho);
         for (let i = 1; i < TAMANHOS_JANELA_MESES.length && lista.scrollWidth > lista.clientWidth + 1; i++) {
-            idxsFinal = idxsDaJanela(TAMANHOS_JANELA_MESES[i]);
-            renderJanela(idxsFinal);
+            const passo = TAMANHOS_JANELA_MESES[i];
+            idxsFinal = idxsDaJanela(passo.tamanho);
+            renderJanela(idxsFinal, passo.numerico);
         }
         _carregarIndicadoresJanela(idxsFinal);
     });

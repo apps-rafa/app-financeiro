@@ -3,13 +3,27 @@
  * Navegação por abas (Entradas, Saídas, Próximas, Adicionar)
  */
 
-/* "+ Lançamento" (75%) e "Próximos" (25%) lado a lado — Despesas/Receitas
-   saíram daqui, os cards do dashboard já abrem a aba correspondente. */
+/* "+ Lançamento" acompanha a largura de Receita+Despesa (2 das 3 colunas
+   do .dashboard logo acima) e "Próximos" a de Balanço/Gasto diário (a 3ª
+   coluna) — mesma grade de 3 colunas e mesmo gap, pra alinhar exatamente
+   com os cards em cima. Despesas/Receitas saíram daqui, os cards do
+   dashboard já abrem a aba correspondente. */
 .tabs {
     display: grid;
-    grid-template-columns: 3fr 1fr;
-    gap: var(--spacing-sm);
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--spacing-md);
     margin-bottom: var(--spacing-md);
+}
+.tabs [data-tab="adicionar"] { grid-column: 1 / span 2; }
+.tabs [data-tab="proximas"]  { grid-column: 3; }
+
+/* Espaço realmente apertado: meio a meio, mesmo fallback do .dashboard. */
+@media (max-width: 480px) {
+    .tabs {
+        grid-template-columns: 1fr 1fr;
+    }
+    .tabs [data-tab="adicionar"] { grid-column: 1; }
+    .tabs [data-tab="proximas"]  { grid-column: 2; }
 }
 
 .tab-btn {
