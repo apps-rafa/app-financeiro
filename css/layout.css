@@ -8,7 +8,10 @@
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    max-width: 1024px;
+    /* Mais estreito que antes (1024px): em telas largas sobrava espaço
+       vazio nos cards de Balanço/Gasto diário, que só têm um número e
+       um rótulo curtos — largura menor deixa esses boxes mais cheios. */
+    max-width: 880px;
     margin: 0 auto;
     background: white;
     box-shadow: var(--shadow-lg);
@@ -28,12 +31,14 @@ header.header {
     border-bottom: 4px solid var(--primary-dark);
 }
 
-/* Barra de mês — largura inteira, entre o header e os cards */
+/* Barra de mês — largura inteira, entre o header e os cards. Padding
+   horizontal igual ao do header/main (--pad-main), pra alinhar a tira de
+   meses com o título e o "Sair" em cima, e os cards do dashboard embaixo. */
 .month-bar {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
+    padding: var(--spacing-sm) var(--pad-main);
     background: var(--surface);
     border-bottom: 1px solid var(--border);
 }
@@ -156,10 +161,26 @@ header.header {
 .seta-lateral:disabled { opacity: .25; cursor: default; }
 .seta-lateral[hidden] { display: none; }
 
-/* Toggle "Configurações" encostado à direita */
-.month-bar .month-btn--config {
+/* Tema + Configurações encostados à direita, colados um no outro —
+   mesma altura/arredondado (os dois usam .month-btn como base). */
+.month-bar-acoes {
     flex: 0 0 auto;
     margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+.month-bar .month-btn--tema {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .85rem;
+    line-height: 1;
+    padding: 0.3rem 0.55rem;
+}
+.month-bar .month-btn--config {
+    flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
     gap: .25rem;
