@@ -21,6 +21,15 @@
 .summary-card.saidas       { grid-column: 2; grid-row: 1 / span 2; }
 .summary-card.balanco      { grid-column: 3; grid-row: 1; }
 .summary-card.gasto-diario { grid-column: 3; grid-row: 2; }
+/* Conteúdo centralizado verticalmente — esses 2 cards são mais baixos que
+   Receita/Despesa, então título+valor ficavam "puxados" pro topo em vez
+   de ocupar o meio da caixa. */
+.summary-card.balanco,
+.summary-card.gasto-diario {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
 
 /* Espaço realmente apertado (mobile estreito): volta pro 2x2 empilhado. */
 @media (max-width: 480px) {
@@ -239,7 +248,7 @@
 /* Card "Gasto diário" */
 .summary-card .sub {
   margin: .2rem 0 0;
-  font-size: clamp(.72rem, 4.5cqw, .95rem);
+  font-size: clamp(.72rem, 6.5cqw, 1.05rem);
   opacity: .7;
 }
 .summary-card.gasto-diario {

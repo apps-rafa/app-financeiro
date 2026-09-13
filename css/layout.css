@@ -230,7 +230,9 @@ header.header {
 .header-content h1 {
     display: flex;
     align-items: baseline;
-    gap: .3rem;
+    /* O glifo do emoji tem bastante espaço em branco embutido à direita —
+       gap:0 (ou até negativo) é o que rende visualmente colado ao texto. */
+    gap: 0;
     flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
@@ -239,6 +241,7 @@ header.header {
     margin-bottom: 0;
     white-space: nowrap;
 }
+.header-content h1 .app-emoji { margin-right: -0.15em; }
 .header-content h1 .app-titulo-media,
 .header-content h1 .app-titulo-curto { display: none; }
 

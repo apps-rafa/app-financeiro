@@ -10,26 +10,17 @@
         box-shadow: none;
     }
 
-    /* Header compacto no mobile */
+    /* Header compacto no mobile — continua numa linha só (título e botões
+       encolhem em níveis, ver layout.css); só aperta o padding e o gap. */
     header.header { padding: var(--spacing-md); }
 
     .header-content {
-        flex-direction: column;
-        text-align: center;
         gap: var(--spacing-sm);
     }
 
-    .header-content h1 {
-        font-size: var(--font-size-lg);
-    }
-
     .header-info {
-        width: 100%;
-        justify-content: center;
-        flex-wrap: wrap;
         gap: 0.4rem;
     }
-    .header-info > * { flex: 0 0 auto; }
 
     /* Main */
     :root { --pad-main: var(--spacing-lg); }
@@ -101,17 +92,6 @@
     /* Header */
     .header {
         padding: var(--spacing-lg) var(--spacing-md);
-    }
-
-    .header-content h1 {
-        font-size: 1.5rem;
-    }
-
-    .header-info {
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: center;
-        width: 100%;
     }
 
     /* Main */
