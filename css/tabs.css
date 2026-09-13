@@ -38,8 +38,8 @@
 }
 
 .tabs [data-tab="adicionar"] { order: -1; grid-column: 1 / -1; }
-.tabs [data-tab="entradas"] { order: 1; }
-.tabs [data-tab="saidas"]   { order: 2; }
+.tabs [data-tab="saidas"]   { order: 1; }
+.tabs [data-tab="entradas"] { order: 2; }
 .tabs [data-tab="proximas"] { order: 3; }
 
 /* Conteúdo das abas */

@@ -60,7 +60,13 @@ function configurarEventListeners() {
         if (btn && typeof definirModoListaEntradas === 'function') definirModoListaEntradas(btn.dataset.modo);
     });
 
-    // Aba Próximas: mesmos 4 modos de Despesas
+    // Aba Próximas: filtro de tipo (Despesa/Receita) + modo de agrupamento
+    // (o conjunto de modos disponíveis muda conforme o tipo escolhido)
+    const tipoProximas = document.getElementById('tipoProximas');
+    if (tipoProximas) tipoProximas.addEventListener('click', e => {
+        const btn = e.target.closest('.tipo-btn');
+        if (btn && typeof definirTipoProximas === 'function') definirTipoProximas(btn.dataset.tipo);
+    });
     const modoProximas = document.getElementById('modoProximas');
     if (modoProximas) modoProximas.addEventListener('click', e => {
         const btn = e.target.closest('.modo-btn');

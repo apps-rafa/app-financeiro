@@ -101,8 +101,8 @@
             <!-- Tabs Navigation -->
             <section class="tabs">
                 <button class="tab-btn" data-tab="adicionar"><span class="tab-mais">+</span> Lançamento</button>
-                <button class="tab-btn" data-tab="entradas"><svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg> Receitas</button>
                 <button class="tab-btn" data-tab="saidas"><svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--despesa-text)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg> Despesas</button>
+                <button class="tab-btn" data-tab="entradas"><svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg> Receitas</button>
                 <button class="tab-btn" data-tab="proximas">⏰ Próximas</button>
             </section>
 
@@ -145,12 +145,19 @@
             <!-- Tab: Próximas Transações -->
             <section id="proximas" class="tab-content">
                 <div class="proximas-container">
-                    <h2 id="proximasTitulo">Próximas transações</h2>
+                    <div class="form-header proximas-header">
+                        <h2 id="proximasTitulo">Próximas transações</h2>
+                        <div class="tipo-selector" id="tipoProximas">
+                            <button type="button" class="tipo-btn" data-tipo="saidas">
+                                <svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--despesa-text)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg><span class="tipo-label">Despesa</span>
+                            </button>
+                            <button type="button" class="tipo-btn" data-tipo="entradas">
+                                <svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg><span class="tipo-label">Receita</span>
+                            </button>
+                        </div>
+                    </div>
                     <div class="modo-lista" id="modoProximas">
-                        <button type="button" class="modo-btn active" data-modo="recorrencia">Por recorrência</button>
-                        <button type="button" class="modo-btn" data-modo="metodo">Por método</button>
-                        <button type="button" class="modo-btn" data-modo="categoria">Por categoria</button>
-                        <button type="button" class="modo-btn" data-modo="cronologica">Cronológica</button>
+                        <!-- Botões de modo (recorrência/método/categoria/cronológica) — montados via JS conforme o tipo -->
                     </div>
                     <div id="proximasLista" class="transacoes-lista">
                         <!-- Próximas transações -->
