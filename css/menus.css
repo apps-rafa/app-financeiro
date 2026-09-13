@@ -34,16 +34,24 @@
   .subtabs-itens { grid-template-columns: repeat(3, 1fr); }
 }
 
-/* Rótulo do subtab "Formas de pagamento" encolhe em 2 níveis conforme o
-   espaço aperta, em vez de quebrar em 2 linhas feio ou truncar. */
+/* Rótulos longos ("Formas de pagamento", "Tipos de recorrência") encolhem
+   em níveis conforme o espaço aperta, em vez de quebrar em 2 linhas feio
+   ou truncar. Num aperto extremo, TODO subtab (não só esses 2) vira só o
+   emoji — ver regra .subtab-texto mais abaixo. */
 .subtab .met-media, .subtab .met-curto { display: none; }
+.subtab .rec-media { display: none; }
 @media (max-width: 640px) {
   .subtab .met-full { display: none; }
   .subtab .met-media { display: inline; }
+  .subtab .rec-full { display: none; }
+  .subtab .rec-media { display: inline; }
 }
 @media (max-width: 400px) {
   .subtab .met-media { display: none; }
   .subtab .met-curto { display: inline; }
+}
+@media (max-width: 340px) {
+  .subtab .subtab-texto { display: none; }
 }
 .subtabs .subtab {
   min-width: 0;
@@ -111,6 +119,16 @@
 }
 .menu-section h3 .h3-add:first-of-type { margin-left: auto; }
 .h3-add:hover { background: var(--surface-3); }
+
+/* Linha de ações (A→Z / +) depois do texto de ajuda da seção — mesmo
+   alinhamento à direita que tinha dentro do <h3>, só que agora vem depois
+   da explicação em vez de flutuar sozinha em cima dela. */
+.menu-acoes-linha {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.7rem;
+}
 
 /* "A→Z" tem texto, não cabe no círculo do "+" — vira uma pílula discreta.
    Precisa de 2 classes (mesmo peso de ".cat-coluna-topo .h3-add") pra não
