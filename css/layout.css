@@ -11,7 +11,7 @@
     /* Mais estreito que antes (1024px): em telas largas sobrava espaço
        vazio nos cards de Balanço/Gasto diário, que só têm um número e
        um rótulo curtos — largura menor deixa esses boxes mais cheios. */
-    max-width: 880px;
+    max-width: 837px;
     margin: 0 auto;
     background: white;
     box-shadow: var(--shadow-lg);

@@ -13,7 +13,7 @@
    existem na outra, bagunçando a grade inteira. */
 .dashboard {
     display: grid;
-    grid-template-columns: 2fr 2fr 1.3fr;
+    grid-template-columns: 2fr 2fr 150px;
     gap: var(--spacing-md);
     margin-bottom: var(--spacing-xl);
 }
@@ -274,10 +274,15 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* 2ª linha: "+ Lançamento" ocupando a largura inteira */
-.mini-lancamento {
+/* 2ª linha: "+ Lançamento" + "Próximos" ocupando a largura inteira */
+.mini-linha2 {
   flex: 0 0 100%;
   order: 2;
+  display: flex;
+  gap: .35rem;
+}
+.mini-lancamento {
+  flex: 1 1 auto;
   padding: .4rem;
   border: 1px solid var(--primary);
   border-radius: var(--radius-xs);
@@ -288,6 +293,18 @@
   cursor: pointer;
 }
 .mini-lancamento .tab-mais { color: #FFD54A; font-weight: 800; margin-right: .15rem; }
+.mini-proximos {
+  flex: 0 0 auto;
+  padding: .4rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
 .mini-box {
   flex: 1 1 0;
   min-width: 0;
@@ -300,6 +317,7 @@
   border-radius: var(--radius-xs);
   font-weight: 400;
 }
+.mini-box.entradas, .mini-box.saidas { cursor: pointer; }
 .mini-box i { font-style: normal; font-size: .78rem; line-height: 1; flex: none; opacity: .85; }
 .mini-box b {
   font-size: .64rem;

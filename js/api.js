@@ -171,16 +171,22 @@ async function carregarMenusAPI() {
         const cats = itens.filter(i => i.tipo === 'Categoria');
         const recs = itens.filter(i => i.tipo === 'Recorrência');
         const mapaCor = arr => Object.fromEntries(arr.map(i => [i.nome, corDoItemMenu(i)]));
+        const metodos = itens.filter(i => i.tipo === 'Método');
+        // Métodos são salvos nas transações pelo rótulo composto (rotuloMetodo:
+        // "Crédito Bradesco"), não pelo nome cru do menu_itens ("Crédito -
+        // Bradesco") — a cor precisa ser buscada pela mesma chave, senão o
+        // gráfico cai no fallback de cor em vez de usar a cor escolhida.
+        const mapaCorMetodo = arr => Object.fromEntries(arr.map(i => [rotuloMetodo(i), corDoItemMenu(i)]));
         return {
             categorias: cats.map(i => i.nome),
             categoriasDespesa: cats.filter(c => c.categoriaTipo !== 'entradas').map(i => i.nome),
             categoriasReceita: cats.filter(c => c.categoriaTipo === 'entradas').map(i => i.nome),
             // métodos como objetos (o formulário precisa do tipo/fechamento p/ competência)
-            metodos: itens.filter(i => i.tipo === 'Método'),
+            metodos,
             recorrencias: recs.map(i => i.nome),
             cores: {
                 categoria: mapaCor(cats),
-                metodo: mapaCor(itens.filter(i => i.tipo === 'Método')),
+                metodo: mapaCorMetodo(metodos),
                 recorrencia: mapaCor(recs)
             }
         };

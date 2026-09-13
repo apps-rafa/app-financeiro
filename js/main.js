@@ -66,8 +66,20 @@ function configurarMiniResumo() {
     const ref = document.querySelector('.month-bar');   // fundo da barra fixa (não muda ao abrir o mini)
     const mini = document.getElementById('miniResumo');
     const btnLanc = document.querySelector('.tabs [data-tab="adicionar"]');
+    const linha2 = document.querySelector('.mini-linha2');
     const miniLanc = document.getElementById('miniLancamento');
+    const miniProximos = document.getElementById('miniProximos');
+    const miniEntradas = document.querySelector('.mini-box.entradas');
+    const miniSaidas = document.querySelector('.mini-box.saidas');
     if (!alvo || !ref || !mini) return;
+
+    // Caixas de Receita/Despesa: mesmo toggle dos cards do dashboard
+    if (miniEntradas) miniEntradas.addEventListener('click', () => {
+        if (typeof mudarAba === 'function') mudarAba('entradas');
+    });
+    if (miniSaidas) miniSaidas.addEventListener('click', () => {
+        if (typeof mudarAba === 'function') mudarAba('saidas');
+    });
 
     // "+ Lançamento" na 2ª linha da barra: abre o formulário
     if (miniLanc) miniLanc.addEventListener('click', () => {
@@ -80,6 +92,11 @@ function configurarMiniResumo() {
         }
     });
 
+    // "Próximos" na 2ª linha da barra: abre a aba de próximos lançamentos
+    if (miniProximos) miniProximos.addEventListener('click', () => {
+        if (typeof mudarAba === 'function') mudarAba('proximas');
+    });
+
     let raf = 0;
     const avaliar = () => {
         raf = 0;
@@ -88,9 +105,9 @@ function configurarMiniResumo() {
         const passou = alvo.getBoundingClientRect().bottom <= fundoBarra;
         if (mini.hidden === passou) mini.hidden = !passou;
         // 2ª linha: aparece quando o botão "+ Lançamento" também sai de vista
-        if (btnLanc && miniLanc) {
+        if (btnLanc && linha2) {
             const passouLanc = btnLanc.getBoundingClientRect().bottom <= fundoBarra;
-            if (miniLanc.hidden === passouLanc) miniLanc.hidden = !passouLanc;
+            if (linha2.hidden === passouLanc) linha2.hidden = !passouLanc;
         }
     };
     const agendar = () => { if (!raf) raf = requestAnimationFrame(avaliar); };
