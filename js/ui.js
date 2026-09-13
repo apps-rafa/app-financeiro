@@ -292,51 +292,100 @@ function _renderBarraGrupos(grupos, tipoUI, modo) {
     return `<div class="cron-barra" role="img">${segs}</div>`;
 }
 
+/** Duplicata suspeita: mesmo valor, método e descrição (normalizada)
+ *  aparecendo mais de uma vez no mês exibido — mesmo se a data for
+ *  diferente (foi assim que os bugs de importação/reimportação desta
+ *  sessão geraram duplicata real: a competência batia — por isso as duas
+ *  apareciam juntas no mesmo mês — só a data é que ficava errada). */
+function _detectarDuplicatas(transacoes) {
+    const mapa = new Map();
+    (transacoes || []).forEach(t => {
+        const chave = [t.valor, t.metodo || '', _normalizarChave(t.descricao || '')].join('|');
+        if (!mapa.has(chave)) mapa.set(chave, []);
+        mapa.get(chave).push(t);
+    });
+    return [...mapa.values()].filter(g => g.length >= 2).flat().sort(_porDataDesc);
+}
+
+/** Grupo "Duplicatas" fixo no topo da lista, em qualquer modo de
+ *  visualização (não é uma dimensão de análise como método/categoria —
+ *  é sobre consistência dos dados, então não faz sentido esconder num
+ *  modo só). Some sozinho conforme o usuário for resolvendo (editando,
+ *  apagando ou confirmando que não é duplicata) — não precisa "arquivar".
+ *  Grupo vazio nunca abre (nem é clicável: não é um <details>, é uma
+ *  linha estática). */
+function _renderGrupoDuplicatas(transacoes, tipoUI, aberto) {
+    const duplicatas = _detectarDuplicatas(transacoes);
+    if (!duplicatas.length) {
+        return `<div class="rec-grupo rec-grupo--vazio">
+            <span class="rec-grupo-nome">🔁 Duplicatas</span>
+            <span class="rec-grupo-contagem">0</span>
+        </div>`;
+    }
+    const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
+    const total = duplicatas.reduce((s, t) => s + valorDe(t), 0);
+    return `
+    <details class="rec-grupo" data-nome="__duplicatas__" style="--cor-rec:var(--despesa-text)" ${aberto ? 'open' : ''}>
+      <summary>
+        <span class="rec-grupo-nome">🔁 Duplicatas</span>
+        <span class="rec-grupo-contagem">${duplicatas.length}</span>
+        <span class="rec-grupo-total">${formatarMoeda(total)}</span>
+      </summary>
+      <div class="rec-grupo-itens">
+        ${duplicatas.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
+      </div>
+    </details>`;
+}
+
 /** Escolhe a renderização certa pro modo de visualização selecionado — usado
  *  tanto por Receitas quanto por Despesas. Nos modos que não são
  *  Cronológica, prepend uma barra com 1 segmento por grupo (recorrência/
  *  método/categoria, conforme o modo) cujo clique filtra a lista pra só
  *  aquele grupo (Cronológica já tem sua própria barra + grupos abrindo/
- *  fechando, em vez de filtrar). */
+ *  fechando, em vez de filtrar). O grupo "Duplicatas" vem sempre no topo,
+ *  antes de tudo isso, independente do modo escolhido. */
 function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
     if (!container) return;
+    const abertoDuplicatas = container.querySelector('details.rec-grupo[data-nome="__duplicatas__"]')?.open;
+
     if (modo === 'cronologica') {
         renderListaCronologica(container, transacoes, tipoUI, msgVazia);
-        return;
-    }
-    if (!transacoes || !transacoes.length) {
+    } else if (!transacoes || !transacoes.length) {
         container.innerHTML = `<p class="empty-message">${msgVazia}</p>`;
         container.onclick = null;
-        return;
-    }
-
-    const { grupos, chaveDe, semChave } = _agruparParaBarra(modo, transacoes, tipoUI);
-    const barraHTML = _renderBarraGrupos(grupos, tipoUI, modo);
-    const filtro = _filtroGrupoDe(tipoUI, modo);
-    const filtrados = filtro ? transacoes.filter(t => (chaveDe(t) || semChave) === filtro) : transacoes;
-    const grupoAtivo = grupos.find(g => g.chave === filtro);
-    const msgFiltrado = grupoAtivo ? `Nada em "${grupoAtivo.nome}"` : msgVazia;
-
-    if (modo === 'metodo') {
-        renderListaPorMetodo(container, filtrados, tipoUI, msgFiltrado);
-    } else if (modo === 'categoria') {
-        renderListaPorCategoria(container, filtrados, tipoUI, msgFiltrado);
     } else {
-        renderListaAgrupada(container, filtrados, tipoUI, msgFiltrado);
+        const { grupos, chaveDe, semChave } = _agruparParaBarra(modo, transacoes, tipoUI);
+        const barraHTML = _renderBarraGrupos(grupos, tipoUI, modo);
+        const filtro = _filtroGrupoDe(tipoUI, modo);
+        const filtrados = filtro ? transacoes.filter(t => (chaveDe(t) || semChave) === filtro) : transacoes;
+        const grupoAtivo = grupos.find(g => g.chave === filtro);
+        const msgFiltrado = grupoAtivo ? `Nada em "${grupoAtivo.nome}"` : msgVazia;
+
+        if (modo === 'metodo') {
+            renderListaPorMetodo(container, filtrados, tipoUI, msgFiltrado);
+        } else if (modo === 'categoria') {
+            renderListaPorCategoria(container, filtrados, tipoUI, msgFiltrado);
+        } else {
+            renderListaAgrupada(container, filtrados, tipoUI, msgFiltrado);
+        }
+
+        container.insertAdjacentHTML('afterbegin', barraHTML);
+        const onClickConteudo = container.onclick;
+        container.onclick = e => {
+            const seg = e.target.closest('[data-grupo-toggle]');
+            if (seg) {
+                const valor = seg.dataset.grupoToggle;
+                _setFiltroGrupoBarra(tipoUI, modo, filtro === valor ? null : valor);
+                renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia);
+                return;
+            }
+            if (onClickConteudo) onClickConteudo(e);
+        };
     }
 
-    container.insertAdjacentHTML('afterbegin', barraHTML);
-    const onClickConteudo = container.onclick;
-    container.onclick = e => {
-        const seg = e.target.closest('[data-grupo-toggle]');
-        if (seg) {
-            const valor = seg.dataset.grupoToggle;
-            _setFiltroGrupoBarra(tipoUI, modo, filtro === valor ? null : valor);
-            renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia);
-            return;
-        }
-        if (onClickConteudo) onClickConteudo(e);
-    };
+    if (transacoes && transacoes.length) {
+        container.insertAdjacentHTML('afterbegin', _renderGrupoDuplicatas(transacoes, tipoUI, abertoDuplicatas));
+    }
 }
 
 // 'recorrencia' (padrão) | 'categoria' | 'cronologica' — visão da aba Receitas
@@ -499,19 +548,27 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
     const pctPendente = totalGeral ? 100 - pctAtual : 0;
 
     const abertos = _lerAbertosRecGrupo(container);
-    // Grupo vazio nunca abre (mesmo se estava aberto antes de esvaziar,
-    // ex.: depois de editar a última transação dele pra fora do grupo).
-    const grupoHTML = (nome, cor, itens, total, pct) => `
-        <details class="rec-grupo" data-nome="${nome}" style="--cor-rec:${cor}" ${(itens.length && abertos[nome]) ? 'open' : ''}>
+    // Grupo vazio nunca abre — nem é clicável: sem <details>, é uma linha
+    // estática (não tem nada pra mostrar, então não faz sentido nem deixar
+    // "abrir" e ver "Nada aqui").
+    const grupoHTML = (nome, cor, itens, total, pct) => {
+        if (!itens.length) return `
+        <div class="rec-grupo rec-grupo--vazio" style="--cor-rec:${cor}">
+          <span class="rec-grupo-nome">${nome}</span>
+          <span class="rec-grupo-contagem">0</span>
+        </div>`;
+        return `
+        <details class="rec-grupo" data-nome="${nome}" style="--cor-rec:${cor}" ${abertos[nome] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
             <span class="rec-grupo-contagem">${itens.length}</span>
             <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
-            ${itens.length ? itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('') : `<p class="empty-message">Nada aqui</p>`}
+            ${itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
           </div>
         </details>`;
+    };
 
     container.innerHTML = `
         <div class="cron-barra" role="img" aria-label="${formatarPct(pctAtual)}% Atual, ${formatarPct(pctPendente)}% ${rotuloPendente}">
