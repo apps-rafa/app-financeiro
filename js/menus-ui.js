@@ -84,7 +84,7 @@ async function carregarAbaMenus() {
       </div>
 
       <div class="menu-section" data-sub="met" hidden>
-        <h3>💳 Métodos de pagamento
+        <h3>
           <button type="button" class="h3-add h3-az" onclick="ordenarAlfabetico('metodos')" title="Ordenar de A a Z">A→Z</button>
           <button type="button" class="h3-add" onclick="abrirNovoMetodo()" title="Novo método">+</button>
         </h3>
@@ -93,7 +93,7 @@ async function carregarAbaMenus() {
       </div>
 
       <div class="menu-section" data-sub="rec" hidden>
-        <h3>🔁 Tipos de recorrência
+        <h3>
           <button type="button" class="h3-add h3-az" onclick="ordenarAlfabetico('recorrencias')" title="Ordenar de A a Z">A→Z</button>
         </h3>
         <p class="menu-hint">Tipos fixos do sistema: não dá pra criar, editar nem remover. Mas dá pra desativar e reordenar — é essa ordem que aparece no dropdown do lançamento.</p>
@@ -139,7 +139,7 @@ async function carregarAbaMenus() {
       </div>
 
       <div class="menu-section" data-sub="fer" hidden>
-        <h3>📅 Feriados
+        <h3>
           <button type="button" class="h3-add" onclick="abrirNovoFeriado()" title="Novo feriado">+</button>
         </h3>
         <div class="feriados-barra">
@@ -168,7 +168,6 @@ async function carregarAbaMenus() {
       </div>
 
       <div class="menu-section" data-sub="importar" hidden>
-        <h3>📥 Importar</h3>
         <div class="modo-lista importar-toggle" role="tablist">
           <button type="button" class="modo-btn importar-toggle-btn active" data-importar-modo="csv">CSV</button>
           <button type="button" class="modo-btn importar-toggle-btn" data-importar-modo="pdf">PDF</button>

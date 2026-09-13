@@ -15,7 +15,6 @@ function renderDados() {
     const sec = document.getElementById('secDados');
     if (!sec) return;
     sec.innerHTML = `
-    <h3>💾 Dados</h3>
     <p class="menu-hint">
         Baixe uma cópia de tudo que você já lançou (lançamentos, categorias, métodos, recorrências) num arquivo
         de backup — dá pra restaurar depois em Importar &gt; Backup. Ou apague tudo e comece do zero.
