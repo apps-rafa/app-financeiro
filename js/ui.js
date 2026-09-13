@@ -362,9 +362,14 @@ let _proximasCtx = [];
  * opts.semCategoriaChip: não mostra o chip de categoria (visão "Por categoria").
  */
 function gerarHTMLTransacao(trans, tipo, opts = {}) {
+    const ehParcela = !!trans.parcelasTotal;
+    const ehOriginal = ehParcela && trans.parcelaNum === 1;
     const ehSemanalChips = trans.tipoRecorrencia === 'Semanal' && Array.isArray(trans.semanas) && trans.semanas.length;
+    // Parcelada: valor da parcela / valor total da compra (ex.: "R$ 15 / 45").
     const valorFormatado = ehSemanalChips
         ? `${formatarMoeda(trans.valor)} <span class="valor-meta">/ ${formatarMoeda(trans.valorMes)}</span>`
+        : ehParcela
+        ? `${formatarMoeda(trans.valor)} <span class="valor-meta">/ ${formatarMoeda(trans.valorTotal || 0)}</span>`
         : formatarMoeda(trans.valor);
     const sinal = tipo === 'entrada' ? '+' : '-';
 
@@ -383,12 +388,14 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
         ? '<span class="pendente-badge">a confirmar</span>' : '';
     const quandoTag = opts.quando ? `<span class="quando-tag">${opts.quando}</span>` : '';
 
-    const ehParcela = !!trans.parcelasTotal;
-    const ehOriginal = ehParcela && trans.parcelaNum === 1;
-
     // Info da parcela (nunca vai para a descrição — vem dos campos da linha)
     const parcelaTag = ehParcela
         ? `<span class="parcela-tag" title="Parcelamento de ${formatarMoeda(trans.valorTotal || 0)}">${trans.parcelaNum}/${trans.parcelasTotal}</span>`
+        : '';
+    // Fica ao lado do "1/3", antes dos chips de método/categoria — não mais
+    // junto dos ícones de editar/excluir no fim da linha.
+    const quitarCheckbox = (ehParcela && !trans.quitada && !opts.semAcoes)
+        ? `<label class="quitar-check" title="Quitar a partir deste mês"><input type="checkbox" data-act="quitar-parc" data-id="${trans.id}" ${trans.quitadoEm ? 'checked' : ''}> quitar</label>`
         : '';
     const quitadoTag = ehParcela && trans.quitadoEm
         ? `<span class="quitado-badge">quitado ${typeof mesTri === 'function' ? mesTri(String(trans.quitadoEm).slice(5, 7)) + '/' + String(trans.quitadoEm).slice(2, 4) : ''}</span>`
@@ -423,10 +430,6 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
         if (trans.pendente) {
             acoes += `<button class="btn-ok" data-act="confirmar-trans" data-id="${trans.id}" title="Confirmar este mês">OK</button>`;
         }
-        if (ehParcela && !trans.quitada) {
-            const chk = trans.quitadoEm ? 'checked' : '';
-            acoes += `<label class="quitar-check" title="Quitar a partir deste mês"><input type="checkbox" data-act="quitar-parc" data-id="${trans.id}" ${chk}> quitar</label>`;
-        }
         if (!ehParcela || ehOriginal) {
             acoes += `<button class="btn-icon" data-act="editar-trans" data-id="${trans.id}" title="Editar">✏️</button>`;
         }
@@ -443,10 +446,11 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
         <div class="${classes}" data-id="${trans.id}" data-tipo-transacao="${tipo === 'entrada' ? 'entradas' : 'saidas'}">
             ${lado}
             <span class="despesa-valor">${sinal} ${valorFormatado}</span>
+            ${parcelaTag}
+            ${quitarCheckbox}
             ${metaChip}
             ${catChip}
             ${descTxt}
-            ${parcelaTag}
             ${quandoTag}
             ${tagPendente}
             ${quitadoTag}

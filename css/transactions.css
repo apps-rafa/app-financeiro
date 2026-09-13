@@ -106,7 +106,7 @@
     color: var(--text);
 }
 .despesa-dow {
-    font-size: .9rem;
+    font-size: 1.05rem;
     font-weight: var(--font-weight-medium);
     color: var(--text-muted);
 }
