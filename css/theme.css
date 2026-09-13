@@ -192,6 +192,7 @@ input.campo-travado,
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: .3rem;
     height: 1.6rem;
     margin: 0;
     font-size: 0.68rem;
@@ -200,6 +201,13 @@ input.campo-travado,
     padding: 0 0.55rem;
     border-radius: 999px;
     white-space: nowrap;
+}
+/* Emoji dos badges/botões do cabeçalho: mesmo tamanho sempre, independente
+   do font-size (menor) do texto ao lado — antes cada um tinha um tamanho
+   diferente (herdado do texto, ou um valor avulso só pro de "Sair"). */
+.header-emoji {
+    font-size: 0.95rem;
+    line-height: 1;
 }
 #btnLogout {
     display: inline-flex;
@@ -211,12 +219,6 @@ input.campo-travado,
     cursor: pointer;
 }
 #btnLogout:hover { background: rgba(255, 255, 255, 0.28); }
-/* Ícone de sair maior e em vermelho — se destaca mais que o resto do botão. */
-#btnLogout .sair-ico {
-    font-size: 1.15rem;
-    line-height: 1;
-    color: #F87171;
-}
 
 .user-email {
     color: var(--header-text);

@@ -36,10 +36,10 @@
                 <div class="header-content">
                     <h1><span class="app-emoji">💰</span><span class="app-titulo-full">Controle Financeiro</span><span class="app-titulo-media">Ctrl Financeiro</span><span class="app-titulo-curto">Ctrl Fin</span></h1>
                     <div class="header-info">
-                        <span id="modoTesteBadge" class="modo-teste-badge" hidden>🧪 <span class="modo-teste-full">modo teste</span><span class="modo-teste-curto">TESTE</span></span>
-                        <button id="btnApagarTudo" type="button" class="btn-apagar-tudo" hidden title="Apagar todos os dados de teste">🗑 <span class="apagar-full">Apagar tudo</span><span class="apagar-curto">Apagar</span></button>
+                        <span id="modoTesteBadge" class="modo-teste-badge" hidden><span class="header-emoji">🧪</span><span class="modo-teste-full">modo teste</span><span class="modo-teste-curto">TESTE</span></span>
+                        <button id="btnApagarTudo" type="button" class="btn-apagar-tudo" hidden title="Apagar todos os dados de teste"><span class="header-emoji">🗑</span><span class="apagar-full">Apagar tudo</span><span class="apagar-curto">Apagar</span></button>
                         <span id="userEmail" class="user-email" hidden></span>
-                        <button id="btnLogout" class="month-btn" hidden title="Sair"><span class="sair-ico">🚪</span> <span class="sair-texto">Sair</span></button>
+                        <button id="btnLogout" class="month-btn" hidden title="Sair"><span class="header-emoji sair-ico">🚪</span><span class="sair-texto">Sair</span></button>
                     </div>
                 </div>
             </header>
@@ -78,8 +78,10 @@
                 <div class="summary-card entradas" data-tab="entradas">
                     <h3><svg class="seta-icone" viewBox="0 0 24 24" width="11" height="11" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg> Receita</h3>
                     <div class="card-linhas">
-                        <span class="linha"><b id="entradasAtual">R$ 0,00</b><i>atual</i></span>
-                        <span class="linha"><b id="entradasAReceber">R$ 0,00</b><i>a receber</i></span>
+                        <div class="card-linhas-topo">
+                            <span class="linha"><b id="entradasAtual">R$ 0,00</b><i>atual</i></span>
+                            <span class="linha"><b id="entradasAReceber">R$ 0,00</b><i>a receber</i></span>
+                        </div>
                         <span class="linha-sep" aria-hidden="true"></span>
                         <span class="linha total"><b class="amount" id="totalEntradas">R$ 0,00</b><i>total</i></span>
                     </div>
@@ -87,8 +89,10 @@
                 <div class="summary-card saidas" data-tab="saidas">
                     <h3><svg class="seta-icone" viewBox="0 0 24 24" width="11" height="11" aria-hidden="true"><path fill="var(--despesa-text)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg> Despesa</h3>
                     <div class="card-linhas">
-                        <span class="linha"><b id="saidasAtual">R$ 0,00</b><i>atual</i></span>
-                        <span class="linha"><b id="saidasAPagar">R$ 0,00</b><i>a pagar</i></span>
+                        <div class="card-linhas-topo">
+                            <span class="linha"><b id="saidasAtual">R$ 0,00</b><i>atual</i></span>
+                            <span class="linha"><b id="saidasAPagar">R$ 0,00</b><i>a pagar</i></span>
+                        </div>
                         <span class="linha-sep" aria-hidden="true"></span>
                         <span class="linha total"><b class="amount" id="totalSaidas">R$ 0,00</b><i>total</i></span>
                     </div>
@@ -117,9 +121,9 @@
                 <div class="transacoes-container">
                     <div class="modo-lista-linha">
                         <div class="modo-lista" id="modoEntradas">
-                            <button type="button" class="modo-btn active" data-modo="recorrencia">Por recorrência</button>
+                            <button type="button" class="modo-btn active" data-modo="cronologica">Cronológica</button>
+                            <button type="button" class="modo-btn" data-modo="recorrencia">Por recorrência</button>
                             <button type="button" class="modo-btn" data-modo="categoria">Por categoria</button>
-                            <button type="button" class="modo-btn" data-modo="cronologica">Cronológica</button>
                         </div>
                         <button type="button" class="btn-fechar-form btn-fechar-aba" data-fechar-aba="entradas" title="Fechar" aria-label="Fechar">&times;</button>
                     </div>
@@ -134,10 +138,10 @@
                 <div class="transacoes-container">
                     <div class="modo-lista-linha">
                         <div class="modo-lista" id="modoSaidas">
-                            <button type="button" class="modo-btn active" data-modo="recorrencia">Por recorrência</button>
+                            <button type="button" class="modo-btn active" data-modo="cronologica">Cronológica</button>
+                            <button type="button" class="modo-btn" data-modo="recorrencia">Por recorrência</button>
                             <button type="button" class="modo-btn" data-modo="metodo">Por método</button>
                             <button type="button" class="modo-btn" data-modo="categoria">Por categoria</button>
-                            <button type="button" class="modo-btn" data-modo="cronologica">Cronológica</button>
                         </div>
                         <button type="button" class="btn-fechar-form btn-fechar-aba" data-fechar-aba="saidas" title="Fechar" aria-label="Fechar">&times;</button>
                     </div>
