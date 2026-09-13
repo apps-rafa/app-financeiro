@@ -663,7 +663,10 @@ async function atualizarProximasTransacoes() {
             const tipoUI = proximasEntradas.some(t => t.id === trans.id) ? 'entrada' : 'saida';
             const dias = calcularDiasAte(trans.data);
             const quando = dias <= 0 ? 'hoje' : `em ${dias}d`;
-            return { trans: { ...trans }, tipoUI, opts: { quando, semAcoes: true } };
+            // Mesmo lançamento que aparece em Receitas/Despesas — os botões
+            // (OK / editar / excluir) valem aqui também, e agem no mesmo
+            // registro: confirmar/editar/excluir daqui reflete lá (e vice-versa).
+            return { trans: { ...trans }, tipoUI, opts: { quando } };
         });
 
         const corpoHTML = modoListaProximas === 'metodo'
