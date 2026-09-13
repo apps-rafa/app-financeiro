@@ -57,8 +57,8 @@
 
             <!-- Resumo compacto: aparece ao rolar para além do dashboard -->
             <div class="mini-resumo" id="miniResumo" hidden>
-                <span class="mini-box entradas"><i>💰</i><b id="miniEntradas">R$ 0,00</b></span>
-                <span class="mini-box saidas"><i>💸</i><b id="miniSaidas">R$ 0,00</b></span>
+                <span class="mini-box entradas"><i><svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg></i><b id="miniEntradas">R$ 0,00</b></span>
+                <span class="mini-box saidas"><i><svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--despesa-text)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg></i><b id="miniSaidas">R$ 0,00</b></span>
                 <span class="mini-box balanco"><i>📊</i><b id="miniBalanco">R$ 0,00</b></span>
                 <span class="mini-box gasto-diario"><i>📅</i><b id="miniGasto">R$ 0,00</b></span>
                 <button type="button" id="miniLancamento" class="mini-lancamento" hidden><span class="tab-mais">+</span> Lançamento</button>
@@ -70,7 +70,7 @@
             <!-- Dashboard Summary -->
             <section class="dashboard">
                 <div class="summary-card entradas">
-                    <h3>💰 Receita</h3>
+                    <h3><svg class="seta-icone" viewBox="0 0 24 24" width="11" height="11" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg> Receita</h3>
                     <div class="card-linhas">
                         <span class="linha"><b id="entradasAtual">R$ 0,00</b><i>atual</i></span>
                         <span class="linha"><b id="entradasAReceber">R$ 0,00</b><i>a receber</i></span>
@@ -79,7 +79,7 @@
                     </div>
                 </div>
                 <div class="summary-card saidas">
-                    <h3>💸 Despesa</h3>
+                    <h3><svg class="seta-icone" viewBox="0 0 24 24" width="11" height="11" aria-hidden="true"><path fill="var(--despesa-text)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg> Despesa</h3>
                     <div class="card-linhas">
                         <span class="linha"><b id="saidasAtual">R$ 0,00</b><i>atual</i></span>
                         <span class="linha"><b id="saidasAPagar">R$ 0,00</b><i>a pagar</i></span>
