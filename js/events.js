@@ -10,38 +10,39 @@ function configurarEventListeners() {
     console.log('⚙️ Configurando event listeners...');
     
     // Navegação de calendário: tira de meses (clique seleciona; setas laterais
-    // só passeiam pela janela compacta quando não cabem os 12 numa linha) +
-    // navegação de ano.
+    // só passeiam a janela, sem mudar a seleção — dá pra atravessar a virada
+    // do ano) + navegação de ano.
     const mesesLista = document.getElementById('mesesLista');
     if (mesesLista) mesesLista.addEventListener('click', e => {
         const btn = e.target.closest('.mes-btn');
         if (!btn) return;
-        const idx = parseInt(btn.dataset.mes, 10);
-        if (Number.isNaN(idx)) return;
-        mesesJanelaCentro = idx;
-        estadoApp.mesAtual = new Date(estadoApp.mesAtual.getFullYear(), idx, 1);
+        const ano = parseInt(btn.dataset.ano, 10);
+        const mes = parseInt(btn.dataset.mes, 10);
+        if (Number.isNaN(ano) || Number.isNaN(mes)) return;
+        mesesJanelaOffset = 0;
+        estadoApp.mesAtual = new Date(ano, mes, 1);
         recarregarDados();
     });
     const mesesSetaEsq = document.getElementById('mesesSetaEsq');
     if (mesesSetaEsq) mesesSetaEsq.addEventListener('click', () => {
-        if (mesesJanelaCentro == null) mesesJanelaCentro = estadoApp.mesAtual.getMonth();
-        mesesJanelaCentro = Math.max(0, mesesJanelaCentro - 1);
+        mesesJanelaOffset -= 1;
         atualizarCalendarioNav();
     });
     const mesesSetaDir = document.getElementById('mesesSetaDir');
     if (mesesSetaDir) mesesSetaDir.addEventListener('click', () => {
-        if (mesesJanelaCentro == null) mesesJanelaCentro = estadoApp.mesAtual.getMonth();
-        mesesJanelaCentro = Math.min(11, mesesJanelaCentro + 1);
+        mesesJanelaOffset += 1;
         atualizarCalendarioNav();
     });
     const anoAnterior = document.getElementById('anoAnterior');
     if (anoAnterior) anoAnterior.addEventListener('click', () => {
         estadoApp.mesAtual = new Date(estadoApp.mesAtual.getFullYear() - 1, estadoApp.mesAtual.getMonth(), 1);
+        mesesJanelaOffset = 0;
         recarregarDados();
     });
     const anoProximo = document.getElementById('anoProximo');
     if (anoProximo) anoProximo.addEventListener('click', () => {
         estadoApp.mesAtual = new Date(estadoApp.mesAtual.getFullYear() + 1, estadoApp.mesAtual.getMonth(), 1);
+        mesesJanelaOffset = 0;
         recarregarDados();
     });
     window.addEventListener('resize', debounce(() => {
@@ -245,7 +246,7 @@ function sincronizarMesComFormulario(mes) {
     if (!(mes >= 1 && mes <= 12)) return;
     if (estadoApp.mesAtual.getMonth() + 1 === mes) return;
     estadoApp.mesAtual = new Date(estadoApp.mesAtual.getFullYear(), mes - 1, 1);
-    mesesJanelaCentro = null;
+    mesesJanelaOffset = 0;
     if (typeof recarregarDados === 'function') recarregarDados();
 }
 
