@@ -449,15 +449,18 @@ function renderListaPorCategoria(container, transacoes, tipoUI, msgVazia) {
 
 /** Mesma regra usada no card de resumo (calcularResumoMes, data.js) pra
  *  decidir se uma transação já "aconteceu" (Atual) ou ainda está pendente
- *  (A receber / A pagar) — cartão de crédito conta sempre como pendente. */
+ *  (A receber / A pagar) — cartão de crédito só "realiza" depois que o
+ *  vencimento da fatura daquela competência já passou. */
 function _transacaoRealizada(t) {
-    const metodosCredito = new Set(
-        ((estadoApp.menus && estadoApp.menus.metodos) || [])
-            .filter(m => m.metodoKind === 'Crédito')
-            .map(m => (typeof rotuloMetodo === 'function' ? rotuloMetodo(m) : m.nome))
-    );
-    if (metodosCredito.has(t.metodo)) return false;
+    const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
+    const cartao = metodos.find(m => m.metodoKind === 'Crédito'
+        && (typeof rotuloMetodo === 'function' ? rotuloMetodo(m) : m.nome) === t.metodo);
     const hoje = new Date().toISOString().slice(0, 10);
+    if (cartao) {
+        const venc = (cartao.diaVencimento && t.competencia)
+            ? dataVencimento(t.competencia, cartao.diaVencimento) : null;
+        return !!(venc && venc < hoje);
+    }
     return !t.pendente && String(t.data).slice(0, 10) < hoje;
 }
 
