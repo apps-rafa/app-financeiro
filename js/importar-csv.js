@@ -187,8 +187,22 @@ function renderImportCSV() {
         return;
     }
 
-    const prontas = st.linhas.filter(_linhaPronta).length;
-    const revisar = st.linhas.length - prontas;
+    const linhasComIdx = st.linhas.map((l, i) => [l, i]);
+    const paraRevisar = linhasComIdx.filter(([l]) => !_linhaPronta(l));
+    const prontasLinhas = linhasComIdx.filter(([l]) => _linhaPronta(l));
+    const prontas = prontasLinhas.length;
+    const revisar = paraRevisar.length;
+
+    const tabela = (titulo, grupo) => !grupo.length ? '' : `
+    <div class="import-csv-grupo-titulo">${titulo} (${grupo.length})</div>
+    <div class="import-csv-tabela-wrap">
+        <table class="import-csv-tabela">
+            <thead><tr>
+                <th>Data</th><th>Valor</th><th>Tipo</th><th>Método</th><th>Categoria</th><th>Descrição</th>
+            </tr></thead>
+            <tbody>${grupo.map(([l, i]) => _renderLinhaImportCSV(l, i)).join('')}</tbody>
+        </table>
+    </div>`;
 
     sec.innerHTML = `
     <h3>📥 Importar CSV</h3>
@@ -196,7 +210,8 @@ function renderImportCSV() {
         <label>Mês de competência
             <input type="month" id="importCsvCompetencia" value="${st.competenciaMesInput || ''}">
         </label>
-        <label>Dia de corte <span class="import-csv-ajuda" title="Dias a partir deste valor caem no mês ANTERIOR à competência (ex.: fechamento do cartão). Deixe em branco se a coluna Data já for do próprio mês de competência.">?</span>
+        <label>
+            <span class="import-csv-label-linha">Dia de corte <span class="import-csv-ajuda" title="Dias a partir deste valor caem no mês ANTERIOR à competência (ex.: fechamento do cartão). Deixe em branco se a coluna Data já for do próprio mês de competência.">?</span></span>
             <input type="number" id="importCsvCorte" min="1" max="31" value="${st.corte ?? ''}" placeholder="ex: 14">
         </label>
         <button type="button" class="mini-btn" id="importCsvTrocarArquivo">Trocar arquivo</button>
@@ -205,18 +220,13 @@ function renderImportCSV() {
         <b>${st.linhas.length}</b> linhas no arquivo — <span class="ok">${prontas} prontas</span>
         ${revisar ? ` · <span class="alerta">${revisar} para revisar</span>` : ''}
     </p>
-    <div class="import-csv-tabela-wrap">
-        <table class="import-csv-tabela">
-            <thead><tr>
-                <th>Data</th><th>Valor</th><th>Tipo</th><th>Método</th><th>Categoria</th><th>Descrição</th>
-            </tr></thead>
-            <tbody>${st.linhas.map((l, i) => _renderLinhaImportCSV(l, i)).join('')}</tbody>
-        </table>
-    </div>
+    ${tabela('⚠️ Para revisar', paraRevisar)}
+    ${tabela('✓ Prontas', prontasLinhas)}
     <div class="import-csv-acoes">
         <button type="button" class="btn-submit" id="importCsvConfirmar" ${revisar ? 'disabled' : ''}>
             Importar ${prontas} lançamento${prontas === 1 ? '' : 's'}
         </button>
+        <button type="button" class="mini-btn" id="importCsvCancelar">Cancelar</button>
         ${revisar ? `<span class="import-csv-bloqueado">Resolva método/categoria das linhas destacadas pra liberar a importação.</span>` : ''}
     </div>
     <div id="importCsvProgresso" class="import-csv-progresso" hidden></div>
@@ -238,13 +248,21 @@ function renderImportCSV() {
         estadoImportCSV = null;
         renderImportCSV();
     });
+    document.getElementById('importCsvCancelar')?.addEventListener('click', () => {
+        estadoImportCSV = null;
+        renderImportCSV();
+    });
     document.getElementById('importCsvConfirmar')?.addEventListener('click', onImportCsvConfirmar);
 
+    // Troca de método/categoria refaz a tabela inteira (linha pode "mudar de
+    // grupo" entre revisar/pronta) — sem preservar o scroll, o navegador
+    // volta pro topo da página a cada seleção (o <select> em foco some do
+    // DOM junto com o innerHTML antigo).
     sec.querySelectorAll('[data-import-metodo]').forEach(sel => {
         sel.addEventListener('change', e => {
             const i = parseInt(e.target.dataset.importMetodo, 10);
             st.linhas[i].metodoResolvido = e.target.value || null;
-            renderImportCSV();
+            _renderImportCSVPreservandoScroll();
         });
     });
     sec.querySelectorAll('[data-import-categoria]').forEach(sel => {
@@ -252,9 +270,15 @@ function renderImportCSV() {
             const i = parseInt(e.target.dataset.importCategoria, 10);
             const v = e.target.value;
             st.linhas[i].categoriaResolvida = v === '__nova__' ? { criar: true, nome: st.linhas[i].categoriaCSV } : (v || null);
-            renderImportCSV();
+            _renderImportCSVPreservandoScroll();
         });
     });
+}
+
+function _renderImportCSVPreservandoScroll() {
+    const y = window.scrollY;
+    renderImportCSV();
+    window.scrollTo(0, y);
 }
 
 /** Só recalcula data/tipo/valor (mantém escolhas manuais já feitas de método/categoria). */
