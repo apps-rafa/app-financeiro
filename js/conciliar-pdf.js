@@ -1,11 +1,11 @@
 ﻿/**
  * CONCILIAR PDF
- * Compara a fatura do cartão (Bradesco) ou o extrato da conta (Mercado
- * Pago) com os lançamentos já registrados no app, e aponta o que está num
- * lado e não no outro. Só relatório — não grava nada no banco.
+ * Compara a fatura do cartão (Bradesco, Nubank) ou o extrato da conta
+ * (Mercado Pago) com os lançamentos já registrados no app, e aponta o que
+ * está num lado e não no outro. Só relatório — não grava nada no banco.
  * Formatos suportados: fatura Bradesco em PDF (2 layouts — export do app
- * "Bradesco Cartões" e a fatura/boleto "Fatura Mensal") e extrato Mercado
- * Pago em PDF ou CSV.
+ * "Bradesco Cartões" e a fatura/boleto "Fatura Mensal"), fatura Nubank em
+ * CSV, e extrato Mercado Pago em PDF ou CSV.
  */
 
 let estadoConciliarPDF = null; // { pdfs: [ {..., linhas, transacoes, metodoEscolhido} ] }
@@ -124,6 +124,49 @@ function _parsearFaturaBradescoBoleto(texto) {
             tipo: valor < 0 ? 'entradas' : 'saidas',
             valor: Math.abs(valor),
             ignorarDefault: dNorm === 'pag boleto bancario'
+        });
+    }
+    return linhas;
+}
+
+/* ---------- Parser: fatura Nubank (CSV) ---------- */
+
+function _pareceFaturaNubankCSV(texto) {
+    const primeiraLinha = (texto.split(/\r?\n/)[0] || '').trim();
+    return /^date,title,amount/i.test(primeiraLinha);
+}
+
+function _parsearFaturaNubankCSV(texto) {
+    // Mesmo parser de CSV com aspas do Importar CSV (js/importar-csv.js) —
+    // aqui tem descrição com aspas duplicadas dentro ("Estorno de ""X""").
+    const linhasCSV = _parsearCSV(texto);
+    if (!linhasCSV.length) return [];
+    let inicio = 0;
+    if (linhasCSV[0] && /^date$/i.test(String(linhasCSV[0][0] || '').trim())) inicio = 1;
+
+    const linhas = [];
+    for (let i = inicio; i < linhasCSV.length; i++) {
+        const [dataCru, tituloCru, valorCru] = linhasCSV[i];
+        const mData = String(dataCru || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!mData) continue;
+
+        const descricao = String(tituloCru || '').trim();
+        const dNorm = _normalizarTexto(descricao);
+        const valor = _parsearValorBR(valorCru);
+        if (valor == null) continue;
+
+        linhas.push({
+            dataISO: `${mData[1]}-${mData[2]}-${mData[3]}`,
+            descricao,
+            valorBruto: valor,
+            // Nubank: valor positivo = compra, negativo = estorno/pagamento
+            // recebido/desconto — mesma convenção de sinal dos outros formatos.
+            tipo: valor < 0 ? 'entradas' : 'saidas',
+            valor: Math.abs(valor),
+            // "Pagamento recebido" é a própria fatura sendo paga pela conta
+            // vinculada (movimento interno) — o resto (estornos, descontos)
+            // é ajuste real de compra, não some da comparação por padrão.
+            ignorarDefault: dNorm.startsWith('pagamento recebido')
         });
     }
     return linhas;
@@ -300,8 +343,12 @@ async function onConciliarPdfArquivos(e) {
                 entrada.formato = 'extrato';
                 entrada.linhas = _parsearExtratoMercadoPagoCSV(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
                 entrada.metodoEscolhido = pixOuDebito();
+            } else if (ehCSV && _pareceFaturaNubankCSV(texto)) {
+                entrada.formato = 'fatura';
+                entrada.linhas = _parsearFaturaNubankCSV(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
+                entrada.metodoEscolhido = credito();
             } else {
-                throw new Error('Formato não reconhecido — só suportamos fatura Bradesco Cartões (PDF) e extrato Mercado Pago (PDF ou CSV) por enquanto.');
+                throw new Error('Formato não reconhecido — só suportamos fatura Bradesco Cartões (PDF), fatura Nubank (CSV) e extrato Mercado Pago (PDF ou CSV) por enquanto.');
             }
 
             if (!entrada.linhas.length) throw new Error('Não encontrei nenhum lançamento nesse PDF.');
@@ -333,8 +380,8 @@ function renderConciliarPDF() {
     sec.innerHTML = `
     <h3>🧾 Conciliar PDF</h3>
     <p class="menu-hint">
-        Sobe a fatura do cartão Bradesco (PDF, em qualquer um dos 2 formatos) ou o extrato da conta Mercado Pago
-        (PDF ou CSV) e compara com o que já está lançado no app — só aponta as diferenças, não grava nada automaticamente.
+        Sobe a fatura do cartão (Bradesco em PDF, Nubank em CSV) ou o extrato da conta Mercado Pago (PDF ou CSV)
+        e compara com o que já está lançado no app — só aponta as diferenças, não grava nada automaticamente.
     </p>
     <div class="import-csv-upload">
         <input type="file" id="conciliarPdfArquivo" accept=".pdf,application/pdf,.csv,text/csv" multiple>

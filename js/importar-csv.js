@@ -48,9 +48,9 @@ function _parsearCSV(texto) {
     return linhas.filter(l => l.length && l.some(c => String(c).trim() !== ''));
 }
 
-/** "13,90" / "-17,20" -> 13.9 / -17.2 */
+/** "13,90" / "-17,20" / "- 1.941,66" (Nubank põe espaço depois do sinal) -> 13.9 / -17.2 / -1941.66 */
 function _parsearValorBR(s) {
-    const limpo = String(s || '').trim().replace(/\./g, '').replace(',', '.');
+    const limpo = String(s || '').trim().replace(/\s+/g, '').replace(/\./g, '').replace(',', '.');
     const v = parseFloat(limpo);
     return Number.isFinite(v) ? v : null;
 }
