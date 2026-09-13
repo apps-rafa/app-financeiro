@@ -187,8 +187,8 @@ function diasRestantesMesVigente() {
 function _modoListaSalvo(chave, validos) {
     try {
         const salvo = localStorage.getItem(chave);
-        return validos.includes(salvo) ? salvo : 'recorrencia';
-    } catch (_) { return 'recorrencia'; }
+        return validos.includes(salvo) ? salvo : 'cronologica';
+    } catch (_) { return 'cronologica'; }
 }
 
 /** Escolhe a renderização certa pro modo de visualização selecionado — usado
@@ -206,7 +206,7 @@ function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
 }
 
 // 'recorrencia' (padrão) | 'categoria' | 'cronologica' — visão da aba Receitas
-const MODOS_LISTA_ENTRADAS = ['recorrencia', 'categoria', 'cronologica'];
+const MODOS_LISTA_ENTRADAS = ['cronologica', 'recorrencia', 'categoria'];
 let modoListaEntradas = _modoListaSalvo('modoListaEntradas', MODOS_LISTA_ENTRADAS);
 
 function definirModoListaEntradas(modo) {
@@ -224,7 +224,7 @@ function atualizarEntradasLista() {
 }
 
 // 'recorrencia' (padrão) | 'metodo' | 'categoria' | 'cronologica' — visão da aba Despesas
-const MODOS_LISTA_SAIDAS = ['recorrencia', 'metodo', 'categoria', 'cronologica'];
+const MODOS_LISTA_SAIDAS = ['cronologica', 'recorrencia', 'metodo', 'categoria'];
 let modoListaSaidas = _modoListaSalvo('modoListaSaidas', MODOS_LISTA_SAIDAS);
 
 function definirModoListaSaidas(modo) {
@@ -307,6 +307,23 @@ function renderListaPorCategoria(container, transacoes, tipoUI, msgVazia) {
 }
 
 /** Lista simples, sem agrupamento — mais recente primeiro. */
+/** Mesma regra usada no card de resumo (calcularResumoMes, data.js) pra
+ *  decidir se uma transação já "aconteceu" (Atual) ou ainda está pendente
+ *  (A receber / A pagar) — cartão de crédito conta sempre como pendente. */
+function _transacaoRealizada(t) {
+    const metodosCredito = new Set(
+        ((estadoApp.menus && estadoApp.menus.metodos) || [])
+            .filter(m => m.metodoKind === 'Crédito')
+            .map(m => (typeof rotuloMetodo === 'function' ? rotuloMetodo(m) : m.nome))
+    );
+    if (metodosCredito.has(t.metodo)) return false;
+    const hoje = new Date().toISOString().slice(0, 10);
+    return !t.pendente && String(t.data).slice(0, 10) < hoje;
+}
+
+/** "Cronológica": divide em 2 grupos (Atual / A receber ou A pagar), com
+ *  uma barra horizontal única mostrando a proporção de cada um em cima —
+ *  hover mostra %+valor, clique abre/fecha o grupo correspondente. */
 function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
     if (!container) return;
     if (!transacoes || !transacoes.length) {
@@ -314,9 +331,61 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
         container.onclick = null;
         return;
     }
-    const itens = [...transacoes].sort(_porDataDesc);
-    container.innerHTML = itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('');
-    container.onclick = onListaTransacaoClick;
+
+    const rotuloPendente = tipoUI === 'entrada' ? 'A receber' : 'A pagar';
+    const corAtual = tipoUI === 'entrada' ? 'var(--receita-text)' : 'var(--despesa-text)';
+    const corPendente = 'var(--balanco-text)';
+    const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
+
+    const atuais = [], pendentes = [];
+    transacoes.forEach(t => (_transacaoRealizada(t) ? atuais : pendentes).push(t));
+    atuais.sort(_porDataDesc);
+    pendentes.sort(_porDataDesc);
+
+    const totalAtual = atuais.reduce((s, t) => s + valorDe(t), 0);
+    const totalPendente = pendentes.reduce((s, t) => s + valorDe(t), 0);
+    const totalGeral = totalAtual + totalPendente;
+    const pctAtual = totalGeral ? Math.round((totalAtual / totalGeral) * 100) : 0;
+    const pctPendente = totalGeral ? 100 - pctAtual : 0;
+
+    const abertos = _lerAbertosRecGrupo(container);
+    const grupoHTML = (nome, cor, itens, total) => `
+        <details class="rec-grupo" data-nome="${nome}" style="--cor-rec:${cor}" ${abertos[nome] !== false ? 'open' : ''}>
+          <summary>
+            <span class="rec-grupo-nome">${nome}</span>
+            <span class="rec-grupo-contagem">${itens.length}</span>
+            <span class="rec-grupo-total">${formatarMoeda(total)}</span>
+          </summary>
+          <div class="rec-grupo-itens">
+            ${itens.length ? itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('') : `<p class="empty-message">Nada aqui</p>`}
+          </div>
+        </details>`;
+
+    container.innerHTML = `
+        <div class="cron-barra" role="img" aria-label="${pctAtual}% Atual, ${pctPendente}% ${rotuloPendente}">
+          <button type="button" class="cron-barra-seg" data-cron-toggle="Atual"
+                  style="--cor-rec:${corAtual}; flex-grow:${Math.max(pctAtual, totalAtual ? 2 : 0)}"
+                  title="Atual: ${pctAtual}% · ${formatarMoeda(totalAtual)}" ${totalAtual ? '' : 'hidden'}></button>
+          <button type="button" class="cron-barra-seg" data-cron-toggle="${rotuloPendente}"
+                  style="--cor-rec:${corPendente}; flex-grow:${Math.max(pctPendente, totalPendente ? 2 : 0)}"
+                  title="${rotuloPendente}: ${pctPendente}% · ${formatarMoeda(totalPendente)}" ${totalPendente ? '' : 'hidden'}></button>
+        </div>
+        <div class="cron-legenda">
+          <span class="cron-legenda-item"><i style="background:${corAtual}"></i>Atual</span>
+          <span class="cron-legenda-item"><i style="background:${corPendente}"></i>${rotuloPendente}</span>
+        </div>
+        ${grupoHTML('Atual', corAtual, atuais, totalAtual)}
+        ${grupoHTML(rotuloPendente, corPendente, pendentes, totalPendente)}
+    `;
+    container.onclick = e => {
+        const seg = e.target.closest('[data-cron-toggle]');
+        if (seg) {
+            const det = container.querySelector(`details.rec-grupo[data-nome="${CSS.escape(seg.dataset.cronToggle)}"]`);
+            if (det) det.open = !det.open;
+            return;
+        }
+        onListaTransacaoClick(e);
+    };
 }
 
 const _porDataDesc = (a, b) => new Date(b.data) - new Date(a.data);
