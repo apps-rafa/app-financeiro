@@ -297,6 +297,14 @@ input.campo-travado,
     margin-bottom: var(--spacing-md);
     font-size: var(--font-size-lg);
 }
+/* "Próximas" tem o título dentro de um .form-header (título + filtro
+   Despesa/Receita na mesma linha) — sem isso, a regra genérica acima
+   (mesma especificidade, carregada antes) reimpõe margin-bottom/font-size
+   e o texto fica desalinhado verticalmente dos botões ao lado. */
+.proximas-header h2 {
+    margin-bottom: 0;
+    font-size: 1rem;
+}
 .summary-card { padding: var(--spacing-sm) 0.7rem; }
 .summary-card h3 { font-size: 0.68rem; margin-bottom: 0.3rem; }
 .summary-card .amount { font-size: 1.2rem; }

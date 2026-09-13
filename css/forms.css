@@ -31,6 +31,22 @@
     padding: 0;
 }
 
+/* Título de "Próximas": 4 níveis de texto conforme o espaço aperta — só um
+   fica visível por vez (ver os spans montados em atualizarProximasTransacoes). */
+.prox-titulo-media, .prox-titulo-curto, .prox-titulo-mini { display: none; }
+@media (max-width: 768px) {
+    .prox-titulo-full { display: none; }
+    .prox-titulo-media { display: inline; }
+}
+@media (max-width: 480px) {
+    .prox-titulo-media { display: none; }
+    .prox-titulo-curto { display: inline; }
+}
+@media (max-width: 320px) {
+    .prox-titulo-curto { display: none; }
+    .prox-titulo-mini { display: inline; }
+}
+
 
 /* Botão "×" para limpar / fechar o formulário.
    O X é uma imagem SVG (não usa transform, que o reset de animações zera no hover) */
