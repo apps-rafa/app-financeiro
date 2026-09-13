@@ -50,16 +50,19 @@ async function carregarAbaMenus() {
 
       <div class="subtabs" role="tablist">
         <div class="subtabs-itens">
-          <button class="subtab active" data-sub="cat">Categorias</button>
-          <button class="subtab" data-sub="met">
-            <span class="met-full">Formas de pagamento</span>
-            <span class="met-media">Formas de pgto.</span>
-            <span class="met-curto">Pgtos.</span>
+          <button class="subtab active" data-sub="cat">🏷️ <span class="subtab-texto">Categorias</span></button>
+          <button class="subtab" data-sub="met">💳
+            <span class="subtab-texto met-full">Formas de pagamento</span>
+            <span class="subtab-texto met-media">Formas de pgto.</span>
+            <span class="subtab-texto met-curto">Pgtos.</span>
           </button>
-          <button class="subtab" data-sub="rec">Recorrências</button>
-          <button class="subtab" data-sub="fer">Feriados</button>
-          <button class="subtab" data-sub="importar">Importar</button>
-          <button class="subtab" data-sub="dados">Dados</button>
+          <button class="subtab" data-sub="rec">🔁
+            <span class="subtab-texto rec-full">Tipos de recorrência</span>
+            <span class="subtab-texto rec-media">Recorrências</span>
+          </button>
+          <button class="subtab" data-sub="fer">📅 <span class="subtab-texto">Feriados</span></button>
+          <button class="subtab" data-sub="importar">📥 <span class="subtab-texto">Importar</span></button>
+          <button class="subtab" data-sub="dados">💾 <span class="subtab-texto">Dados</span></button>
         </div>
         <button type="button" class="btn-fechar-form btn-fechar-aba" title="Fechar" aria-label="Fechar">&times;</button>
       </div>
@@ -84,19 +87,19 @@ async function carregarAbaMenus() {
       </div>
 
       <div class="menu-section" data-sub="met" hidden>
-        <h3>
+        <p class="menu-hint">Use as setinhas ▲▼ pra reordenar do jeito que você quiser — é essa ordem que aparece no dropdown do lançamento.</p>
+        <div class="menu-acoes-linha">
           <button type="button" class="h3-add h3-az" onclick="ordenarAlfabetico('metodos')" title="Ordenar de A a Z">A→Z</button>
           <button type="button" class="h3-add" onclick="abrirNovoMetodo()" title="Novo método">+</button>
-        </h3>
-        <p class="menu-hint">Use as setinhas ▲▼ pra reordenar do jeito que você quiser — é essa ordem que aparece no dropdown do lançamento.</p>
+        </div>
         <div class="menu-list" id="metodosList"></div>
       </div>
 
       <div class="menu-section" data-sub="rec" hidden>
-        <h3>
-          <button type="button" class="h3-add h3-az" onclick="ordenarAlfabetico('recorrencias')" title="Ordenar de A a Z">A→Z</button>
-        </h3>
         <p class="menu-hint">Tipos fixos do sistema: não dá pra criar, editar nem remover. Mas dá pra desativar e reordenar — é essa ordem que aparece no dropdown do lançamento.</p>
+        <div class="menu-acoes-linha">
+          <button type="button" class="h3-add h3-az" onclick="ordenarAlfabetico('recorrencias')" title="Ordenar de A a Z">A→Z</button>
+        </div>
         <div class="menu-list menu-list--livre" id="recorrenciasList">
           ${(() => {
             const itens = [...(menus.recorrencias || [])].sort((a, b) => {
@@ -139,9 +142,6 @@ async function carregarAbaMenus() {
       </div>
 
       <div class="menu-section" data-sub="fer" hidden>
-        <h3>
-          <button type="button" class="h3-add" onclick="abrirNovoFeriado()" title="Novo feriado">+</button>
-        </h3>
         <div class="feriados-barra">
           <button type="button" class="mini-btn" data-fer-ano="-1">←</button>
           <span id="feriadosAno"></span>
@@ -155,8 +155,11 @@ async function carregarAbaMenus() {
         <p class="menu-hint">
           Nacionais e estaduais são oficiais: não podem ser apagados, só desativados.<br>
           Estaduais: os principais de cada UF (escolha a UF); "sincronizar" completa com a <a href="https://date.nager.at" target="_blank" rel="noopener"><em>Nager.Date</em></a>.<br>
-          Municipais e avulsos você cadastra em "+".
+          Municipais e avulsos você cadastra ao lado.
         </p>
+        <div class="menu-acoes-linha">
+          <button type="button" class="mini-btn" onclick="abrirNovoFeriado()" title="Novo feriado">+ Novo feriado</button>
+        </div>
         ${['nacional', 'estadual', 'municipal'].map(cat => `
         <details class="fer-grupo" data-fer-cat="${cat}" ${estadoAberto[`fer-${cat}`] ? 'open' : ''}>
           <summary>
