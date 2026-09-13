@@ -253,6 +253,17 @@ function configurarEventListeners() {
         });
     }
 
+    // Idem pros valores do dashboard (Receita/Despesa/Balanço/Gasto diário
+    // e o botão "Próximos" do resumo compacto) — a largura do card muda com
+    // a tela, então o que cabia pode deixar de caber (ou sobrar espaço).
+    if (typeof ajustarFontesDashboard === 'function') {
+        let dTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(dTimer);
+            dTimer = setTimeout(ajustarFontesDashboard, 150);
+        });
+    }
+
     console.log('✓ Event listeners configurados');
 }
 

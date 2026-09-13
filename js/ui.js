@@ -128,15 +128,38 @@ async function _carregarIndicadoresJanela(idxsAbs) {
 }
 
 /**
+ * Reduz o font-size de `el` (a partir do tamanho definido no CSS) até o
+ * conteúdo caber numa linha só, sem cortar — nunca usa "…": regra é sempre
+ * diminuir a fonte até caber, em vez de truncar o texto.
+ */
+function ajustarFonteParaCaber(el, minPx = 10) {
+    if (!el) return;
+    el.style.fontSize = '';
+    let tamanho = parseFloat(getComputedStyle(el).fontSize);
+    if (!Number.isFinite(tamanho)) return;
+    while (el.scrollWidth > el.clientWidth + 1 && tamanho > minPx) {
+        tamanho -= 1;
+        el.style.fontSize = tamanho + 'px';
+    }
+}
+
+/** Elementos de valor que podem precisar encolher — reavaliados também no
+ *  resize (a largura do card muda, então o que cabia pode deixar de caber). */
+function ajustarFontesDashboard() {
+    ['totalEntradas', 'totalSaidas', 'balanco', 'gastoDiario', 'miniProximos']
+        .forEach(id => ajustarFonteParaCaber(document.getElementById(id)));
+}
+
+/**
  * Atualiza card de resumo
  */
 function atualizarResumo() {
     const resumo = obterResumoFormatado();
-    
+
     const totalEntradasEl = document.querySelector(SELECTORS.totalEntradas);
     const totalSaidasEl = document.querySelector(SELECTORS.totalSaidas);
     const balancoEl = document.querySelector(SELECTORS.balanco);
-    
+
     if (totalEntradasEl) totalEntradasEl.textContent = resumo.entradas;
     if (totalSaidasEl) totalSaidasEl.textContent = resumo.saidas;
 
@@ -169,6 +192,10 @@ function atualizarResumo() {
     setMini('miniSaidas', estadoApp.resumo.saidas);
     setMini('miniBalanco', estadoApp.resumo.balanco);
     setMini('miniGasto', gastoDiarioValor);
+
+    // Depois do texto assentado (e do layout dos cards, que só é conhecido
+    // após o DOM aplicar), reavalia se algum valor precisa encolher.
+    requestAnimationFrame(ajustarFontesDashboard);
 }
 
 /** Dias restantes do mês EXIBIDO (estadoApp.mesAtual), incluindo hoje.
