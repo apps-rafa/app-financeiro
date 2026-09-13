@@ -513,3 +513,101 @@
   display: block;
   -webkit-line-clamp: unset;
 }
+
+/* ============ Importar CSV ============ */
+.import-csv-upload { padding: .6rem 0; }
+.import-csv-contexto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: .8rem;
+  padding: .6rem 0;
+}
+.import-csv-contexto label {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.import-csv-contexto input {
+  padding: .35rem .5rem;
+  border: 1px solid var(--border-strong, #D1D5DB);
+  border-radius: var(--radius-sm);
+  font-size: .85rem;
+}
+.import-csv-ajuda {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  line-height: 1rem;
+  text-align: center;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--text-muted);
+  font-size: .68rem;
+  cursor: help;
+}
+.import-csv-resumo { font-size: .82rem; color: var(--text-muted); margin: .3rem 0 .6rem; }
+.import-csv-resumo .ok { color: var(--receita-text); font-weight: 700; }
+.import-csv-resumo .alerta { color: var(--despesa-text); font-weight: 700; }
+
+.import-csv-tabela-wrap {
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.import-csv-tabela { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.import-csv-tabela th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2, var(--surface));
+  text-align: left;
+  padding: .4rem .5rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.import-csv-tabela td {
+  padding: .35rem .5rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.import-csv-tabela select {
+  width: 100%;
+  max-width: 160px;
+  padding: .2rem .3rem;
+  font-size: .75rem;
+  border: 1px solid var(--border-strong, #D1D5DB);
+  border-radius: var(--radius-xs);
+}
+.import-csv-linha-revisar { background: color-mix(in srgb, var(--despesa-text) 8%, transparent); }
+.import-csv-linha-revisar select { border-color: var(--despesa-text); }
+.import-csv-desc {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.import-csv-tag-original { font-style: italic; opacity: .7; }
+.chip-tipo {
+  display: inline-block;
+  padding: .05rem .4rem;
+  border-radius: 999px;
+  font-size: .68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.chip-tipo--entradas { background: var(--receita-bg); color: var(--receita-text); }
+.chip-tipo--saidas { background: var(--despesa-bg); color: var(--despesa-text); }
+
+.import-csv-acoes {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  margin-top: .7rem;
+}
+.import-csv-acoes .btn-submit { width: auto; padding: .55rem 1.1rem; font-size: .85rem; }
+.import-csv-bloqueado { font-size: .78rem; color: var(--despesa-text); }
+.import-csv-progresso { font-size: .8rem; color: var(--text-muted); margin-top: .5rem; }

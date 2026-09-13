@@ -53,6 +53,7 @@ async function carregarAbaMenus() {
         <button class="subtab" data-sub="met">Métodos de pagamento</button>
         <button class="subtab" data-sub="rec">Recorrências</button>
         <button class="subtab" data-sub="fer">Feriados</button>
+        <button class="subtab" data-sub="csv">Importar CSV</button>
         <button type="button" class="btn-fechar-form btn-fechar-aba" title="Fechar" aria-label="Fechar">&times;</button>
       </div>
 
@@ -159,6 +160,8 @@ async function carregarAbaMenus() {
         </details>`).join('')}
       </div>
 
+      <div class="menu-section" data-sub="csv" hidden id="secImportarCSV"></div>
+
     </div>
   `;
 
@@ -186,6 +189,8 @@ async function carregarAbaMenus() {
       if (typeof atualizarUI === 'function') atualizarUI();
     });
   }
+
+  if (typeof iniciarImportarCSV === 'function') iniciarImportarCSV();
 }
 
 let feriadosAnoView = new Date().getFullYear();
