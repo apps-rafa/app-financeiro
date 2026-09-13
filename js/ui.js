@@ -515,17 +515,20 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
     const resto = transacoes.filter(t => !conhecidos.has(chaveDe(t))).sort(_porDataDesc);
     if (resto.length) grupos.push(['Outros', resto]);
 
+    const totalGeral = grupos.reduce((s, [, itens]) => s + totalGrupo(itens), 0);
     const abertos = _lerAbertosRecGrupo(container);
 
     container.innerHTML = grupos.map(([tipoRec, itens]) => {
         const rotulo = (typeof rotuloRecorrencia === 'function') ? rotuloRecorrencia(tipoRec, ehDespesa) : tipoRec;
         const c = cores[tipoRec] || corPadraoChip(tipoRec);
+        const total = totalGrupo(itens);
+        const pct = totalGeral ? Math.round((total / totalGeral) * 100) : 0;
         return `
         <details class="rec-grupo" data-nome="${tipoRec.replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[tipoRec] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${rotulo}</span>
             <span class="rec-grupo-contagem">${itens.length}</span>
-            <span class="rec-grupo-total">${formatarMoeda(totalGrupo(itens))}</span>
+            <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${pct}%` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
             ${itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}

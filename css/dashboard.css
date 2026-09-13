@@ -79,8 +79,9 @@
 /* Linha "ponta a ponta" separando o total (sem rótulo — só o valor,
    alinhado à direita) das 2 linhas de cima. */
 .card-linhas .linha-sep {
+    display: block;
     border-top: 1px solid currentColor;
-    opacity: 0.45;
+    opacity: 0.3;
     margin: 0.2rem 0 0.05rem;
 }
 .card-linhas .linha.total {
@@ -250,7 +251,8 @@
 /* Card "Gasto diário" */
 .summary-card .sub {
   margin: .2rem 0 0;
-  font-size: clamp(.8rem, 8.5cqw, 1.2rem);
+  font-size: clamp(.85rem, 9cqw, 1.3rem);
+  white-space: nowrap;
   opacity: .7;
 }
 .summary-card.gasto-diario {
