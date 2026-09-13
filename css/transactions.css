@@ -30,6 +30,16 @@
    método / categoria / ordem cronológica — sempre numa linha só (a fonte
    encolhe pra caber; "Ordem cronológica", a mais longa, é quem mais aperta
    em telas estreitas). */
+/* Linha com o filtro de modo + o "×" de fechar a aba (mesmo botão do
+   formulário de lançamento) ao lado. */
+.modo-lista-linha {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0 0 var(--spacing-md);
+}
+.modo-lista-linha .modo-lista { flex: 1 1 auto; margin: 0; min-width: 0; }
+
 .modo-lista {
     display: flex;
     flex-wrap: nowrap;

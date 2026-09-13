@@ -3,13 +3,13 @@
  * Formulário de transações e inputs
  */
 
+/* Sem "caixa" própria — o formulário fica direto no conteúdo da aba,
+   igual às outras páginas (Receitas/Despesas/Próximas não têm essa
+   moldura extra ao redor). */
 .form-transacao {
-    background: white;
-    padding: 1.25rem;
-    border-radius: var(--radius);
-    border: 1px solid var(--light);
-    box-shadow: var(--shadow-sm);
-    position: relative;
+    background: none;
+    border: none;
+    box-shadow: none;
 }
 
 /* Título + Despesa/Receita + "×", tudo numa linha só e alinhado ao centro

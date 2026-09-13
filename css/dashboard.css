@@ -54,7 +54,7 @@
     grid-column: 1;
     text-align: right;
     white-space: nowrap;
-    font-size: clamp(0.8rem, 11cqw, 1.6rem);
+    font-size: clamp(0.8rem, 14cqw, 1.9rem);
     font-weight: var(--font-weight-bold);
 }
 .card-linhas .linha i {
@@ -64,7 +64,7 @@
     font-style: italic;
     opacity: 0.7;
     text-align: left;
-    font-size: clamp(0.6rem, 6cqw, 1rem);
+    font-size: clamp(0.6rem, 7.5cqw, 1.15rem);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -77,7 +77,7 @@
     margin: 0.2rem 0 0.05rem;
 }
 .card-linhas .linha.total .amount {
-    font-size: clamp(1.3rem, 17cqw, 2.6rem);
+    font-size: clamp(1.3rem, 21cqw, 3.1rem);
 }
 
 .summary-card {
@@ -143,6 +143,21 @@
 
 .summary-card.saidas:hover {
     box-shadow: 0 8px 16px rgba(239, 68, 68, 0.2);
+}
+
+/* Selecionado (aba aberta): mesmo padrão de "+ Lançamento"/"Próximos"
+   quando ativos — preenchimento mais forte + contorno na mesma cor. */
+.summary-card.entradas.active {
+    background-color: color-mix(in srgb, var(--receita-text) 18%, var(--receita-bg));
+    border-color: var(--receita-text);
+    outline: 2px solid var(--receita-text);
+    outline-offset: -2px;
+}
+.summary-card.saidas.active {
+    background-color: color-mix(in srgb, var(--despesa-text) 18%, var(--despesa-bg));
+    border-color: var(--despesa-text);
+    outline: 2px solid var(--despesa-text);
+    outline-offset: -2px;
 }
 
 /* Card Balanço */
