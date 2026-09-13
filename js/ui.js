@@ -300,9 +300,23 @@ const MODOS_LISTA_ENTRADAS = ['cronologica', 'recorrencia', 'categoria'];
 let modoListaEntradas = _modoListaSalvo('modoListaEntradas', MODOS_LISTA_ENTRADAS);
 
 function definirModoListaEntradas(modo) {
-    modoListaEntradas = MODOS_LISTA_ENTRADAS.includes(modo) ? modo : 'recorrencia';
+    modoListaEntradas = MODOS_LISTA_ENTRADAS.includes(modo) ? modo : 'cronologica';
     try { localStorage.setItem('modoListaEntradas', modoListaEntradas); } catch (_) {}
     atualizarEntradasLista();
+}
+
+/** Sempre que Receita/Despesa/Próximas fecham ou abrem, o filtro volta pro
+ *  padrão (Cronológica) em vez de manter o modo da última vez que a aba
+ *  esteve aberta. */
+function resetarModosListaParaCronologica() {
+    modoListaEntradas = 'cronologica';
+    modoListaSaidas = 'cronologica';
+    modoListaProximas = 'cronologica';
+    try {
+        localStorage.setItem('modoListaEntradas', 'cronologica');
+        localStorage.setItem('modoListaSaidas', 'cronologica');
+        localStorage.setItem('modoListaProximas', 'cronologica');
+    } catch (_) {}
 }
 
 function atualizarEntradasLista() {
@@ -318,7 +332,7 @@ const MODOS_LISTA_SAIDAS = ['cronologica', 'recorrencia', 'metodo', 'categoria']
 let modoListaSaidas = _modoListaSalvo('modoListaSaidas', MODOS_LISTA_SAIDAS);
 
 function definirModoListaSaidas(modo) {
-    modoListaSaidas = MODOS_LISTA_SAIDAS.includes(modo) ? modo : 'recorrencia';
+    modoListaSaidas = MODOS_LISTA_SAIDAS.includes(modo) ? modo : 'cronologica';
     try { localStorage.setItem('modoListaSaidas', modoListaSaidas); } catch (_) {}
     atualizarSaidasLista();
 }
@@ -914,8 +928,8 @@ let tipoProximasAtual = (() => {
 
 // Modos de agrupamento disponíveis em Próximas — "Por método" só faz
 // sentido pra despesa (receita não usa esse campo).
-const MODOS_PROXIMAS_SAIDAS = ['recorrencia', 'metodo', 'categoria', 'cronologica'];
-const MODOS_PROXIMAS_ENTRADAS = ['recorrencia', 'categoria', 'cronologica'];
+const MODOS_PROXIMAS_SAIDAS = ['cronologica', 'recorrencia', 'metodo', 'categoria'];
+const MODOS_PROXIMAS_ENTRADAS = ['cronologica', 'recorrencia', 'categoria'];
 const ROTULOS_MODO_PROXIMAS = {
     recorrencia: 'Recorrência', metodo: 'Método', categoria: 'Categoria', cronologica: 'Cronológica'
 };
@@ -935,7 +949,7 @@ function definirTipoProximas(tipo) {
 
 function definirModoListaProximas(modo) {
     const validos = _modosProximasValidos();
-    modoListaProximas = validos.includes(modo) ? modo : 'recorrencia';
+    modoListaProximas = validos.includes(modo) ? modo : 'cronologica';
     try { localStorage.setItem('modoListaProximas', modoListaProximas); } catch (_) {}
     atualizarProximasTransacoes();
 }
@@ -947,7 +961,7 @@ function _renderBotoesModoProximas() {
     const el = document.getElementById('modoProximas');
     if (!el) return;
     const validos = _modosProximasValidos();
-    if (!validos.includes(modoListaProximas)) modoListaProximas = 'recorrencia';
+    if (!validos.includes(modoListaProximas)) modoListaProximas = 'cronologica';
     el.innerHTML = validos.map(m =>
         `<button type="button" class="modo-btn${m === modoListaProximas ? ' active' : ''}" data-modo="${m}">${ROTULOS_MODO_PROXIMAS[m]}</button>`
     ).join('');
