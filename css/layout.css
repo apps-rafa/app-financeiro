@@ -37,19 +37,13 @@ header.header {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
 }
-/* Calendário: tira de meses (JAN..DEZ) + linha do ano, encostado à esquerda */
+/* Calendário: tudo numa linha só — setas, meses, setas, ano */
 .cal-nav {
     flex: 1 1 auto;
     min-width: 0;
     display: flex;
-    flex-direction: column;
-    gap: 3px;
-}
-.meses-strip {
-    display: flex;
     align-items: center;
     gap: 5px;
-    min-width: 0;
 }
 .meses-lista {
     display: flex;
@@ -76,17 +70,21 @@ header.header {
 .mes-btn.selecionado { opacity: 1; }
 .mes-btn.hoje { text-decoration: underline; text-underline-offset: 2px; }
 
+/* Ano: à direita dos meses, na mesma linha */
 .ano-nav {
+    flex: none;
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: .4rem;
+    gap: .3rem;
+    margin-left: .3rem;
+    padding-left: .5rem;
+    border-left: 1px solid var(--border);
 }
 .ano-atual {
     font-size: .68rem;
     font-weight: var(--font-weight-bold);
     color: var(--text-muted);
-    min-width: 2.6rem;
+    min-width: 2.4rem;
     text-align: center;
 }
 
@@ -110,6 +108,7 @@ header.header {
     cursor: pointer;
 }
 .seta-lateral:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
+.seta-lateral:disabled { opacity: .3; cursor: default; }
 .seta-lateral[hidden] { display: none; }
 
 /* Toggle "Configurações" encostado à direita */
