@@ -51,10 +51,15 @@ async function carregarAbaMenus() {
       <div class="subtabs" role="tablist">
         <div class="subtabs-itens">
           <button class="subtab active" data-sub="cat">Categorias</button>
-          <button class="subtab" data-sub="met">Métodos de pagamento</button>
+          <button class="subtab" data-sub="met">
+            <span class="met-full">Formas de pagamento</span>
+            <span class="met-media">Formas de pgto.</span>
+            <span class="met-curto">Pgtos.</span>
+          </button>
           <button class="subtab" data-sub="rec">Recorrências</button>
           <button class="subtab" data-sub="fer">Feriados</button>
           <button class="subtab" data-sub="importar">Importar</button>
+          <button class="subtab" data-sub="dados">Dados</button>
         </div>
         <button type="button" class="btn-fechar-form btn-fechar-aba" title="Fechar" aria-label="Fechar">&times;</button>
       </div>
@@ -166,10 +171,14 @@ async function carregarAbaMenus() {
         <div class="modo-lista importar-toggle" role="tablist">
           <button type="button" class="modo-btn importar-toggle-btn active" data-importar-modo="csv">CSV</button>
           <button type="button" class="modo-btn importar-toggle-btn" data-importar-modo="pdf">PDF</button>
+          <button type="button" class="modo-btn importar-toggle-btn" data-importar-modo="backup">Backup</button>
         </div>
         <div id="secImportarCSV" data-importar-modo="csv"></div>
         <div id="secConciliarPDF" data-importar-modo="pdf" hidden></div>
+        <div id="secImportarBackup" data-importar-modo="backup" hidden></div>
       </div>
+
+      <div class="menu-section" data-sub="dados" hidden id="secDados"></div>
 
     </div>
   `;
@@ -201,6 +210,8 @@ async function carregarAbaMenus() {
 
   if (typeof iniciarImportarCSV === 'function') iniciarImportarCSV();
   if (typeof iniciarConciliarPDF === 'function') iniciarConciliarPDF();
+  if (typeof iniciarImportarBackup === 'function') iniciarImportarBackup();
+  if (typeof iniciarDados === 'function') iniciarDados();
 
   // Sub-toggle "CSV" / "PDF" dentro da sub-aba "Importar"
   document.querySelectorAll('.importar-toggle-btn').forEach(btn => {

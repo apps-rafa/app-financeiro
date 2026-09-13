@@ -24,7 +24,7 @@
   flex: 1 1 auto;
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
   gap: 0.4rem;
 }
 /* Abaixo de ~480px o auto-fill fica instável (o ponto exato em que cabem 2
@@ -33,6 +33,18 @@
    a única divisão sem "viúvo" pros 5 botões atuais (3+2). */
 @media (max-width: 480px) {
   .subtabs-itens { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Rótulo do subtab "Formas de pagamento" encolhe em 2 níveis conforme o
+   espaço aperta, em vez de quebrar em 2 linhas feio ou truncar. */
+.subtab .met-media, .subtab .met-curto { display: none; }
+@media (max-width: 640px) {
+  .subtab .met-full { display: none; }
+  .subtab .met-media { display: inline; }
+}
+@media (max-width: 400px) {
+  .subtab .met-media { display: none; }
+  .subtab .met-curto { display: inline; }
 }
 .subtabs .subtab {
   min-width: 0;
@@ -687,3 +699,13 @@
   border-radius: var(--radius-sm);
   font-size: .82rem;
 }
+
+/* ============ Dados (backup / apagar tudo) ============ */
+.dados-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .7rem;
+  margin-top: .8rem;
+}
+.dados-acoes .btn-submit { width: auto; padding: .55rem 1.1rem; font-size: .85rem; }
