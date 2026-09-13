@@ -37,6 +37,14 @@ async function carregarAbaMenus() {
     return;
   }
 
+  // innerHTML é recriado do zero a cada chamada (adicionar/reordenar item
+  // chama recarregarMenus()) — sem isso, os <details> das colunas de
+  // categoria e dos grupos de feriado voltavam sempre pro estado fechado
+  // (padrão de um <details> novo), mesmo que o usuário tivesse aberto.
+  const estadoAberto = {};
+  document.querySelectorAll(`${SELECTORS.menusContainer} details[data-cat-tipo], ${SELECTORS.menusContainer} details[data-fer-cat]`)
+    .forEach(d => { estadoAberto[d.dataset.catTipo || `fer-${d.dataset.ferCat}`] = d.open; });
+
   document.querySelector(SELECTORS.menusContainer).innerHTML = `
     <div class="menus-gerenciamento">
 
@@ -48,7 +56,7 @@ async function carregarAbaMenus() {
       </div>
 
       <div class="menu-section menu-section--cols" data-sub="cat">
-        <details class="cat-coluna">
+        <details class="cat-coluna" data-cat-tipo="entradas" ${estadoAberto.entradas ? 'open' : ''}>
           <summary class="cat-coluna-topo">
             <span class="cat-subgrupo-titulo"><svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg> Receita</span>
             <button type="button" class="h3-add h3-az" onclick="event.preventDefault();event.stopPropagation();ordenarAlfabetico('categoriasReceita')" title="Ordenar de A a Z">A→Z</button>
@@ -56,7 +64,7 @@ async function carregarAbaMenus() {
           </summary>
           <div class="menu-list" id="categoriasReceitaList"></div>
         </details>
-        <details class="cat-coluna">
+        <details class="cat-coluna" data-cat-tipo="saidas" ${estadoAberto.saidas ? 'open' : ''}>
           <summary class="cat-coluna-topo">
             <span class="cat-subgrupo-titulo"><svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--despesa-text)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg> Despesa</span>
             <button type="button" class="h3-add h3-az" onclick="event.preventDefault();event.stopPropagation();ordenarAlfabetico('categoriasDespesa')" title="Ordenar de A a Z">A→Z</button>
@@ -141,7 +149,7 @@ async function carregarAbaMenus() {
           Municipais e avulsos você cadastra em "+".
         </p>
         ${['nacional', 'estadual', 'municipal'].map(cat => `
-        <details class="fer-grupo" data-fer-cat="${cat}">
+        <details class="fer-grupo" data-fer-cat="${cat}" ${estadoAberto[`fer-${cat}`] ? 'open' : ''}>
           <summary>
             <span class="fer-grupo-nome">${CATEGORIA_FERIADO_ROTULO[cat]}</span>
             <span class="fer-grupo-contagem" data-fer-count="${cat}">0</span>
@@ -358,12 +366,18 @@ function renderizarItemsMenu(tipo, containerId, itens, grupo) {
         const linha2 = [`Vira ${item.diaFechamento || '?'}`];
         if (item.melhorDiaCompra) linha2.push(`Melhor dia ${item.melhorDiaCompra}`);
         sub = `Vcto ${item.diaVencimento || '?'}<br>${linha2.join(' · ')}`;
-      } else if (item.metodoKind === 'PIX/Débito') {
-        titulo = item.banco || 'PIX/Débito';
-        sub = item.banco ? 'PIX/Débito' : '';
-      } else {
+      } else if (item.metodoKind === 'Dinheiro' || (!item.metodoKind && item.nome === 'Dinheiro')) {
         titulo = 'Dinheiro';
         sub = '';
+      } else {
+        // PIX/Débito — ou item legado com metodo_kind nulo (coluna adicionada
+        // depois do seed original): sem isso, qualquer kind que não fosse
+        // exatamente "Crédito" ou "PIX/Débito" caía aqui e virava "Dinheiro"
+        // na tela, mesmo sendo outro método (o nome real no banco não mudava,
+        // só a legenda mostrada aqui — por isso o dropdown do lançamento,
+        // que usa rotuloMetodo(), continuava mostrando o nome certo).
+        titulo = item.banco || item.nome || 'PIX/Débito';
+        sub = item.banco ? (item.metodoKind || 'PIX/Débito') : '';
       }
     }
 
@@ -600,7 +614,11 @@ function abrirEdicaoInline(row, id, tipo) {
   row.querySelector('.edt-salvar').onclick = async () => {
     const banco = row.querySelector('.edt-banco').value.trim();
     if (ehCredito && !banco) return mostrarNotificacao('Informe o banco', 'info');
-    const campos = { banco, nome: banco ? `${item.metodoKind} — ${banco}` : item.metodoKind };
+    // metodoKind pode ser nulo em itens antigos (coluna adicionada depois do
+    // seed original) — sem esse fallback pro nome atual, salvar sem mudar o
+    // banco gravava nome:null e apagava o método.
+    const kind = item.metodoKind || item.nome;
+    const campos = { banco, nome: banco ? `${kind} — ${banco}` : kind };
     if (ehCredito) {
       const fechRaw = row.querySelector('.edt-fech').value.trim();
       const fech = parseInt(fechRaw, 10);

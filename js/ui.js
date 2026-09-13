@@ -460,7 +460,14 @@ function onListaTransacaoClick(e) {
     if (!el) return;
     const id = Number(el.dataset.id);
 
-    const trans = [...estadoApp.transacoes.entradas, ...estadoApp.transacoes.saidas]
+    // estadoApp.transacoes só carrega a COMPETÊNCIA do mês em exibição; a
+    // lista de "Próximos" filtra por DATA, não por competência — um tipo
+    // como "Último dia útil do mês anterior" sempre tem data num mês e
+    // competência no seguinte, então um item dela pode não estar em
+    // estadoApp.transacoes. Sem isso, confirmar/editar/excluir a partir de
+    // "Próximos" não achava a transação e o clique não fazia nada.
+    const ctxProximas = (typeof _proximasCtx !== 'undefined' && _proximasCtx) ? _proximasCtx : [];
+    const trans = [...estadoApp.transacoes.entradas, ...estadoApp.transacoes.saidas, ...ctxProximas.map(c => c.trans)]
         .find(t => t.id === id);
     if (!trans) return;
 
@@ -472,7 +479,9 @@ function onListaTransacaoClick(e) {
             quitarParcelamento(id, el.checked);
             break;
         case 'editar-trans': {
-            const tipo = estadoApp.transacoes.entradas.some(t => t.id === id) ? 'entradas' : 'saidas';
+            const viaProximasEntrada = ctxProximas.some(c => c.trans.id === id && c.tipoUI === 'entrada');
+            const tipo = estadoApp.transacoes.entradas.some(t => t.id === id) || viaProximasEntrada
+                ? 'entradas' : 'saidas';
             iniciarEdicaoTransacao(trans, tipo);
             break;
         }
