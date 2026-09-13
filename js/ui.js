@@ -614,27 +614,67 @@ async function atualizarGrafico() {
     container.innerHTML = html;
 }
 
-// 'recorrencia' (padrão) | 'metodo' | 'categoria' | 'cronologica' — visão da aba Próximas
-const MODOS_LISTA_PROXIMAS = ['recorrencia', 'metodo', 'categoria', 'cronologica'];
-let modoListaProximas = _modoListaSalvo('modoListaProximas', MODOS_LISTA_PROXIMAS);
+// "Despesa" (padrão) | "Receita" — qual tipo a aba Próximas está mostrando
+let tipoProximasAtual = (() => {
+    try {
+        const salvo = localStorage.getItem('tipoProximas');
+        return salvo === 'entradas' ? 'entradas' : 'saidas';
+    } catch (_) { return 'saidas'; }
+})();
+
+// Modos de agrupamento disponíveis em Próximas — "Por método" só faz
+// sentido pra despesa (receita não usa esse campo).
+const MODOS_PROXIMAS_SAIDAS = ['recorrencia', 'metodo', 'categoria', 'cronologica'];
+const MODOS_PROXIMAS_ENTRADAS = ['recorrencia', 'categoria', 'cronologica'];
+const ROTULOS_MODO_PROXIMAS = {
+    recorrencia: 'Por recorrência', metodo: 'Por método', categoria: 'Por categoria', cronologica: 'Cronológica'
+};
+function _modosProximasValidos() {
+    return tipoProximasAtual === 'entradas' ? MODOS_PROXIMAS_ENTRADAS : MODOS_PROXIMAS_SAIDAS;
+}
+
+let modoListaProximas = _modoListaSalvo('modoListaProximas', MODOS_PROXIMAS_SAIDAS);
+
+/** Troca entre "Despesa"/"Receita" em Próximas — refaz os botões de modo
+ *  (o conjunto válido muda: receita não tem "Por método") e recarrega. */
+function definirTipoProximas(tipo) {
+    tipoProximasAtual = tipo === 'entradas' ? 'entradas' : 'saidas';
+    try { localStorage.setItem('tipoProximas', tipoProximasAtual); } catch (_) {}
+    atualizarProximasTransacoes();
+}
 
 function definirModoListaProximas(modo) {
-    modoListaProximas = MODOS_LISTA_PROXIMAS.includes(modo) ? modo : 'recorrencia';
+    const validos = _modosProximasValidos();
+    modoListaProximas = validos.includes(modo) ? modo : 'recorrencia';
     try { localStorage.setItem('modoListaProximas', modoListaProximas); } catch (_) {}
     atualizarProximasTransacoes();
+}
+
+/** Redesenha os botões de modo pro tipo atual (o conjunto de opções muda
+ *  entre Despesa e Receita) e corrige modoListaProximas se ele não existir
+ *  mais nesse conjunto (ex.: estava em "Por método" e trocou pra Receita). */
+function _renderBotoesModoProximas() {
+    const el = document.getElementById('modoProximas');
+    if (!el) return;
+    const validos = _modosProximasValidos();
+    if (!validos.includes(modoListaProximas)) modoListaProximas = 'recorrencia';
+    el.innerHTML = validos.map(m =>
+        `<button type="button" class="modo-btn${m === modoListaProximas ? ' active' : ''}" data-modo="${m}">${ROTULOS_MODO_PROXIMAS[m]}</button>`
+    ).join('');
 }
 
 const _porDataAsc = (a, b) => new Date(a.data) - new Date(b.data);
 
 /**
- * Atualiza lista de próximas transações
+ * Atualiza lista de próximas transações (só do tipo selecionado — Despesa ou Receita)
  */
 async function atualizarProximasTransacoes() {
     const container = document.querySelector(SELECTORS.proximasLista);
     if (!container) return;
 
-    document.querySelectorAll('#modoProximas .modo-btn').forEach(b =>
-        b.classList.toggle('active', b.dataset.modo === modoListaProximas));
+    document.querySelectorAll('#tipoProximas .tipo-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.tipo === tipoProximasAtual));
+    _renderBotoesModoProximas();
 
     try {
         // Próximas do MÊS em exibição
@@ -642,13 +682,13 @@ async function atualizarProximasTransacoes() {
         const mes = mRef.getMonth() + 1, ano = mRef.getFullYear();
         const elTit = document.getElementById('proximasTitulo');
         if (elTit) elTit.textContent = `Próximas em ${obterMesAnoFormatado(mRef)}`;
-        const proximasEntradas = await carregarProximas('entradas', mes, ano);
-        const proximasSaidas = await carregarProximas('saidas', mes, ano);
 
-        const proximas = [...proximasEntradas, ...proximasSaidas]
-            .sort((a, b) => new Date(a.data) - new Date(b.data));
+        const ehDespesa = tipoProximasAtual !== 'entradas';
+        const proximas = await carregarProximas(tipoProximasAtual, mes, ano);
+        const tipoUI = ehDespesa ? 'saida' : 'entrada';
 
-        const faturasHTML = renderFaturasCartao();
+        // Faturas de cartão só fazem sentido olhando pras despesas
+        const faturasHTML = ehDespesa ? renderFaturasCartao() : '';
 
         if (proximas.length === 0) {
             container.innerHTML = faturasHTML
@@ -660,7 +700,6 @@ async function atualizarProximasTransacoes() {
 
         // Mesmo box de Receitas/Despesas: dia da ocorrência + valor, expansível
         _proximasCtx = proximas.map(trans => {
-            const tipoUI = proximasEntradas.some(t => t.id === trans.id) ? 'entrada' : 'saida';
             const dias = calcularDiasAte(trans.data);
             const quando = dias <= 0 ? 'hoje' : `em ${dias}d`;
             // Mesmo lançamento que aparece em Receitas/Despesas — os botões
