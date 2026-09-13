@@ -147,11 +147,10 @@ input.campo-travado,
 
 /* "+ Lançamento": botão principal, sempre em destaque; "+" com cor própria.
    Precisa dos 2 estados (igual Despesas/Receitas/Próximos embaixo) pro
-   usuário ver se o formulário tá aberto ou não — por isso .active leva um
-   contorno branco por cima do mesmo gradiente, em vez de ficar idêntico
-   ao estado fechado. */
-.tab-btn[data-tab="adicionar"],
-.tab-btn[data-tab="adicionar"]:hover {
+   usuário ver se o formulário tá aberto ou não — aqui isso é a opacidade
+   do preenchimento (mesmo gradiente sempre): apagado em repouso, cheio
+   quando aberto — mesma lógica das setas do calendário. */
+.tab-btn[data-tab="adicionar"] {
     color: #fff;
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     border-color: var(--primary);
@@ -159,16 +158,11 @@ input.campo-travado,
     padding: 0.7rem;
     font-size: var(--font-size-base);
     outline: none;
+    opacity: .6;
 }
+.tab-btn[data-tab="adicionar"]:hover { opacity: .8; }
 .tab-btn[data-tab="adicionar"].active {
-    color: #fff;
-    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
-    border-color: #fff;
-    font-weight: 700;
-    padding: 0.7rem;
-    font-size: var(--font-size-base);
-    outline: 2px solid #fff;
-    outline-offset: -3px;
+    opacity: 1;
 }
 .tab-mais {
     color: #FFD54A;

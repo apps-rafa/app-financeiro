@@ -209,8 +209,9 @@
 #recorrenciaBloco > .form-group { margin: 0; min-width: 0; }
 #recorrenciaBloco > #recorrenciaGroup { flex: 1 1 5rem; }
 #recorrenciaBloco > .campo-mini { flex: 0 1 5rem; }
-/* Boxes de 2 dígitos: menor largura possível (Vcto., Qtd., Dia pg., Mês de ref.) */
-#recorrenciaBloco > .campo-mini--xs { flex: 0 0 2.6rem; }
+/* Boxes de 2 dígitos: menor largura possível (Vcto., Qtd., Dia pg., Mês de ref.)
+   — um pouco mais largos que antes pra caber a setinha ▲▼ ao lado. */
+#recorrenciaBloco > .campo-mini--xs { flex: 0 0 3.3rem; }
 /* "Dia pgto." (receita) precisa de um pouco mais de largura que "Vcto." */
 #recorrenciaBloco > .campo-mini--wide { flex: 0 0 4.1rem; }
 .campo-mini--xs input {
@@ -221,6 +222,30 @@
 #parcelas { -moz-appearance: textfield; }
 #parcelas::-webkit-inner-spin-button,
 #parcelas::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* "Qtd." e "vcto.": input + setinhas ▲▼ empilhadas (aumentar/diminuir),
+   mesmo desenho da setinha de reordenar em Configurações. */
+.campo-com-stepper {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+}
+.campo-com-stepper input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.stepper-v {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: none;
+}
+.stepper-v .btn-mini-seta {
+    width: 14px;
+    min-width: 14px;
+    height: 11px;
+    font-size: 7px;
+}
 #recorrenciaBloco > #diaSemanaGroup { flex: 0 1 5.5rem; }  /* "s/ dia fixo" */
 
 /* Campo "Valor" que se divide em 2 (valor informado + total calculado) */

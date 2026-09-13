@@ -251,11 +251,23 @@
                             </div>
                             <div class="form-group campo-mini campo-mini--xs" id="parceleGroup" hidden>
                                 <label for="parcelas">Qtd.</label>
-                                <input type="text" id="parcelas" inputmode="numeric" maxlength="2" value="1" autocomplete="off">
+                                <div class="campo-com-stepper">
+                                    <input type="text" id="parcelas" inputmode="numeric" maxlength="2" value="1" autocomplete="off">
+                                    <div class="stepper-v">
+                                        <button type="button" class="btn-icon btn-mini-seta" data-stepper="parcelas" data-dir="1" tabindex="-1" title="Aumentar">▲</button>
+                                        <button type="button" class="btn-icon btn-mini-seta" data-stepper="parcelas" data-dir="-1" tabindex="-1" title="Diminuir">▼</button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="form-group campo-mini campo-mini--xs" id="diaRecorrenciaGroup" hidden>
                                 <label for="diaRecorrencia">vcto.</label>
-                                <input type="text" id="diaRecorrencia" inputmode="numeric" maxlength="2" placeholder="dia" autocomplete="off">
+                                <div class="campo-com-stepper">
+                                    <input type="text" id="diaRecorrencia" inputmode="numeric" maxlength="2" placeholder="dia" autocomplete="off">
+                                    <div class="stepper-v">
+                                        <button type="button" class="btn-icon btn-mini-seta" data-stepper="diaRecorrencia" data-dir="1" data-min="1" data-max="31" tabindex="-1" title="Aumentar">▲</button>
+                                        <button type="button" class="btn-icon btn-mini-seta" data-stepper="diaRecorrencia" data-dir="-1" data-min="1" data-max="31" tabindex="-1" title="Diminuir">▼</button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="form-group campo-mini" id="diaSemanaGroup" hidden>
                                 <label for="diaSemana">dia</label>
