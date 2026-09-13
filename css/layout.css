@@ -68,7 +68,7 @@ header.header {
        baixo do centro da própria caixa; como a caixa é centralizada com as
        setas laterais via align-items:center, isso deixava o mês visualmente
        mais baixo que a seta. Sobe de volta só a diferença dos padding. */
-    margin-top: calc(-1 * (.5rem - .15rem) / 2);
+    margin-top: -5px;
     border-radius: 3px;
     color: var(--text);
     opacity: .45;
