@@ -261,12 +261,13 @@ function _renderListaAgrupadaPorTotal(container, transacoes, tipoUI, msgVazia, {
         .sort((a, b) => b[2] - a[2]);
 
     const totalGeral = grupos.reduce((s, g) => s + g[2], 0);
+    const abertos = _lerAbertosRecGrupo(container);
 
     container.innerHTML = grupos.map(([nome, itens, total]) => {
         const c = cores[nome] || corPadraoChip(nome);
         const pct = totalGeral ? Math.round((total / totalGeral) * 100) : 0;
         return `
-        <details class="rec-grupo" style="--cor-rec:${c}">
+        <details class="rec-grupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[nome] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
             <span class="rec-grupo-contagem">${itens.length}</span>
@@ -318,6 +319,18 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
 
 const _porDataDesc = (a, b) => new Date(b.data) - new Date(a.data);
 
+/** Estado aberto/fechado de cada <details class="rec-grupo"> do container,
+ *  por nome do grupo — usado pra não fechar tudo sozinho toda vez que a
+ *  lista é re-renderizada (ex.: depois de "quitar" uma parcela). Fechado
+ *  por padrão (grupo novo == não visto antes). */
+function _lerAbertosRecGrupo(container) {
+    const abertos = {};
+    container?.querySelectorAll('details.rec-grupo[data-nome]').forEach(d => {
+        abertos[d.dataset.nome] = d.open;
+    });
+    return abertos;
+}
+
 /**
  * Renderiza a lista de um tipo em subgrupos recolhíveis por tipo de recorrência.
  * Cada subgrupo mostra o total; começa recolhido (como as categorias na Config).
@@ -346,11 +359,13 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
     const resto = transacoes.filter(t => !conhecidos.has(chaveDe(t))).sort(_porDataDesc);
     if (resto.length) grupos.push(['Outros', resto]);
 
+    const abertos = _lerAbertosRecGrupo(container);
+
     container.innerHTML = grupos.map(([tipoRec, itens]) => {
         const rotulo = (typeof rotuloRecorrencia === 'function') ? rotuloRecorrencia(tipoRec, ehDespesa) : tipoRec;
         const c = cores[tipoRec] || corPadraoChip(tipoRec);
         return `
-        <details class="rec-grupo" style="--cor-rec:${c}">
+        <details class="rec-grupo" data-nome="${tipoRec.replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[tipoRec] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${rotulo}</span>
             <span class="rec-grupo-contagem">${itens.length}</span>
@@ -456,6 +471,9 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
         + (trans.pendente ? ' pendente' : '')
         + (trans.quitada ? ' quitada' : '');
 
+    // Descrição força quebra pra linha própria (flex-basis:100% no CSS) —
+    // assim editar/excluir ficam sempre ao lado do resto (dia/valor/chips),
+    // nunca "flutuando" entre a linha principal e a da descrição.
     return `
         <div class="${classes}" data-id="${trans.id}" data-tipo-transacao="${tipo === 'entrada' ? 'entradas' : 'saidas'}">
             ${lado}
@@ -464,11 +482,11 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
             ${quitarCheckbox}
             ${metaChip}
             ${catChip}
-            ${descTxt}
             ${quandoTag}
             ${tagPendente}
             ${quitadoTag}
             <div class="despesa-actions">${acoes}</div>
+            ${descTxt}
         </div>`;
 }
 
@@ -831,20 +849,21 @@ async function atualizarProximasTransacoes() {
             return { trans: { ...trans }, tipoUI, opts: { quando } };
         });
 
+        const abertos = _lerAbertosRecGrupo(container);
         const corpoHTML = modoListaProximas === 'metodo'
             ? _agruparProximasPorTotal(_proximasCtx, {
                 chaveDe: c => c.trans.metodo, semChave: 'Sem método',
                 cores: (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.metodo) || {},
-                extraOpts: { comRecorrenciaChip: true }
+                extraOpts: { comRecorrenciaChip: true }, abertos
             })
             : modoListaProximas === 'categoria'
             ? _agruparProximasPorTotal(_proximasCtx, {
                 chaveDe: c => c.trans.categoria, semChave: 'Sem categoria',
                 cores: (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.categoria) || {},
-                extraOpts: { semCategoriaChip: true }
+                extraOpts: { semCategoriaChip: true }, abertos
             })
             : modoListaProximas === 'recorrencia'
-            ? _agruparProximasPorRecorrencia(_proximasCtx)
+            ? _agruparProximasPorRecorrencia(_proximasCtx, abertos)
             : _proximasCtx.map(c => gerarHTMLTransacao(c.trans, c.tipoUI, c.opts)).join('');
 
         container.innerHTML = faturasHTML + corpoHTML;
@@ -858,7 +877,7 @@ async function atualizarProximasTransacoes() {
 /** "Próximas" agrupadas por método ou categoria (ordenado por total, maior
  *  primeiro) — mistura entrada/saída, então cada item usa o tipoUI/opts que
  *  já vêm prontos no seu próprio contexto (c.trans/c.tipoUI/c.opts). */
-function _agruparProximasPorTotal(ctxList, { chaveDe, semChave, cores, extraOpts }) {
+function _agruparProximasPorTotal(ctxList, { chaveDe, semChave, cores, extraOpts, abertos = {} }) {
     const valorDe = c => (c.trans.valorMes != null ? c.trans.valorMes : c.trans.valor) || 0;
     const mapa = new Map();
     ctxList.forEach(c => {
@@ -875,7 +894,7 @@ function _agruparProximasPorTotal(ctxList, { chaveDe, semChave, cores, extraOpts
         const c = cores[nome] || corPadraoChip(nome);
         const pct = totalGeral ? Math.round((total / totalGeral) * 100) : 0;
         return `
-        <details class="rec-grupo" style="--cor-rec:${c}">
+        <details class="rec-grupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[nome] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
             <span class="rec-grupo-contagem">${itens.length}</span>
@@ -891,7 +910,7 @@ function _agruparProximasPorTotal(ctxList, { chaveDe, semChave, cores, extraOpts
 /** "Próximas" agrupadas por tipo de recorrência, na ordem fixa de sempre
  *  (Pontual primeiro) — mesma ideia de renderListaAgrupada, mas por cima do
  *  contexto misto entrada/saída de _proximasCtx. */
-function _agruparProximasPorRecorrencia(ctxList) {
+function _agruparProximasPorRecorrencia(ctxList, abertos = {}) {
     const cores = (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.recorrencia) || {};
     const chaveDe = c => c.trans.tipoRecorrencia || 'Pontual';
     const ordem = ['Pontual', ...ORDEM_RECORRENCIA.filter(t => t !== 'Pontual')];
@@ -911,7 +930,7 @@ function _agruparProximasPorRecorrencia(ctxList) {
         const rotulo = (typeof rotuloRecorrencia === 'function') ? rotuloRecorrencia(tipoRec, false) : tipoRec;
         const c = cores[tipoRec] || corPadraoChip(tipoRec);
         return `
-        <details class="rec-grupo" style="--cor-rec:${c}">
+        <details class="rec-grupo" data-nome="${tipoRec.replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[tipoRec] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${rotulo}</span>
             <span class="rec-grupo-contagem">${itens.length}</span>

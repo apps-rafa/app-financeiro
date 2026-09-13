@@ -71,14 +71,8 @@
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: .3rem .5rem;
+    gap: .25rem .5rem;
     padding: .55rem var(--spacing-md);
-    /* espaço reservado pros ícones de editar/excluir, que ficam fora do
-       fluxo (posição absoluta) pra continuarem centralizados verticalmente
-       mesmo quando o resto do conteúdo quebra em 2+ linhas (ex.: descrição
-       longa) — dentro do flex normal, eles ficavam alinhados à última
-       linha quebrada, não ao centro do card inteiro. */
-    padding-right: 4.6rem;
     background: var(--light);
     border-left: 4px solid var(--secondary);
     border-radius: var(--radius-sm);
@@ -123,8 +117,11 @@
     white-space: nowrap;
 }
 
-/* Descrição — no fim da linha, discreta */
+/* Descrição — sempre na sua própria linha (flex-basis:100% força a quebra
+   mesmo quando o resto cabe numa linha só), discreta. Assim editar/excluir
+   (que ficam na linha principal) nunca "flutuam" entre duas linhas. */
 .despesa-desc {
+    flex: 1 0 100%;
     color: var(--text-muted);
     font-style: italic;
     font-size: .78rem;
@@ -376,33 +373,19 @@
         font-size: 0.7rem;
         padding: 0.15rem 0.4rem;
     }
-
-    .despesa-valor {
-        font-size: 1rem;
-    }
 }
 
-/* Ações por transação (editar / excluir): fora do fluxo, sempre
-   centralizadas verticalmente em relação ao card inteiro (ver comentário
-   no padding-right de .despesa-item). */
-.despesa-item { position: relative; }
+/* Ações por transação (editar / excluir): ficam no fluxo normal, na linha
+   principal (a descrição sempre quebra pra linha própria, ver
+   .despesa-desc) — assim continuam ao lado do resto do conteúdo, nunca
+   "flutuando" sozinhas entre duas linhas quebradas. margin-left:auto
+   empurra pro fim da linha quando sobra espaço. */
 .despesa-actions {
-  position: absolute;
-  right: .7rem;
-  top: 50%;
-  transform: translateY(-50%);
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: .15rem;
-}
-/* animations.css zera qualquer transform em :hover (regra global,
-   !important, pra evitar "pulos" de outros elementos) — como :hover se
-   aplica a ela também ao passar o mouse num ícone lá dentro, sem essa
-   linha (mais específica, vence mesmo com !important dos dois lados) os
-   ícones perdiam a correção de -50% e pulavam pra baixo (metade da
-   própria altura) ao passar o mouse. */
-.despesa-actions:hover, .despesa-actions:active, .despesa-actions:focus-within {
-  transform: translateY(-50%) !important;
+  flex-shrink: 0;
 }
 .despesa-actions .btn-icon.armed {
   width: auto;

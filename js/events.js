@@ -96,12 +96,12 @@ function configurarEventListeners() {
         if (btn && typeof definirModoListaProximas === 'function') definirModoListaProximas(btn.dataset.modo);
     });
 
-    // Cards de Receitas/Despesas do dashboard abrem a aba correspondente (sem toggle)
-    const abrirAba = alvo => {
-        if (document.querySelector('.tab-content.active')?.id !== alvo) mudarAba(alvo);
-    };
-    document.querySelector('.summary-card.entradas')?.addEventListener('click', () => abrirAba('entradas'));
-    document.querySelector('.summary-card.saidas')?.addEventListener('click', () => abrirAba('saidas'));
+    // Cards de Receitas/Despesas do dashboard abrem/fecham a aba correspondente
+    // (toggle) — agora que os botões de aba "Despesas"/"Receitas" saíram da
+    // barra de navegação, o card é o único jeito de abrir E fechar essa
+    // visão, então precisa do toggle que mudarAba() já tem embutido.
+    document.querySelector('.summary-card.entradas')?.addEventListener('click', () => mudarAba('entradas'));
+    document.querySelector('.summary-card.saidas')?.addEventListener('click', () => mudarAba('saidas'));
     
     // Formulário
     const form = document.querySelector(SELECTORS.formTransacao);
