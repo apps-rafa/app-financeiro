@@ -46,10 +46,17 @@
             </header>
 
             <div class="month-bar">
-                <div class="month-nav">
-                    <button id="prevMonth" class="month-btn">←</button>
-                    <span id="currentMonth" class="current-month"><span class="mes-full">Setembro 2026</span><span class="mes-curto">SET/2026</span><span class="mes-mini">09/26</span></span>
-                    <button id="nextMonth" class="month-btn">→</button>
+                <div class="cal-nav">
+                    <div class="meses-strip" id="mesesStrip">
+                        <button type="button" class="seta-lateral" id="mesesSetaEsq" title="Meses anteriores" hidden>‹</button>
+                        <div class="meses-lista" id="mesesLista"></div>
+                        <button type="button" class="seta-lateral" id="mesesSetaDir" title="Próximos meses" hidden>›</button>
+                    </div>
+                    <div class="ano-nav">
+                        <button type="button" class="seta-lateral" id="anoAnterior" title="Ano anterior">‹</button>
+                        <span class="ano-atual" id="anoAtualLabel"></span>
+                        <button type="button" class="seta-lateral" id="anoProximo" title="Próximo ano">›</button>
+                    </div>
                 </div>
                 <button id="btnConfig" class="month-btn month-btn--config" data-tab="menus"
                         aria-pressed="false" title="Configurações"><span class="cfg-ico">⚙️</span> <span class="cfg-label">Configurações</span></button>

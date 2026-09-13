@@ -88,17 +88,10 @@ const TEMAS_BALANCO = {
 
 // Seletores do DOM (centralizados)
 const SELECTORS = {
-  // Headers
-  currentMonth: '#currentMonth',
-  
   // Resumo
   totalEntradas: '#totalEntradas',
   totalSaidas: '#totalSaidas',
   balanco: '#balanco',
-  
-  // Navegação
-  prevMonth: '#prevMonth',
-  nextMonth: '#nextMonth',
   
   // Abas
   tabButtons: '.tab-btn',
