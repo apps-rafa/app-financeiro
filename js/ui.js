@@ -22,16 +22,22 @@ function atualizarUI() {
     }
 }
 
-// Índice (0-11) do mês no centro da janela compacta (quando os 12 meses não
-// cabem numa linha só). null = ainda não foi definido manualmente pelas
-// setas laterais — usa o mês selecionado como centro.
+// Índice (0-11) do mês no centro da janela de meses exibida. null = ainda
+// não foi definido manualmente pelas setas laterais — usa o mês selecionado
+// como centro.
 let mesesJanelaCentro = null;
 
+// Tamanhos possíveis da janela (sempre ímpar/simétrico: N pra trás, atual, N
+// pra frente), da mais larga pra mais estreita.
+const TAMANHOS_JANELA_MESES = [7, 5, 3, 1];
+
 /**
- * (Re)desenha a tira de meses + o ano no calendário do topo.
- * Tenta mostrar os 12 meses numa linha; se não couber, cai pra uma janela
- * compacta de 3 (selecionado + vizinhos), navegável pelas setas laterais.
- * Não depende de dados carregados — seguro de chamar em qualquer resize.
+ * (Re)desenha a tira de meses + o ano no calendário do topo, tudo numa
+ * linha só. Sempre mostra uma janela simétrica (3 antes + atual + 3 depois,
+ * no máximo) com setas laterais pra navegar os meses escondidos sem mudar a
+ * seleção — a janela só encolhe (7 -> 5 -> 3 -> 1) até caber na largura
+ * disponível. Não depende de dados carregados — seguro de chamar em
+ * qualquer resize.
  */
 function atualizarCalendarioNav() {
     const lista = document.getElementById('mesesLista');
@@ -45,6 +51,7 @@ function atualizarCalendarioNav() {
     const mesSelecionado = estadoApp.mesAtual.getMonth();
     const ehAnoAtual = anoSelecionado === hoje.getFullYear();
     const mesHojeIdx = hoje.getMonth();
+    const centro = mesesJanelaCentro != null ? mesesJanelaCentro : mesSelecionado;
 
     if (anoLabel) anoLabel.textContent = String(anoSelecionado);
 
@@ -55,23 +62,26 @@ function atualizarCalendarioNav() {
         return `<button type="button" class="${classes}" data-mes="${idx}">${MESES_TRI[idx]}</button>`;
     };
 
-    // 1ª tentativa: todos os 12 numa linha só
-    lista.innerHTML = MESES_TRI.map((_, i) => montarBtn(i)).join('');
-    if (setaEsq) setaEsq.hidden = true;
-    if (setaDir) setaDir.hidden = true;
+    const idxsDaJanela = tamanho => {
+        const k = (tamanho - 1) / 2;
+        const idxs = [];
+        for (let i = centro - k; i <= centro + k; i++) if (i >= 0 && i <= 11) idxs.push(i);
+        return idxs;
+    };
 
-    // Mede depois do layout: se estourou, refaz em modo compacto (janela de 3)
-    requestAnimationFrame(() => {
-        const cabemTodos = lista.scrollWidth <= lista.clientWidth + 1;
-        if (cabemTodos) {
-            mesesJanelaCentro = null;
-            return;
-        }
-        const centro = mesesJanelaCentro != null ? mesesJanelaCentro : mesSelecionado;
-        const idxs = [centro - 1, centro, centro + 1].filter(i => i >= 0 && i <= 11);
+    const renderJanela = idxs => {
         lista.innerHTML = idxs.map(montarBtn).join('');
-        if (setaEsq) setaEsq.hidden = centro <= 0;
-        if (setaDir) setaDir.hidden = centro >= 11;
+        if (setaEsq) setaEsq.disabled = idxs[0] <= 0;
+        if (setaDir) setaDir.disabled = idxs[idxs.length - 1] >= 11;
+    };
+
+    renderJanela(idxsDaJanela(TAMANHOS_JANELA_MESES[0]));
+
+    // Mede depois do layout: se estourou, encolhe a janela até caber.
+    requestAnimationFrame(() => {
+        for (let i = 1; i < TAMANHOS_JANELA_MESES.length && lista.scrollWidth > lista.clientWidth + 1; i++) {
+            renderJanela(idxsDaJanela(TAMANHOS_JANELA_MESES[i]));
+        }
     });
 }
 
