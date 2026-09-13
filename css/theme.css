@@ -324,7 +324,7 @@ input.campo-travado,
 
 /* Ritmo vertical padronizado entre os blocos: 1rem em todos */
 .dashboard { gap: var(--spacing-md); margin-bottom: var(--spacing-md); }
-.tabs { gap: var(--spacing-sm); margin-bottom: var(--spacing-md); }
+.tabs { gap: var(--spacing-md); margin-bottom: var(--spacing-md); }
 .tab-content { min-height: 0; }
 
 /* Arredondamento uniforme dos "boxes" */
