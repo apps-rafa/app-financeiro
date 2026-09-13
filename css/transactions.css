@@ -252,6 +252,21 @@
     padding: .05rem .45rem;
 }
 .rec-grupo-total { font-variant-numeric: tabular-nums; }
+
+/* Grupo vazio (ex.: "Duplicatas" sem nada pra revisar) — mesma caixa, mas
+   sem <summary>/<details>: não tem nada pra abrir, então não é clicável
+   nem mostra a setinha de expandir. */
+.rec-grupo--vazio {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .55rem .7rem;
+    font-size: .85rem;
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-muted);
+    opacity: .65;
+    cursor: default;
+}
 .rec-grupo-itens {
     display: flex;
     flex-direction: column;
