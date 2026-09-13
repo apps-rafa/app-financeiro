@@ -34,6 +34,31 @@
   border-color: var(--primary);
 }
 
+/* Toggle "CSV" / "PDF" dentro da sub-aba "Importar" — mesma linguagem
+   visual dos .subtab, só que menor (é um nível abaixo). */
+.importar-toggle {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: var(--spacing-md);
+  max-width: 220px;
+}
+.importar-toggle-btn {
+  flex: 1 1 auto;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.importar-toggle-btn.active {
+  background: var(--primary);
+  color: var(--primary-contrast);
+  border-color: var(--primary);
+}
+
 /* Sem painel externo: as sub-seções da Configuração alinham com o resto */
 .menu-section {
   background: transparent;
