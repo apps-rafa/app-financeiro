@@ -69,10 +69,16 @@
 /* ---- Card único do lançamento: DIA DOW — VALOR MÉTODO CATEGORIA DESCRIÇÃO ---- */
 .despesa-item {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     flex-wrap: wrap;
     gap: .3rem .5rem;
     padding: .55rem var(--spacing-md);
+    /* espaço reservado pros ícones de editar/excluir, que ficam fora do
+       fluxo (posição absoluta) pra continuarem centralizados verticalmente
+       mesmo quando o resto do conteúdo quebra em 2+ linhas (ex.: descrição
+       longa) — dentro do flex normal, eles ficavam alinhados à última
+       linha quebrada, não ao centro do card inteiro. */
+    padding-right: 4.6rem;
     background: var(--light);
     border-left: 4px solid var(--secondary);
     border-radius: var(--radius-sm);
@@ -120,6 +126,7 @@
 .despesa-desc {
     color: var(--text-muted);
     font-style: italic;
+    font-size: .78rem;
     word-break: break-word;
 }
 
@@ -373,14 +380,18 @@
     }
 }
 
-/* Ações por transação (editar / excluir) */
+/* Ações por transação (editar / excluir): fora do fluxo, sempre
+   centralizadas verticalmente em relação ao card inteiro (ver comentário
+   no padding-right de .despesa-item). */
 .despesa-item { position: relative; }
 .despesa-actions {
+  position: absolute;
+  right: .7rem;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   gap: .25rem;
-  flex-shrink: 0;
-  margin-left: auto;
 }
 .despesa-actions .btn-icon.armed {
   width: auto;
@@ -452,7 +463,7 @@
 .dialogo p { margin: 0 0 1.25rem; color: #4B5563; font-size: .92rem; }
 .dialogo-acoes { display: flex; gap: .6rem; justify-content: flex-end; flex-wrap: wrap; }
 
-.despesa-valor .valor-meta { font-weight: 400; opacity: .6; font-size: .85em; }
+.despesa-valor .valor-meta { font-weight: 400; opacity: .6; }
 
 /* Agrupamento Fixas / Pontuais */
 .grupo-cab {
