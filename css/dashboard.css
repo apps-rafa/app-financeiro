@@ -63,7 +63,11 @@
     grid-column: 1;
     text-align: right;
     white-space: nowrap;
-    font-size: clamp(0.8rem, 10cqw, 1.5rem);
+    /* Limite mais conservador que antes: com valores reais (muitos
+       dígitos, ex. "R$ 6.846,70") um cqw agressivo deixava tão pouco
+       espaço pro rótulo que ele cortava em "..." — a informação tem que
+       caber inteira sempre, então o valor cresce menos. */
+    font-size: clamp(0.8rem, 7.5cqw, 1.25rem);
     font-weight: var(--font-weight-bold);
 }
 .card-linhas .linha i {
@@ -73,10 +77,12 @@
     font-style: italic;
     opacity: 0.7;
     text-align: left;
-    font-size: clamp(0.6rem, 5.5cqw, 0.92rem);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: clamp(0.6rem, 5cqw, 0.85rem);
+    /* Nunca corta em "...": se ainda assim não couber, quebra pra 2ª
+       linha em vez de truncar (mas só entre palavras — "word-break:
+       break-word" cortava no meio de "receber", ficando pior que útil). */
+    white-space: normal;
+    overflow-wrap: normal;
 }
 /* Separador contínuo acima da linha "total" (linha própria no grid) */
 .card-linhas .linha-sep {
