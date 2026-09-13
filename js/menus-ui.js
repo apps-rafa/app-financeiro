@@ -49,11 +49,13 @@ async function carregarAbaMenus() {
     <div class="menus-gerenciamento">
 
       <div class="subtabs" role="tablist">
-        <button class="subtab active" data-sub="cat">Categorias</button>
-        <button class="subtab" data-sub="met">Métodos de pagamento</button>
-        <button class="subtab" data-sub="rec">Recorrências</button>
-        <button class="subtab" data-sub="fer">Feriados</button>
-        <button class="subtab" data-sub="importar">Importar</button>
+        <div class="subtabs-itens">
+          <button class="subtab active" data-sub="cat">Categorias</button>
+          <button class="subtab" data-sub="met">Métodos de pagamento</button>
+          <button class="subtab" data-sub="rec">Recorrências</button>
+          <button class="subtab" data-sub="fer">Feriados</button>
+          <button class="subtab" data-sub="importar">Importar</button>
+        </div>
         <button type="button" class="btn-fechar-form btn-fechar-aba" title="Fechar" aria-label="Fechar">&times;</button>
       </div>
 
@@ -161,9 +163,9 @@ async function carregarAbaMenus() {
       </div>
 
       <div class="menu-section" data-sub="importar" hidden>
-        <div class="importar-toggle" role="tablist">
-          <button type="button" class="importar-toggle-btn active" data-importar-modo="csv">CSV</button>
-          <button type="button" class="importar-toggle-btn" data-importar-modo="pdf">PDF</button>
+        <div class="modo-lista importar-toggle" role="tablist">
+          <button type="button" class="modo-btn importar-toggle-btn active" data-importar-modo="csv">CSV</button>
+          <button type="button" class="modo-btn importar-toggle-btn" data-importar-modo="pdf">PDF</button>
         </div>
         <div id="secImportarCSV" data-importar-modo="csv"></div>
         <div id="secConciliarPDF" data-importar-modo="pdf" hidden></div>
