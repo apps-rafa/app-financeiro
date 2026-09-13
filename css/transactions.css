@@ -41,9 +41,8 @@
 .modo-lista-linha .modo-lista { flex: 1 1 auto; margin: 0; min-width: 0; }
 .modo-lista-icone {
     flex: none;
-    font-size: .95rem;
-    line-height: 1;
-    opacity: .6;
+    color: var(--text-muted);
+    opacity: .8;
 }
 
 /* Sem lançamento nenhum no mês: os filtros não têm o que filtrar — fica
@@ -361,7 +360,7 @@
 .empty-message {
     text-align: center;
     color: var(--gray);
-    padding: var(--spacing-sm) var(--spacing-xl);
+    padding: .3rem var(--spacing-xl);
     font-size: .82rem;
     font-style: italic;
     grid-column: 1 / -1;
