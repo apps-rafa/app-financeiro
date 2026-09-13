@@ -79,6 +79,9 @@ header.header {
     cursor: pointer;
 }
 .mes-btn:hover { opacity: .75; background: var(--surface-2); }
+/* Rótulo numérico ("9" em vez de "SET"): usado só quando nem o tricode
+   cabe mais — cada mês precisa de bem menos largura horizontal. */
+.mes-btn.numerico { padding-left: .2rem; padding-right: .2rem; }
 .mes-btn.selecionado { opacity: 1; }
 .mes-btn.hoje { text-decoration: underline; text-underline-offset: 2px; }
 
