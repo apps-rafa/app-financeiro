@@ -1172,8 +1172,7 @@ function definirLabelResp(sel, full, short) {
     if (!el) return;
     el.textContent = full;
     if (!short) return;
-    const semEspaco = window.innerWidth < 560
-        || (el.offsetParent !== null && el.scrollWidth > el.clientWidth + 1);
+    const semEspaco = el.offsetParent !== null && el.scrollWidth > el.clientWidth + 1;
     if (semEspaco) el.textContent = short;
 }
 
