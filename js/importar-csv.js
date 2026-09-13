@@ -208,7 +208,12 @@ function renderImportCSV() {
     <h3>📥 Importar CSV</h3>
     <div class="import-csv-contexto">
         <label>Mês de competência
-            <input type="month" id="importCsvCompetencia" value="${st.competenciaMesInput || ''}">
+            <span class="import-csv-mes-ano">
+                <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="importCsvCompetenciaMes"
+                       placeholder="mês" value="${st.competenciaMes ?? ''}">
+                <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="importCsvCompetenciaAno"
+                       placeholder="ano" value="${st.competenciaAno ?? ''}">
+            </span>
         </label>
         <label>
             <span class="import-csv-label-linha">Dia de corte <span class="import-csv-ajuda" title="Dias a partir deste valor caem no mês ANTERIOR à competência (ex.: fechamento do cartão). Deixe em branco se a coluna Data já for do próprio mês de competência.">?</span></span>
@@ -232,12 +237,21 @@ function renderImportCSV() {
     <div id="importCsvProgresso" class="import-csv-progresso" hidden></div>
     `;
 
-    document.getElementById('importCsvCompetencia')?.addEventListener('change', e => {
-        st.competenciaMesInput = e.target.value;
-        st.competenciaISO = e.target.value ? `${e.target.value}-01` : null;
+    const atualizarCompetenciaDeCampos = () => {
+        const mes = parseInt(document.getElementById('importCsvCompetenciaMes')?.value, 10);
+        const ano = parseInt(document.getElementById('importCsvCompetenciaAno')?.value, 10);
+        st.competenciaMes = Number.isInteger(mes) ? mes : null;
+        st.competenciaAno = Number.isInteger(ano) ? ano : null;
+        st.competenciaISO = (st.competenciaMes >= 1 && st.competenciaMes <= 12 && st.competenciaAno)
+            ? `${st.competenciaAno}-${String(st.competenciaMes).padStart(2, '0')}-01` : null;
         _recalcularLinhasForcandoData();
         renderImportCSV();
-    });
+    };
+    const soDigitos = e => { e.target.value = e.target.value.replace(/\D/g, ''); };
+    document.getElementById('importCsvCompetenciaMes')?.addEventListener('input', soDigitos);
+    document.getElementById('importCsvCompetenciaAno')?.addEventListener('input', soDigitos);
+    document.getElementById('importCsvCompetenciaMes')?.addEventListener('change', atualizarCompetenciaDeCampos);
+    document.getElementById('importCsvCompetenciaAno')?.addEventListener('change', atualizarCompetenciaDeCampos);
     document.getElementById('importCsvCorte')?.addEventListener('change', e => {
         const v = parseInt(e.target.value, 10);
         st.corte = Number.isInteger(v) ? v : null;
@@ -343,12 +357,12 @@ function onImportCsvArquivoEscolhido(e) {
             mostrarNotificacao('Não achei linhas válidas nesse CSV', 'erro');
             return;
         }
-        const mesExib = (typeof estadoApp !== 'undefined' && estadoApp.mesAtual) ? estadoApp.mesAtual : new Date();
-        const competenciaMesInput = `${mesExib.getFullYear()}-${String(mesExib.getMonth() + 1).padStart(2, '0')}`;
+        const anoAtual = new Date().getFullYear();
         estadoImportCSV = {
             linhas,
-            competenciaMesInput,
-            competenciaISO: `${competenciaMesInput}-01`,
+            competenciaMes: null,
+            competenciaAno: anoAtual,
+            competenciaISO: null,
             corte: null
         };
         _recalcularLinhas();

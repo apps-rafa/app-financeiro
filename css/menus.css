@@ -532,11 +532,14 @@
   color: var(--text-muted);
 }
 .import-csv-contexto input {
+  width: 70px;
   padding: .35rem .5rem;
   border: 1px solid var(--border-strong, #D1D5DB);
   border-radius: var(--radius-sm);
   font-size: .85rem;
 }
+.import-csv-mes-ano { display: flex; gap: .4rem; }
+.import-csv-mes-ano input { width: 70px; }
 .import-csv-label-linha { display: inline-flex; align-items: center; gap: .3rem; }
 .import-csv-ajuda {
   display: inline-block;
