@@ -54,7 +54,7 @@
     grid-column: 1;
     text-align: right;
     white-space: nowrap;
-    font-size: clamp(0.8rem, 8cqw, 1.3rem);
+    font-size: clamp(0.8rem, 11cqw, 1.6rem);
     font-weight: var(--font-weight-bold);
 }
 .card-linhas .linha i {
@@ -64,7 +64,7 @@
     font-style: italic;
     opacity: 0.7;
     text-align: left;
-    font-size: clamp(0.6rem, 4.5cqw, 0.85rem);
+    font-size: clamp(0.6rem, 6cqw, 1rem);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -77,7 +77,7 @@
     margin: 0.2rem 0 0.05rem;
 }
 .card-linhas .linha.total .amount {
-    font-size: clamp(1.3rem, 13cqw, 2.2rem);
+    font-size: clamp(1.3rem, 17cqw, 2.6rem);
 }
 
 .summary-card {
@@ -231,7 +231,6 @@
   background-color: var(--surface);
   color: var(--text);
   border-color: var(--border);
-  border-left: 4px solid var(--primary);
 }
 
 /* ============ Resumo compacto fixo (aparece ao rolar) ============ */
