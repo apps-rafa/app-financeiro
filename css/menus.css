@@ -532,14 +532,15 @@
   color: var(--text-muted);
 }
 .import-csv-contexto input {
-  width: 70px;
-  padding: .35rem .5rem;
+  width: 46px;
+  padding: .35rem .4rem;
   border: 1px solid var(--border-strong, #D1D5DB);
   border-radius: var(--radius-sm);
   font-size: .85rem;
 }
 .import-csv-mes-ano { display: flex; gap: .4rem; }
-.import-csv-mes-ano input { width: 70px; }
+.import-csv-mes-ano input { width: 46px; }
+.import-csv-contexto #importCsvTrocarArquivo { padding: .35rem .6rem; }
 .import-csv-label-linha { display: inline-flex; align-items: center; gap: .3rem; }
 .import-csv-ajuda {
   display: inline-block;
@@ -618,6 +619,13 @@
   gap: .7rem;
   margin-top: .7rem;
 }
-.import-csv-acoes .btn-submit { width: auto; padding: .55rem 1.1rem; font-size: .85rem; }
+.import-csv-acoes .btn-submit,
+.import-csv-acoes #importCsvCancelar {
+  width: auto;
+  min-width: 160px;
+  padding: .55rem 1.1rem;
+  font-size: .85rem;
+  text-align: center;
+}
 .import-csv-bloqueado { font-size: .78rem; color: var(--despesa-text); }
 .import-csv-progresso { font-size: .8rem; color: var(--text-muted); margin-top: .5rem; }
