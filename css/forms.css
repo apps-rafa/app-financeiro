@@ -31,19 +31,6 @@
     padding: 0;
 }
 
-/* Cabeçalho de "Próximas": o título muda de tamanho com o mês em exibição
-   ("Próximas em Setembro de 2026"), bem mais longo que "Novo lançamento" —
-   aqui é ele que encolhe/trunca, não o seletor Despesa/Receita. */
-.proximas-header h2 {
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.proximas-header .tipo-selector {
-    flex: 0 0 auto;
-    width: auto;
-}
 
 /* Botão "×" para limpar / fechar o formulário.
    O X é uma imagem SVG (não usa transform, que o reset de animações zera no hover) */
