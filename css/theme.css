@@ -145,24 +145,26 @@ input.campo-travado,
     outline-color: var(--despesa-text);
 }
 
-/* "+ Lançamento": botão principal, sempre em destaque; "+" com cor própria.
-   Precisa dos 2 estados (igual Despesas/Receitas/Próximos embaixo) pro
-   usuário ver se o formulário tá aberto ou não — aqui isso é a opacidade
-   do preenchimento (mesmo gradiente sempre): apagado em repouso, cheio
-   quando aberto — mesma lógica das setas do calendário. */
+/* "+ Lançamento": mesmo padrão de Despesas/Receitas embaixo (cor própria
+   sempre visível, preenchimento fraco em repouso, mais forte quando
+   selecionado + contorno/peso maiores) — só troca a cor pela do primary. */
 .tab-btn[data-tab="adicionar"] {
-    color: #fff;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-    border-color: var(--primary);
+    color: color-mix(in srgb, var(--primary) 85%, var(--text));
+    background: color-mix(in srgb, var(--primary) 16%, var(--surface));
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
     font-weight: 700;
     padding: 0.7rem;
     font-size: var(--font-size-base);
     outline: none;
-    opacity: .6;
 }
-.tab-btn[data-tab="adicionar"]:hover { opacity: .8; }
+.tab-btn[data-tab="adicionar"]:hover { color: var(--primary); }
 .tab-btn[data-tab="adicionar"].active {
-    opacity: 1;
+    background: color-mix(in srgb, var(--primary) 30%, var(--surface));
+    color: var(--primary);
+    border-color: var(--primary);
+    font-weight: 800;
+    outline: 2px solid var(--primary);
+    outline-offset: -1px;
 }
 .tab-mais {
     color: #FFD54A;

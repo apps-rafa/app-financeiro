@@ -243,7 +243,9 @@
 .stepper-v .btn-mini-seta {
     width: 14px;
     min-width: 14px;
-    height: 11px;
+    height: auto;
+    flex: 1 1 0;
+    min-height: 0;
     font-size: 7px;
 }
 #recorrenciaBloco > #diaSemanaGroup { flex: 0 1 5.5rem; }  /* "s/ dia fixo" */
