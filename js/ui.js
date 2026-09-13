@@ -22,10 +22,10 @@ function atualizarUI() {
     }
 }
 
-// Índice (0-11) do mês no centro da janela de meses exibida. null = ainda
-// não foi definido manualmente pelas setas laterais — usa o mês selecionado
-// como centro.
-let mesesJanelaCentro = null;
+// Deslocamento (em meses, +/-) da janela em relação ao mês selecionado —
+// só muda pelas setas laterais; navegar não altera a seleção, só o que
+// aparece. Zera sempre que a seleção muda (clique num mês ou troca de ano).
+let mesesJanelaOffset = 0;
 
 // Tamanhos possíveis da janela (sempre ímpar/simétrico: N pra trás, atual, N
 // pra frente), da mais larga pra mais estreita.
@@ -36,44 +36,44 @@ const TAMANHOS_JANELA_MESES = [7, 5, 3, 1];
  * linha só. Sempre mostra uma janela simétrica (3 antes + atual + 3 depois,
  * no máximo) com setas laterais pra navegar os meses escondidos sem mudar a
  * seleção — a janela só encolhe (7 -> 5 -> 3 -> 1) até caber na largura
- * disponível. Não depende de dados carregados — seguro de chamar em
- * qualquer resize.
+ * disponível. A janela pode atravessar a virada do ano (ex.: NOV DEZ JAN/27
+ * FEV/27); mês de um ano diferente do "ano" mostrado ao lado leva o sufixo
+ * "/AA". Não depende de dados carregados — seguro de chamar em qualquer
+ * resize.
  */
 function atualizarCalendarioNav() {
     const lista = document.getElementById('mesesLista');
-    const setaEsq = document.getElementById('mesesSetaEsq');
-    const setaDir = document.getElementById('mesesSetaDir');
     const anoLabel = document.getElementById('anoAtualLabel');
     if (!lista || typeof estadoApp === 'undefined' || !estadoApp.mesAtual) return;
 
     const hoje = new Date();
+    const absDe = (ano, mes) => ano * 12 + mes;
+    const absHoje = absDe(hoje.getFullYear(), hoje.getMonth());
     const anoSelecionado = estadoApp.mesAtual.getFullYear();
     const mesSelecionado = estadoApp.mesAtual.getMonth();
-    const ehAnoAtual = anoSelecionado === hoje.getFullYear();
-    const mesHojeIdx = hoje.getMonth();
-    const centro = mesesJanelaCentro != null ? mesesJanelaCentro : mesSelecionado;
+    const absSelecionado = absDe(anoSelecionado, mesSelecionado);
+    const absCentro = absSelecionado + mesesJanelaOffset;
 
     if (anoLabel) anoLabel.textContent = String(anoSelecionado);
 
-    const montarBtn = idx => {
-        const selecionado = idx === mesSelecionado;
-        const ehHoje = ehAnoAtual && idx === mesHojeIdx;
+    const montarBtn = abs => {
+        const ano = Math.floor(abs / 12);
+        const mes = ((abs % 12) + 12) % 12;
+        const selecionado = abs === absSelecionado;
+        const ehHoje = abs === absHoje;
         const classes = ['mes-btn', selecionado && 'selecionado', ehHoje && 'hoje'].filter(Boolean).join(' ');
-        return `<button type="button" class="${classes}" data-mes="${idx}">${MESES_TRI[idx]}</button>`;
+        const rotulo = MESES_TRI[mes] + (ano === anoSelecionado ? '' : '/' + String(ano).slice(-2));
+        return `<button type="button" class="${classes}" data-ano="${ano}" data-mes="${mes}">${rotulo}</button>`;
     };
 
     const idxsDaJanela = tamanho => {
         const k = (tamanho - 1) / 2;
         const idxs = [];
-        for (let i = centro - k; i <= centro + k; i++) if (i >= 0 && i <= 11) idxs.push(i);
+        for (let a = absCentro - k; a <= absCentro + k; a++) idxs.push(a);
         return idxs;
     };
 
-    const renderJanela = idxs => {
-        lista.innerHTML = idxs.map(montarBtn).join('');
-        if (setaEsq) setaEsq.disabled = idxs[0] <= 0;
-        if (setaDir) setaDir.disabled = idxs[idxs.length - 1] >= 11;
-    };
+    const renderJanela = idxs => { lista.innerHTML = idxs.map(montarBtn).join(''); };
 
     renderJanela(idxsDaJanela(TAMANHOS_JANELA_MESES[0]));
 

@@ -51,7 +51,11 @@ header.header {
     gap: 2px;
     min-width: 0;
     overflow: hidden;
-    flex: 1 1 auto;
+    /* Não cresce (flex-grow:0): fica do tamanho exato do conteúdo quando há
+       espaço de sobra, senão a seta direita fica longe do último mês. Ainda
+       encolhe (flex-shrink:1) quando aperta — é isso que dispara a medição
+       de scrollWidth x clientWidth em atualizarCalendarioNav(). */
+    flex: 0 1 auto;
 }
 .mes-btn {
     flex: none;
@@ -88,18 +92,20 @@ header.header {
     text-align: center;
 }
 
-/* Setas laterais ‹ › — mesmo desenho das setinhas ▲▼ de reordenar em
-   Configurações (.btn-mini-seta), só que giradas pro lado. */
+/* Setas laterais — mesmo desenho e o mesmo glifo (▲) das setinhas de
+   reordenar em Configurações (.btn-mini-seta): aqui só giram pro lado via
+   transform, então ficam com o traço idêntico, sem depender de um
+   caractere "‹ ›" que pode renderizar mais fino/fora de proporção. */
 .seta-lateral {
     flex: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 18px;
-    width: 18px;
-    height: 18px;
+    min-width: 20px;
+    width: 20px;
+    height: 20px;
     padding: 0;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1;
     background: var(--surface-2);
     border: 1px solid var(--border-strong);
@@ -107,6 +113,8 @@ header.header {
     color: var(--text-muted);
     cursor: pointer;
 }
+.seta-lateral.seta-esq { transform: rotate(-90deg); }
+.seta-lateral.seta-dir { transform: rotate(90deg); }
 .seta-lateral:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
 .seta-lateral:disabled { opacity: .3; cursor: default; }
 .seta-lateral[hidden] { display: none; }
