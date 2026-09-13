@@ -257,7 +257,7 @@
 /* ============ GRANDE (1024px) ============ */
 @media (min-width: 1024px) {
     .container {
-        max-width: 880px;
+        max-width: 853px;
     }
 
     :root {
@@ -276,7 +276,7 @@
 /* ============ MUITO GRANDE (1440px) ============ */
 @media (min-width: 1440px) {
     .container {
-        max-width: 880px;
+        max-width: 853px;
     }
 
     .grid-2 {
