@@ -223,20 +223,57 @@ header.header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: var(--spacing-md);
 }
 
 .header-content h1 {
+    display: flex;
+    align-items: baseline;
+    gap: .3rem;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
     font-size: var(--font-size-2xl);
     font-weight: var(--font-weight-bold);
     margin-bottom: 0;
+    white-space: nowrap;
+}
+.header-content h1 .app-titulo-media,
+.header-content h1 .app-titulo-curto { display: none; }
+
+/* Título encolhe em 3 níveis pra sempre caber numa linha só (ver spans
+   montados no HTML): texto cheio -> "Ctrl Financeiro" -> "Ctrl Fin". */
+@media (max-width: 700px) {
+    .header-content h1 .app-titulo-full { display: none; }
+    .header-content h1 .app-titulo-media { display: inline; }
+}
+@media (max-width: 560px) {
+    .header-content h1 .app-titulo-media { display: none; }
+    .header-content h1 .app-titulo-curto { display: inline; }
 }
 
 .header-info {
     display: flex;
+    flex: 0 0 auto;
     gap: var(--spacing-md);
     align-items: center;
+}
+
+/* Badge/botões da direita encolhem em 2 níveis, junto com o título, pra
+   nunca quebrar a linha do header (spans montados no HTML). */
+.header-info .modo-teste-curto,
+.header-info .apagar-curto { display: none; }
+@media (max-width: 700px) {
+    .header-info .modo-teste-full { display: none; }
+    .header-info .modo-teste-curto { display: inline; }
+    .header-info .apagar-full { display: none; }
+    .header-info .apagar-curto { display: inline; }
+    #btnLogout .sair-texto { display: none; }
+}
+@media (max-width: 560px) {
+    .header-info .modo-teste-curto { display: none; }
+    .header-info .apagar-curto { display: none; }
 }
 
 /* Seletor de mês */

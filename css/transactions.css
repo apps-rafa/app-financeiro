@@ -42,7 +42,7 @@
 
 /* Sem lançamento nenhum no mês: os filtros não têm o que filtrar — fica
    com cara de "desativado" (ainda clicável, só visualmente apagado). */
-.modo-lista.vazio { opacity: .45; }
+.modo-lista.vazio { opacity: .45; pointer-events: none; }
 
 .modo-lista {
     display: flex;

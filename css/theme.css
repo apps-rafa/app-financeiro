@@ -196,12 +196,21 @@ input.campo-travado,
     white-space: nowrap;
 }
 #btnLogout {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
     background: rgba(255, 255, 255, 0.15);
     color: var(--header-text);
     border: 1px solid rgba(255, 255, 255, 0.25);
     cursor: pointer;
 }
 #btnLogout:hover { background: rgba(255, 255, 255, 0.28); }
+/* Ícone de sair maior e em vermelho — se destaca mais que o resto do botão. */
+#btnLogout .sair-ico {
+    font-size: 1.15rem;
+    line-height: 1;
+    color: #F87171;
+}
 
 .user-email {
     color: var(--header-text);
@@ -293,7 +302,6 @@ input.campo-travado,
 }
 .summary-card { padding: var(--spacing-sm) 0.7rem; }
 .summary-card h3 { font-size: 0.68rem; margin-bottom: 0.3rem; }
-.summary-card .sub { font-size: 0.66rem; }
 .card-linhas { gap: 0.2rem; }
 .card-linhas .linha.total { margin-top: 0.25rem; padding-top: 0.25rem; }
 /* Balanço e Gasto diário: cards mais baixos (só título + valor). Tamanho
