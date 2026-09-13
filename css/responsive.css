@@ -148,20 +148,6 @@
         font-size: var(--font-size-sm);
     }
 
-    .recorrencia-badge {
-        font-size: 0.7rem;
-        padding: 0.15rem 0.3rem;
-    }
-
-    .despesa-descricao {
-        font-size: 0.8rem;
-    }
-
-    .despesa-valor {
-        font-size: 1rem;
-        min-width: auto;
-    }
-
     /* Gráficos */
     .chart-container {
         padding: var(--spacing-md);
