@@ -288,17 +288,28 @@ function calcularResumoMes() {
         return { total: r2(total), atual: r2(atual), pendente: r2(total - atual) };
     };
 
-    const e = somar(estadoApp.transacoes.entradas);
+    // Receita com método de cartão de crédito é estorno/reembolso lançado
+    // na própria fatura (categoria fixa "Reembolso/Estorno" — ver
+    // atualizarCampoMetodoReceita em js/ui.js), não dinheiro entrando de
+    // verdade: abate da fatura desse cartão (Despesa) em vez de inflar a
+    // Receita. Continua listada normalmente na aba Receita — só o resumo
+    // do dashboard é que trata diferente.
+    const entradasNormais = [], estornosCartao = [];
+    estadoApp.transacoes.entradas.forEach(t =>
+        (metodosCredito.has(t.metodo) ? estornosCartao : entradasNormais).push(t));
+
+    const e = somar(entradasNormais);
     const s = somar(estadoApp.transacoes.saidas);
+    const estorno = estornosCartao.length ? somar(estornosCartao) : { total: 0, atual: 0, pendente: 0 };
 
     estadoApp.resumo = {
         entradas: e.total,
-        saidas: s.total,
-        balanco: r2(e.total - s.total),
+        saidas: r2(s.total - estorno.total),
+        balanco: r2(e.total - s.total + estorno.total),
         entradasAtual: e.atual,
         entradasAReceber: e.pendente,
-        saidasAtual: s.atual,
-        saidasAPagar: s.pendente
+        saidasAtual: r2(s.atual - estorno.atual),
+        saidasAPagar: r2(s.pendente - estorno.pendente)
     };
 
     console.log('📈 Resumo calculado:', estadoApp.resumo);

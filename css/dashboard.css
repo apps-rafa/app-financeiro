@@ -89,8 +89,16 @@
     justify-content: flex-end;
 }
 .card-linhas .linha.total .amount {
-    font-size: clamp(1.3rem, 17cqw, 2.9rem);
+    /* 17cqw deixava valores mais longos (ex. "R$ 10.615,35") quase saindo
+       do card, sem folga nenhuma até a borda — reduzido pra sempre sobrar
+       margem de segurança, com truncamento (…) como rede de segurança
+       pra valores realmente extremos. */
+    font-size: clamp(1.2rem, 12cqw, 2.6rem);
     white-space: nowrap;
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .summary-card {
@@ -131,10 +139,17 @@
 }
 
 .summary-card .amount {
-    font-size: clamp(1.1rem, 16cqw, 2.6rem);
+    /* 16cqw deixava valores mais longos (ex. "R$ 10.615,35") quase saindo
+       do card, sem folga nenhuma até a borda — reduzido pra sempre sobrar
+       uma margem de segurança, não só encaixar raspando. */
+    font-size: clamp(1.1rem, 11cqw, 2.3rem);
     font-weight: var(--font-weight-bold);
     margin: 0;
     white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
 }
 
 /* Card Entradas */
