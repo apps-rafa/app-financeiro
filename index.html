@@ -101,8 +101,8 @@
             <!-- Tabs Navigation -->
             <section class="tabs">
                 <button class="tab-btn" data-tab="adicionar"><span class="tab-mais">+</span> Lançamento</button>
-                <button class="tab-btn" data-tab="entradas">📥 Receitas</button>
-                <button class="tab-btn" data-tab="saidas">📤 Despesas</button>
+                <button class="tab-btn" data-tab="entradas"><svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg> Receitas</button>
+                <button class="tab-btn" data-tab="saidas"><svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--despesa-text)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg> Despesas</button>
                 <button class="tab-btn" data-tab="proximas">⏰ Próximas</button>
             </section>
 
@@ -161,17 +161,17 @@
             <!-- Tab: Adicionar Lançamento -->
             <section id="adicionar" class="tab-content">
                 <form id="formTransacao" class="form-transacao">
-                    <button type="button" id="btnLimparForm" class="btn-fechar-form" title="Limpar formulário" aria-label="Limpar formulário">&times;</button>
                     <div class="form-header">
                         <h2>Novo lançamento</h2>
                         <div class="tipo-selector">
                             <button type="button" class="tipo-btn active" data-tipo="saidas">
-                                📤 Despesa
+                                <svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--despesa-text)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg><span class="tipo-label">Despesa</span>
                             </button>
                             <button type="button" class="tipo-btn" data-tipo="entradas">
-                                📥 Receita
+                                <svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg><span class="tipo-label">Receita</span>
                             </button>
                         </div>
+                        <button type="button" id="btnLimparForm" class="btn-fechar-form" title="Limpar formulário" aria-label="Limpar formulário">&times;</button>
                     </div>
 
                     <input type="hidden" id="tipoTransacao" value="saidas">
