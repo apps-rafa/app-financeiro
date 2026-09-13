@@ -49,10 +49,13 @@
     --spacing-lg: 1.5rem;
     --spacing-xl: 2rem;
 
-    /* Bordas */
+    /* Bordas — um raio só pra tudo (era 3 valores diferentes, deixando o
+       arredondamento inconsistente entre boxes/botões/campos pela mesma
+       tela). --radius-sm/--radius-xs continuam existindo só pra não ter
+       que editar toda chamada espalhada pelo CSS. */
     --radius: 12px;
-    --radius-sm: 8px;
-    --radius-xs: 4px;
+    --radius-sm: var(--radius);
+    --radius-xs: var(--radius);
 
     /* Sombras */
     --shadow-sm: 0 4px 8px rgba(17, 24, 39, 0.06);

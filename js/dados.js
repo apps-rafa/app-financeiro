@@ -106,7 +106,6 @@ function renderImportarBackup() {
 
     if (!estadoImportarBackup) {
         sec.innerHTML = `
-        <h3>💾 Importar backup</h3>
         <p class="menu-hint">
             Restaura um arquivo baixado em Configurações &gt; Dados. Isso <b>adiciona</b> os dados do backup por
             cima do que já existe — pra uma restauração limpa, apague tudo antes em Configurações &gt; Dados.
@@ -121,7 +120,6 @@ function renderImportarBackup() {
     const b = estadoImportarBackup;
     const dataFormatada = b.exportadoEm ? new Date(b.exportadoEm).toLocaleString('pt-BR') : '?';
     sec.innerHTML = `
-    <h3>💾 Importar backup</h3>
     <p class="import-csv-resumo">
         Backup de ${dataFormatada} — <b>${b.menuItens.length}</b> itens de configuração,
         <b>${b.transacoes.length}</b> lançamentos

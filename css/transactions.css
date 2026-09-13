@@ -463,12 +463,12 @@
   letter-spacing: .3px;
   color: #7C3AED;
   border: 1px solid #C7B8F5;
-  border-radius: 6px;
+  border-radius: var(--radius);
   padding: 1px 5px;
 }
 .btn-ok {
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: #7C3AED;
   color: #fff;
   font-weight: 700;
@@ -503,7 +503,7 @@
 }
 .dialogo {
   background: #fff;
-  border-radius: 12px;
+  border-radius: var(--radius);
   padding: 1.5rem;
   max-width: 380px;
   width: 100%;

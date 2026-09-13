@@ -594,7 +594,7 @@
 .btn-cancelar {
   padding: .6rem 1rem;
   border: 1px solid #D1D5DB;
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: transparent;
   color: #6B7280;
   cursor: pointer;
@@ -685,7 +685,7 @@
 .dialogo-corpo select {
   padding: .5rem .7rem;
   border: 1px solid #D1D5DB;
-  border-radius: 8px;
+  border-radius: var(--radius);
   font-size: .85rem;
   width: 100%;
 }
