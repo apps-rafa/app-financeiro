@@ -38,7 +38,6 @@
                     <div class="header-info">
                         <span id="modoTesteBadge" class="modo-teste-badge" hidden>🧪 modo teste</span>
                         <button id="btnApagarTudo" type="button" class="btn-apagar-tudo" hidden title="Apagar todos os dados de teste">🗑 Apagar tudo</button>
-                        <button id="btnTema" type="button" title="Alternar tema claro/escuro">🌙</button>
                         <span id="userEmail" class="user-email" hidden></span>
                         <button id="btnLogout" class="month-btn" hidden title="Sair">⎋ Sair</button>
                     </div>
@@ -55,8 +54,11 @@
                     <button type="button" class="seta-lateral seta-dir" id="mesesSetaDir" title="Próximos meses">▲</button>
                     <span class="ano-atual" id="anoAtualLabel"></span>
                 </div>
-                <button id="btnConfig" class="month-btn month-btn--config" data-tab="menus"
-                        aria-pressed="false" title="Configurações"><span class="cfg-ico">⚙️</span> <span class="cfg-label">Configurações</span></button>
+                <div class="month-bar-acoes">
+                    <button id="btnTema" type="button" class="month-btn month-btn--tema" title="Alternar tema claro/escuro">🌙</button>
+                    <button id="btnConfig" class="month-btn month-btn--config" data-tab="menus"
+                            aria-pressed="false" title="Configurações"><span class="cfg-ico">⚙️</span> <span class="cfg-label">Configurações</span></button>
+                </div>
             </div>
 
             <!-- Resumo compacto: aparece ao rolar para além do dashboard -->

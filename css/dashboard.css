@@ -118,7 +118,7 @@
 }
 
 .summary-card .amount {
-    font-size: clamp(1.1rem, 11cqw, 1.8rem);
+    font-size: clamp(1.1rem, 14cqw, 2.2rem);
     font-weight: var(--font-weight-bold);
     margin: 0;
 }

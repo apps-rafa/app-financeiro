@@ -40,6 +40,10 @@
 }
 .modo-lista-linha .modo-lista { flex: 1 1 auto; margin: 0; min-width: 0; }
 
+/* Sem lançamento nenhum no mês: os filtros não têm o que filtrar — fica
+   com cara de "desativado" (ainda clicável, só visualmente apagado). */
+.modo-lista.vazio { opacity: .45; }
+
 .modo-lista {
     display: flex;
     flex-wrap: nowrap;
@@ -77,11 +81,13 @@
 }
 
 /* ---- Card único do lançamento: DIA DOW — VALOR MÉTODO CATEGORIA DESCRIÇÃO ---- */
+/* Item = 2 colunas: conteúdo (cresce, quebra internamente) + ações (largura
+   fixa, nunca invadida pelo conteúdo — é outro flex item, não faz parte do
+   mesmo wrap). */
 .despesa-item {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: .25rem .5rem;
+    gap: .5rem;
     padding: .55rem var(--spacing-md);
     background: var(--light);
     border-left: 4px solid var(--secondary);
@@ -91,6 +97,15 @@
 
 .despesa-item:hover {
     box-shadow: var(--shadow-sm);
+}
+
+.despesa-conteudo {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .05rem .5rem;
 }
 
 .despesa-item.entrada {
@@ -135,6 +150,7 @@
     color: var(--text-muted);
     font-style: italic;
     font-size: .78rem;
+    line-height: 1.15;
     word-break: break-word;
 }
 
@@ -313,7 +329,8 @@
 .empty-message {
     text-align: center;
     color: var(--gray);
-    padding: var(--spacing-xl);
+    padding: var(--spacing-sm) var(--spacing-xl);
+    font-size: .82rem;
     font-style: italic;
     grid-column: 1 / -1;
 }
@@ -385,17 +402,17 @@
     }
 }
 
-/* Ações por transação (editar / excluir): ficam no fluxo normal, na linha
-   principal (a descrição sempre quebra pra linha própria, ver
-   .despesa-desc) — assim continuam ao lado do resto do conteúdo, nunca
-   "flutuando" sozinhas entre duas linhas quebradas. margin-left:auto
-   empurra pro fim da linha quando sobra espaço. */
+/* Ações por transação (editar / excluir): coluna própria, largura fixa,
+   ao lado de .despesa-conteudo (não dentro dele) — o conteúdo nunca
+   invade esse espaço, não importa quanto quebre. Empilhados (lápis em
+   cima, lixeira embaixo) em vez de lado a lado: ocupam metade da largura
+   e continuam juntos e centralizados mesmo quando o card fica bem baixo. */
 .despesa-actions {
-  margin-left: auto;
+  flex: none;
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: .15rem;
-  flex-shrink: 0;
 }
 .despesa-actions .btn-icon.armed {
   width: auto;

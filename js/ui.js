@@ -218,6 +218,7 @@ function definirModoListaEntradas(modo) {
 function atualizarEntradasLista() {
     document.querySelectorAll('#modoEntradas .modo-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.modo === modoListaEntradas));
+    document.getElementById('modoEntradas')?.classList.toggle('vazio', !estadoApp.transacoes.entradas.length);
     renderListaPorModo(document.querySelector(SELECTORS.entradasLista),
         estadoApp.transacoes.entradas, 'entrada', modoListaEntradas, 'Nenhuma receita neste mês');
 }
@@ -235,6 +236,7 @@ function definirModoListaSaidas(modo) {
 function atualizarSaidasLista() {
     document.querySelectorAll('#modoSaidas .modo-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.modo === modoListaSaidas));
+    document.getElementById('modoSaidas')?.classList.toggle('vazio', !estadoApp.transacoes.saidas.length);
     renderListaPorModo(document.querySelector(SELECTORS.saidasLista),
         estadoApp.transacoes.saidas, 'saida', modoListaSaidas, 'Nenhuma despesa neste mês');
 }
@@ -471,22 +473,25 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
         + (trans.pendente ? ' pendente' : '')
         + (trans.quitada ? ' quitada' : '');
 
-    // Descrição força quebra pra linha própria (flex-basis:100% no CSS) —
-    // assim editar/excluir ficam sempre ao lado do resto (dia/valor/chips),
-    // nunca "flutuando" entre a linha principal e a da descrição.
+    // .despesa-conteudo (dia/valor/tags/descrição) e .despesa-actions são
+    // colunas separadas de um flex externo — o conteúdo nunca invade a
+    // largura reservada pros ícones (que ficam empilhados, lápis em cima
+    // da lixeira, e não junto do resto que quebra linha).
     return `
         <div class="${classes}" data-id="${trans.id}" data-tipo-transacao="${tipo === 'entrada' ? 'entradas' : 'saidas'}">
-            ${lado}
-            <span class="despesa-valor">${sinal} ${valorFormatado}</span>
-            ${parcelaTag}
-            ${quitarCheckbox}
-            ${metaChip}
-            ${catChip}
-            ${quandoTag}
-            ${tagPendente}
-            ${quitadoTag}
+            <div class="despesa-conteudo">
+                ${lado}
+                <span class="despesa-valor">${sinal} ${valorFormatado}</span>
+                ${parcelaTag}
+                ${quitarCheckbox}
+                ${metaChip}
+                ${catChip}
+                ${quandoTag}
+                ${tagPendente}
+                ${quitadoTag}
+                ${descTxt}
+            </div>
             <div class="despesa-actions">${acoes}</div>
-            ${descTxt}
         </div>`;
 }
 
@@ -831,6 +836,7 @@ async function atualizarProximasTransacoes() {
         // Faturas de cartão só fazem sentido olhando pras despesas
         const faturasHTML = ehDespesa ? renderFaturasCartao() : '';
 
+        document.getElementById('modoProximas')?.classList.toggle('vazio', proximas.length === 0);
         if (proximas.length === 0) {
             container.innerHTML = faturasHTML
                 + `<p class="empty-message">Nada programado para ${obterMesAnoFormatado(mRef)}</p>`;

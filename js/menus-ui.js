@@ -53,6 +53,7 @@ async function carregarAbaMenus() {
         <button class="subtab" data-sub="met">Métodos de pagamento</button>
         <button class="subtab" data-sub="rec">Recorrências</button>
         <button class="subtab" data-sub="fer">Feriados</button>
+        <button type="button" class="btn-fechar-form btn-fechar-aba" title="Fechar" aria-label="Fechar">&times;</button>
       </div>
 
       <div class="menu-section menu-section--cols" data-sub="cat">

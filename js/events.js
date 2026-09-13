@@ -134,9 +134,11 @@ function configurarEventListeners() {
         }
     });
 
-    // Botão "×" ao lado dos filtros de Receitas/Despesas/Próximas: só fecha.
-    document.querySelectorAll('.btn-fechar-aba').forEach(btn => {
-        btn.addEventListener('click', () => fecharAbas());
+    // Botão "×" ao lado dos filtros de Receitas/Despesas/Próximas/Configurações:
+    // só fecha. Delegado no document (não em cada botão) porque a de
+    // Configurações é recriada do zero a cada carregarAbaMenus().
+    document.addEventListener('click', e => {
+        if (e.target.closest('.btn-fechar-aba')) fecharAbas();
     });
 
     // Campo Data: máscara dd/mm/aaaa + recalcular competência
@@ -338,7 +340,7 @@ function mudarAba(novaAba) {
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
     });
-    document.querySelectorAll('.tab-btn, #btnConfig').forEach(btn => {
+    document.querySelectorAll('[data-tab], #btnConfig').forEach(btn => {
         btn.classList.remove('active');
     });
 

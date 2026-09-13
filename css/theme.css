@@ -195,14 +195,12 @@ input.campo-travado,
     border-radius: 999px;
     white-space: nowrap;
 }
-#btnTema,
 #btnLogout {
     background: rgba(255, 255, 255, 0.15);
     color: var(--header-text);
     border: 1px solid rgba(255, 255, 255, 0.25);
     cursor: pointer;
 }
-#btnTema:hover,
 #btnLogout:hover { background: rgba(255, 255, 255, 0.28); }
 
 .user-email {
@@ -295,16 +293,16 @@ input.campo-travado,
 }
 .summary-card { padding: var(--spacing-sm) 0.7rem; }
 .summary-card h3 { font-size: 0.68rem; margin-bottom: 0.3rem; }
-.summary-card .amount { font-size: 1.2rem; }
 .summary-card .sub { font-size: 0.66rem; }
 .card-linhas { gap: 0.2rem; }
-.card-linhas .linha { font-size: 0.68rem; }
-.card-linhas .linha.total { margin-top: 0.25rem; padding-top: 0.25rem; font-size: 0.78rem; }
-.card-linhas .linha.total .amount { font-size: 1rem; }
-/* Balanço e Gasto diário: cards mais baixos (só título + valor) */
+.card-linhas .linha.total { margin-top: 0.25rem; padding-top: 0.25rem; }
+/* Balanço e Gasto diário: cards mais baixos (só título + valor). Tamanho
+   de fonte NÃO é fixado aqui — .summary-card .amount (dashboard.css) já
+   escala pela largura do card via container query; um valor fixo nessa
+   densidade "compacta" do tema escuro andava anulando esse escalonamento
+   e deixando esses 2 cards com espaço vazio sobrando. */
 .summary-card.balanco, .summary-card.gasto-diario { padding: 0.4rem var(--spacing-md); }
 .summary-card.balanco h3, .summary-card.gasto-diario h3 { margin-bottom: 0; font-size: 0.62rem; }
-.summary-card.balanco .amount, .summary-card.gasto-diario .amount { font-size: 1rem; }
 .summary-card.gasto-diario .sub { font-size: 0.6rem; margin: 0; opacity: .7; }
 .despesa-item { padding: 0.5rem 0.7rem; }
 .menu-section { padding: 0; }

@@ -10,6 +10,7 @@
 /* Sub-abas: Categorias / Métodos / Recorrências */
 .subtabs {
   display: flex;
+  align-items: center;
   gap: 0.4rem;
   margin-bottom: var(--spacing-md);
   flex-wrap: wrap;
