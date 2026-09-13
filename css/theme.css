@@ -188,10 +188,16 @@ input.campo-travado,
 /* ---------- Chips do cabeçalho: mesmo tamanho e formato ---------- */
 .header-info { gap: 0.4rem; }
 .header-info > * {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 1.6rem;
+    margin: 0;
     font-size: 0.68rem;
     font-weight: 600;
     line-height: 1;
-    padding: 0.26rem 0.55rem;
+    padding: 0 0.55rem;
     border-radius: 999px;
     white-space: nowrap;
 }
