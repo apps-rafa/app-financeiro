@@ -168,6 +168,7 @@ async function carregarAbaMenus() {
       </div>
 
       <div class="menu-section" data-sub="importar" hidden>
+        <h3>📥 Importar</h3>
         <div class="modo-lista importar-toggle" role="tablist">
           <button type="button" class="modo-btn importar-toggle-btn active" data-importar-modo="csv">CSV</button>
           <button type="button" class="modo-btn importar-toggle-btn" data-importar-modo="pdf">PDF</button>
@@ -175,12 +176,11 @@ async function carregarAbaMenus() {
         </div>
 
         <div data-importar-modo="csv">
-          <h3>📥 Importar</h3>
           <label class="import-formato-label">Formato
             <select id="importCsvFormato">
               <option value="">Selecione...</option>
               <option value="pessoal">Minha planilha (CSV pessoal)</option>
-              <option value="nubank">Fatura Nubank</option>
+              <option value="nubank">Fatura Crédito Nubank</option>
               <option value="mp">Extrato Mercado Pago</option>
             </select>
           </label>
@@ -188,11 +188,10 @@ async function carregarAbaMenus() {
         </div>
 
         <div data-importar-modo="pdf" hidden>
-          <h3>📥 Importar</h3>
           <label class="import-formato-label">Formato
             <select id="importPdfFormato">
               <option value="">Selecione...</option>
-              <option value="bradesco">Fatura Bradesco</option>
+              <option value="bradesco">Fatura Crédito Bradesco</option>
               <option value="mp">Extrato Mercado Pago</option>
             </select>
           </label>

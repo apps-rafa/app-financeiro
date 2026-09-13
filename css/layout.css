@@ -75,7 +75,7 @@ header.header {
        cortava ela. Com padding simétrico a caixa já nasce centralizada com
        as setas, sem precisar empurrar nada pra fora dela. */
     padding: .5rem .35rem;
-    border-radius: 3px;
+    border-radius: var(--radius);
     color: var(--text);
     opacity: .45;
     font-size: .7rem;
@@ -137,7 +137,7 @@ header.header {
     line-height: 1;
     background: var(--surface-2);
     border: 1px solid var(--border-strong);
-    border-radius: 3px;
+    border-radius: var(--radius);
     color: var(--text-muted);
     cursor: pointer;
 }

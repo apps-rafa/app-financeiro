@@ -387,10 +387,10 @@ async function _recompararPDV(entrada) {
 /** Nome legível do formato pra que o dropdown de Importar restringiu essa
  *  instância — usado no texto de ajuda e na mensagem de erro. */
 function _rotuloFormatoRestrito(formatoRestrito, modo) {
-    if (formatoRestrito === 'bradesco') return 'uma fatura Bradesco';
-    if (formatoRestrito === 'nubank') return 'uma fatura Nubank';
+    if (formatoRestrito === 'bradesco') return 'uma fatura Crédito Bradesco';
+    if (formatoRestrito === 'nubank') return 'uma fatura Crédito Nubank';
     if (formatoRestrito === 'mp') return `um extrato Mercado Pago (${modo === 'pdf' ? 'PDF' : 'CSV'})`;
-    return modo === 'pdf' ? 'fatura Bradesco ou extrato Mercado Pago' : 'fatura Nubank ou extrato Mercado Pago';
+    return modo === 'pdf' ? 'fatura Crédito Bradesco ou extrato Mercado Pago' : 'fatura Crédito Nubank ou extrato Mercado Pago';
 }
 
 function renderConciliar(secId, modo) {
