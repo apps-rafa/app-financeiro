@@ -9,9 +9,9 @@
 function configurarEventListeners() {
     console.log('⚙️ Configurando event listeners...');
     
-    // Navegação de calendário: tira de meses (clique seleciona de verdade;
-    // setas laterais só passeiam a janela, sem mudar a seleção — dá pra
-    // atravessar a virada do ano) + "casinha" (volta pro mês vigente). O ano
+    // Navegação de calendário: tira de meses (clique seleciona de verdade),
+    // setas laterais andam a janela E mudam a seleção junto — o mês do meio
+    // é sempre o selecionado — + "casinha" (volta pro mês vigente). O ano
     // ao lado é fixo no vigente, sem interação.
     const mesesLista = document.getElementById('mesesLista');
     if (mesesLista) mesesLista.addEventListener('click', e => {
@@ -20,24 +20,22 @@ function configurarEventListeners() {
         const ano = parseInt(btn.dataset.ano, 10);
         const mes = parseInt(btn.dataset.mes, 10);
         if (Number.isNaN(ano) || Number.isNaN(mes)) return;
-        mesesJanelaOffset = 0;
         estadoApp.mesAtual = new Date(ano, mes, 1);
         recarregarDados();
     });
     const mesesSetaEsq = document.getElementById('mesesSetaEsq');
     if (mesesSetaEsq) mesesSetaEsq.addEventListener('click', () => {
-        mesesJanelaOffset -= 1;
-        atualizarCalendarioNav();
+        estadoApp.mesAtual = new Date(estadoApp.mesAtual.getFullYear(), estadoApp.mesAtual.getMonth() - 1, 1);
+        recarregarDados();
     });
     const mesesSetaDir = document.getElementById('mesesSetaDir');
     if (mesesSetaDir) mesesSetaDir.addEventListener('click', () => {
-        mesesJanelaOffset += 1;
-        atualizarCalendarioNav();
+        estadoApp.mesAtual = new Date(estadoApp.mesAtual.getFullYear(), estadoApp.mesAtual.getMonth() + 1, 1);
+        recarregarDados();
     });
     const btnMesAtual = document.getElementById('btnMesAtual');
     if (btnMesAtual) btnMesAtual.addEventListener('click', () => {
         const hoje = new Date();
-        mesesJanelaOffset = 0;
         estadoApp.mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
         recarregarDados();
     });
@@ -268,7 +266,6 @@ function sincronizarMesComFormulario(mes) {
     if (!(mes >= 1 && mes <= 12)) return;
     if (estadoApp.mesAtual.getMonth() + 1 === mes) return;
     estadoApp.mesAtual = new Date(estadoApp.mesAtual.getFullYear(), mes - 1, 1);
-    mesesJanelaOffset = 0;
     if (typeof recarregarDados === 'function') recarregarDados();
 }
 

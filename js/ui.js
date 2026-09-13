@@ -22,11 +22,6 @@ function atualizarUI() {
     }
 }
 
-// Deslocamento (em meses, +/-) da janela em relação ao mês selecionado —
-// só muda pelas setas laterais; navegar não altera a seleção, só o que
-// aparece. Zera sempre que a seleção muda (clique num mês, ou "casinha").
-let mesesJanelaOffset = 0;
-
 // Tamanhos possíveis da janela (sempre ímpar/simétrico: N pra trás, atual, N
 // pra frente) x formato do rótulo, do mais largo pro mais estreito. Encolhe
 // 7 -> 5 -> 3 (tricode "SET"); se ainda não couber, troca pro número do mês
@@ -64,7 +59,7 @@ function atualizarCalendarioNav() {
     const anoSelecionado = estadoApp.mesAtual.getFullYear();
     const mesSelecionado = estadoApp.mesAtual.getMonth();
     const absSelecionado = absDe(anoSelecionado, mesSelecionado);
-    const absCentro = absSelecionado + mesesJanelaOffset;
+    const absCentro = absSelecionado;
 
     if (anoLabel) anoLabel.textContent = String(anoVigente);
 
@@ -369,10 +364,6 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
           <button type="button" class="cron-barra-seg" data-cron-toggle="${rotuloPendente}"
                   style="--cor-rec:${corPendente}; flex-grow:${Math.max(pctPendente, totalPendente ? 2 : 0)}"
                   title="${rotuloPendente}: ${pctPendente}% · ${formatarMoeda(totalPendente)}" ${totalPendente ? '' : 'hidden'}></button>
-        </div>
-        <div class="cron-legenda">
-          <span class="cron-legenda-item"><i style="background:${corAtual}"></i>Atual</span>
-          <span class="cron-legenda-item"><i style="background:${corPendente}"></i>${rotuloPendente}</span>
         </div>
         ${grupoHTML('Atual', corAtual, atuais, totalAtual)}
         ${grupoHTML(rotuloPendente, corPendente, pendentes, totalPendente)}
