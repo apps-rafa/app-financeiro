@@ -312,7 +312,12 @@ function _parsearExtratoMercadoPagoCSV(texto) {
  *  em js/ui.js); senão nenhuma receita bateria com uma fatura de cartão,
  *  já que salário/freelance/etc. não passam por ele. Pra conta corrente
  *  (Pix/Débito) o comportamento antigo se mantém: qualquer receita sem
- *  método pode ter caído nessa conta, então todas entram na comparação. */
+ *  método pode ter caído nessa conta, então todas entram na comparação.
+ *  `dataIni`/`dataFim` já vêm alargados pro mês CALENDÁRIO inteiro das
+ *  competências envolvidas (ver _recompararPDV) — não só o intervalo cru
+ *  das linhas do arquivo — porque assinatura recorrente (Mensal/Parcelada)
+ *  no cartão é lançada com a data travada no vencimento do cartão, que
+ *  pode cair bem longe da data real da cobrança que aparece na fatura. */
 async function _buscarTransacoesParaConciliar(metodoDespesa, dataIni, dataFim) {
     const metodoObj = (estadoApp.menus.metodos || []).find(m => rotuloMetodo(m) === metodoDespesa);
     const ehCredito = !!metodoObj && metodoObj.metodoKind === 'Crédito';
@@ -334,18 +339,26 @@ function _diffDias(iso1, iso2) {
 }
 
 /** Casa cada linha do PDF (não ignorada) com uma transação do app (mesmo
- *  tipo, mesmo valor, data próxima) — cada transação só é usada uma vez. */
-function _conciliar(linhasPDF, transacoesApp) {
+ *  tipo, mesmo valor) — cada transação só é usada uma vez.
+ *  Data: exige data próxima (±2 dias) pra lançamento Pontual, cuja data É
+ *  a data real da compra. Mensal/Parcelada no cartão trava a data no
+ *  vencimento do cartão (não é a data real da cobrança — ver
+ *  aplicarPagarVencimento em js/ui.js), então pra essas basta a mesma
+ *  competência (mês da fatura), calculada com o fechamento do cartão. */
+function _conciliar(linhasPDF, transacoesApp, diaFechamento) {
     const pool = transacoesApp.map(t => ({ t, usada: false }));
     const semMatch = [];
 
     linhasPDF.forEach(l => {
         if (l.ignorar) return;
-        const candidata = pool.find(p =>
-            !p.usada && p.t.tipo === l.tipo &&
-            Math.abs(Math.abs(parseFloat(p.t.valor)) - l.valor) < 0.005 &&
-            _diffDias(p.t.data, l.dataISO) <= 2
-        );
+        const compLinha = typeof competenciaDe === 'function' ? competenciaDe(l.dataISO, diaFechamento || null) : null;
+        const candidata = pool.find(p => {
+            if (p.usada || p.t.tipo !== l.tipo) return false;
+            if (Math.abs(Math.abs(parseFloat(p.t.valor)) - l.valor) >= 0.005) return false;
+            const dataTravada = p.t.tipo_recorrencia === 'Mensal' || p.t.tipo_recorrencia === 'Parcelada';
+            if (dataTravada && compLinha) return p.t.competencia === compLinha;
+            return _diffDias(p.t.data, l.dataISO) <= 2;
+        });
         if (candidata) candidata.usada = true;
         else semMatch.push(l);
     });
@@ -435,8 +448,27 @@ async function onConciliarArquivos(e, secId, modo) {
 async function _recompararPDV(entrada) {
     const datas = entrada.linhas.map(l => l.dataISO).sort();
     const dataIni = datas[0], dataFim = datas[datas.length - 1];
-    const transacoes = await _buscarTransacoesParaConciliar(entrada.metodoEscolhido, dataIni, dataFim);
-    entrada.resultado = _conciliar(entrada.linhas, transacoes);
+
+    const metodoObj = (estadoApp.menus.metodos || []).find(m => rotuloMetodo(m) === entrada.metodoEscolhido);
+    const diaFechamento = (metodoObj && metodoObj.metodoKind === 'Crédito') ? metodoObj.diaFechamento : null;
+
+    // Alarga a busca (nunca estreita) pro mês CALENDÁRIO inteiro da
+    // competência de cada ponta — uma assinatura Mensal/Parcelada no
+    // cartão é lançada com a data travada no vencimento, que pode cair
+    // bem fora da janela de dias que a fatura cobre mesmo pertencendo à
+    // mesma competência.
+    let buscaIni = dataIni, buscaFim = dataFim;
+    if (diaFechamento) {
+        const [iy, im] = competenciaDe(dataIni, diaFechamento).split('-').map(Number);
+        const compIniFirstDay = `${iy}-${String(im).padStart(2, '0')}-01`;
+        const [fy, fm] = competenciaDe(dataFim, diaFechamento).split('-').map(Number);
+        const compFimLastDay = `${fy}-${String(fm).padStart(2, '0')}-${String(new Date(fy, fm, 0).getDate()).padStart(2, '0')}`;
+        if (compIniFirstDay < buscaIni) buscaIni = compIniFirstDay;
+        if (compFimLastDay > buscaFim) buscaFim = compFimLastDay;
+    }
+
+    const transacoes = await _buscarTransacoesParaConciliar(entrada.metodoEscolhido, buscaIni, buscaFim);
+    entrada.resultado = _conciliar(entrada.linhas, transacoes, diaFechamento);
 }
 
 /* ---------- Render ---------- */
