@@ -86,27 +86,52 @@ function _reconstruirDataISO(dia, competenciaISO, corte) {
     return `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
 }
 
+/** Tenta ler a coluna Data como uma DATA COMPLETA (com mês/ano) — aceita
+ *  "dd/mm/aaaa", "dd/mm/aa", "dd-mm-aaaa" ou "aaaa-mm-dd". Retorna null se
+ *  não bater com nenhum desses formatos, e quem chamou trata como "só o
+ *  dia" (reconstrução via corte — ver _reconstruirDataISO acima). Existe
+ *  porque "só o dia" depende do usuário lembrar de preencher certo o "Dia
+ *  de corte"; esquecer isso silenciosamente jogava tudo pro mês de
+ *  competência escolhido, sem nunca rolar pro mês anterior. Com data
+ *  completa não tem corte nenhum pra esquecer. */
+function _parsearDataCompleta(s) {
+    const str = String(s || '').trim();
+    let m = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+
+    m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2}|\d{4})$/);
+    if (m) {
+        const dia = parseInt(m[1], 10), mes = parseInt(m[2], 10);
+        const ano = m[3].length === 2 ? 2000 + parseInt(m[3], 10) : parseInt(m[3], 10);
+        if (dia < 1 || dia > 31 || mes < 1 || mes > 12) return null;
+        return `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+    }
+    return null;
+}
+
 /* ---------- Parse do arquivo escolhido -> linhas estruturadas ---------- */
 
 function _parsearArquivoImport(texto) {
     const linhasCSV = _parsearCSV(texto);
     if (!linhasCSV.length) return [];
 
-    // Detecta e descarta cabeçalho (1ª linha sem valor numérico na col. 2)
+    // Detecta e descarta cabeçalho (1ª linha sem valor numérico/data na col. 1)
     let inicio = 0;
-    if (linhasCSV[0] && isNaN(parseInt(linhasCSV[0][0], 10))) inicio = 1;
+    if (linhasCSV[0] && isNaN(parseInt(linhasCSV[0][0], 10)) && !_parsearDataCompleta(linhasCSV[0][0])) inicio = 1;
 
     const linhas = [];
     for (let i = inicio; i < linhasCSV.length; i++) {
         const [dataCru, valorCru, metodoCru, tagCru, descCru] = linhasCSV[i];
-        const dia = parseInt(String(dataCru || '').trim(), 10);
+        const dataCompletaISO = _parsearDataCompleta(dataCru);
+        const dia = dataCompletaISO ? null : parseInt(String(dataCru || '').trim(), 10);
         const valor = _parsearValorBR(valorCru);
         // Linha só com o dia (sobra de calendário na planilha do usuário): ignora
-        if (!Number.isInteger(dia) || valor == null) continue;
+        if ((!dataCompletaISO && !Number.isInteger(dia)) || valor == null) continue;
 
         linhas.push({
             linhaOriginal: i + 1,
             dia,
+            dataCompletaISO,
             valorBruto: valor,
             metodoCSV: String(metodoCru || '').trim(),
             categoriaCSV: String(tagCru || '').trim(),
@@ -150,7 +175,7 @@ function _recalcularLinhas() {
     st.linhas.forEach(l => {
         l.tipo = l.valorBruto < 0 ? 'entradas' : 'saidas';
         l.valor = Math.abs(l.valorBruto);
-        l.dataISO = _reconstruirDataISO(l.dia, st.competenciaISO, st.corte);
+        l.dataISO = l.dataCompletaISO || _reconstruirDataISO(l.dia, st.competenciaISO, st.corte);
         if (l.metodoResolvido === undefined) l.metodoResolvido = _resolverMetodo(l.metodoCSV);
         if (l.categoriaResolvida === undefined) {
             // Linhas de receita (valor negativo no CSV) sempre começam sem
@@ -161,7 +186,10 @@ function _recalcularLinhas() {
 }
 
 function _linhaPronta(l) {
-    return !!l.dataISO && !!l.metodoResolvido && !!l.categoriaResolvida && l.valor > 0;
+    // Competência é sempre gravada na transação (mesmo com data completa,
+    // que não depende dela pra calcular o dia) — sem competência, nada fica pronto.
+    return !!l.dataISO && !!estadoImportCSV?.competenciaISO
+        && !!l.metodoResolvido && !!l.categoriaResolvida && l.valor > 0;
 }
 
 /* ---------- Render ---------- */
@@ -175,8 +203,10 @@ function renderImportCSV() {
         sec.innerHTML = `
         <p class="menu-hint">
             Importa vários lançamentos Pontuais de uma vez a partir de um CSV com as colunas
-            <b>Data, Valor, Método, Tag, Descrição</b>. A coluna Data pode ser só o dia (sem mês/ano) —
-            útil pra colar o ciclo de fatura de um cartão.
+            <b>Data, Valor, Método, Tag, Descrição</b>. A coluna Data aceita data completa
+            (dd/mm/aaaa) ou só o dia (sem mês/ano) — o dia sozinho é útil pra colar o ciclo de
+            fatura de um cartão, mas exige preencher certo o "Dia de corte" pra rolar pro mês
+            anterior quando precisar; data completa não tem essa pegadinha.
         </p>
         <div class="import-csv-upload">
             <input type="file" id="importCsvArquivo" accept=".csv,text/csv">
@@ -205,9 +235,13 @@ function renderImportCSV() {
 
     const faltaCompetencia = !st.competenciaISO;
     const faltamData = paraRevisar.some(([l]) => !l.dataISO);
+    // Se toda linha já veio com data completa (dd/mm/aaaa etc.), o corte não
+    // serve pra nada — não tem "dia do mês" pra reconstruir.
+    const todasComDataCompleta = st.linhas.length > 0 && st.linhas.every(l => l.dataCompletaISO);
     const faltamMetodoOuCategoria = paraRevisar.some(([l]) => !l.metodoResolvido || !l.categoriaResolvida);
     const motivos = [];
-    if (faltamData) motivos.push(faltaCompetencia ? 'informe o mês de competência acima' : 'data');
+    if (faltaCompetencia) motivos.push('informe o mês de competência acima');
+    else if (faltamData) motivos.push('data');
     if (faltamMetodoOuCategoria) motivos.push('método/categoria');
     const msgBloqueio = motivos.length ? `Resolva ${motivos.join(' e ')} das linhas destacadas pra liberar a importação.` : '';
 
@@ -221,13 +255,14 @@ function renderImportCSV() {
                        placeholder="ano" value="${st.competenciaAno ?? ''}">
             </span>
         </label>
-        <label>
+        <label ${todasComDataCompleta ? 'hidden' : ''}>
             <span class="import-csv-label-linha">Dia de corte <span class="import-csv-ajuda" title="Dias a partir deste valor caem no mês ANTERIOR à competência (ex.: fechamento do cartão). Deixe em branco se a coluna Data já for do próprio mês de competência.">?</span></span>
             <input type="number" id="importCsvCorte" min="1" max="31" value="${st.corte ?? ''}" placeholder="ex: 14">
         </label>
         <button type="button" class="mini-btn" id="importCsvTrocarArquivo">Trocar arquivo</button>
     </div>
-    ${faltaCompetencia ? `<p class="import-csv-aviso">⚠️ Informe o mês de competência pra calcular as datas — sem isso nenhuma linha fica pronta.</p>` : ''}
+    ${todasComDataCompleta ? `<p class="import-csv-desc">📅 Data completa detectada na planilha — não precisa de "Dia de corte".</p>` : ''}
+    ${faltaCompetencia ? `<p class="import-csv-aviso">⚠️ Informe o mês de competência${todasComDataCompleta ? '' : ' pra calcular as datas'} — sem isso nenhuma linha fica pronta.</p>` : ''}
     <p class="import-csv-resumo">
         <b>${st.linhas.length}</b> linhas no arquivo — <span class="ok">${prontas} prontas</span>
         ${revisar ? ` · <span class="alerta">${revisar} para revisar</span>` : ''}
@@ -309,7 +344,7 @@ function _recalcularLinhasForcandoData() {
     st.linhas.forEach(l => {
         l.tipo = l.valorBruto < 0 ? 'entradas' : 'saidas';
         l.valor = Math.abs(l.valorBruto);
-        l.dataISO = _reconstruirDataISO(l.dia, st.competenciaISO, st.corte);
+        l.dataISO = l.dataCompletaISO || _reconstruirDataISO(l.dia, st.competenciaISO, st.corte);
     });
 }
 
