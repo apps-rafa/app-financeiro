@@ -7,16 +7,34 @@
   padding: 0;
 }
 
-/* Sub-abas: Categorias / Métodos / Recorrências */
+/* Sub-abas: Categorias / Métodos / Recorrências / ... — o "×" de fechar
+   fica FORA do grupo que quebra linha (nunca é um item "viúvo" sozinho
+   numa linha, sempre gruda no fim da última linha dos botões). */
 .subtabs {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.4rem;
   margin-bottom: var(--spacing-md);
-  flex-wrap: wrap;
+}
+.subtabs .btn-fechar-form { flex: none; }
+/* Grid em vez de flex-wrap: toda linha tem o mesmo número de colunas, então
+   quebrar nunca sobra 1 botão sozinho esticado numa linha própria — a
+   última linha incompleta some colunas vazias em vez de esticar 1 item. */
+.subtabs-itens {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+  gap: 0.4rem;
+}
+/* Abaixo de ~480px o auto-fill fica instável (o ponto exato em que cabem 2
+   vs. 3 colunas varia pixel a pixel com a largura da tela, então às vezes
+   sobra 1 item sozinho na última linha) — trava em 3 colunas fixas, que é
+   a única divisão sem "viúvo" pros 5 botões atuais (3+2). */
+@media (max-width: 480px) {
+  .subtabs-itens { grid-template-columns: repeat(3, 1fr); }
 }
 .subtabs .subtab {
-  flex: 1 1 auto;
   min-width: 0;
   padding: 0.45rem 0.5rem;
   border: 1px solid var(--border);
@@ -27,6 +45,8 @@
   font-size: 0.75rem;
   cursor: pointer;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .subtabs .subtab.active {
   background: var(--primary);
@@ -34,30 +54,10 @@
   border-color: var(--primary);
 }
 
-/* Toggle "CSV" / "PDF" dentro da sub-aba "Importar" — mesma linguagem
-   visual dos .subtab, só que menor (é um nível abaixo). */
-.importar-toggle {
-  display: flex;
-  gap: 0.4rem;
-  margin-bottom: var(--spacing-md);
-  max-width: 220px;
-}
-.importar-toggle-btn {
-  flex: 1 1 auto;
-  padding: 0.4rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text-muted);
-  font-weight: 600;
-  font-size: 0.78rem;
-  cursor: pointer;
-}
-.importar-toggle-btn.active {
-  background: var(--primary);
-  color: var(--primary-contrast);
-  border-color: var(--primary);
-}
+/* Toggle "CSV" / "PDF" dentro da sub-aba "Importar" — reaproveita o
+   .modo-lista/.modo-btn dos filtros de Receitas/Despesas, ocupando a
+   largura toda em vez do tamanho de conteúdo. */
+.importar-toggle { width: 100%; }
 
 /* Sem painel externo: as sub-seções da Configuração alinham com o resto */
 .menu-section {
