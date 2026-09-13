@@ -681,7 +681,20 @@ async function atualizarProximasTransacoes() {
         const mRef = (typeof estadoApp !== 'undefined' && estadoApp.mesAtual) ? estadoApp.mesAtual : new Date();
         const mes = mRef.getMonth() + 1, ano = mRef.getFullYear();
         const elTit = document.getElementById('proximasTitulo');
-        if (elTit) elTit.textContent = `Próximas em ${obterMesAnoFormatado(mRef)}`;
+        if (elTit) {
+            // 4 níveis conforme o espaço aperta (mesma ideia do mês no topo):
+            // "Próximos lançamentos em setembro de 2026" -> "Próx. lançamentos
+            // em setembro de 2026" -> "Próx. lançamentos em SET/2026" ->
+            // "Próx. lançamentos 09/26"
+            const mesPorExtenso = obterMesAnoFormatado(mRef).toLowerCase();
+            const mesCurto = obterMesAnoCurto(mRef);
+            const mesMini = obterMesAnoMini(mRef);
+            elTit.innerHTML =
+                `<span class="prox-titulo-full">Próximos lançamentos em ${mesPorExtenso}</span>` +
+                `<span class="prox-titulo-media">Próx. lançamentos em ${mesPorExtenso}</span>` +
+                `<span class="prox-titulo-curto">Próx. lançamentos em ${mesCurto}</span>` +
+                `<span class="prox-titulo-mini">Próx. lançamentos ${mesMini}</span>`;
+        }
 
         const ehDespesa = tipoProximasAtual !== 'entradas';
         const proximas = await carregarProximas(tipoProximasAtual, mes, ano);
