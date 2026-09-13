@@ -3,6 +3,13 @@
  * Renderização e atualização do DOM
  */
 
+/** "58,3" em vez de "58" — 1 casa decimal (vírgula, pt-BR) nos percentuais
+ *  dos gráficos/listas agrupadas; sem isso um grupo pequeno (ex. 0,4%)
+ *  aparecia arredondado pra "0%", sem dar pra saber que ele tinha algo. */
+function formatarPct(pct) {
+    return pct.toFixed(1).replace('.', ',');
+}
+
 /**
  * Atualiza toda a interface
  */
@@ -275,12 +282,12 @@ function _renderBarraGrupos(grupos, tipoUI, modo) {
     if (!totalGeral) return '';
     const filtro = _filtroGrupoDe(tipoUI, modo);
     const segs = grupos.map(g => {
-        const pct = Math.round((g.total / totalGeral) * 100);
+        const pct = (g.total / totalGeral) * 100;
         const apagado = filtro && filtro !== g.chave ? ' cron-barra-seg--apagado' : '';
         const chaveAttr = String(g.chave).replace(/"/g, '&quot;');
         return `<button type="button" class="cron-barra-seg${apagado}" data-grupo-toggle="${chaveAttr}"
                   style="--cor-rec:${g.cor}; flex-grow:${Math.max(pct, g.total ? 2 : 0)}"
-                  title="${g.nome}: ${pct}% · ${formatarMoeda(g.total)}" ${g.total ? '' : 'hidden'}></button>`;
+                  title="${g.nome}: ${formatarPct(pct)}% · ${formatarMoeda(g.total)}" ${g.total ? '' : 'hidden'}></button>`;
     }).join('');
     return `<div class="cron-barra" role="img">${segs}</div>`;
 }
@@ -408,13 +415,13 @@ function _renderListaAgrupadaPorTotal(container, transacoes, tipoUI, msgVazia, {
 
     container.innerHTML = grupos.map(([nome, itens, total]) => {
         const c = cores[nome] || corPadraoChip(nome);
-        const pct = totalGeral ? Math.round((total / totalGeral) * 100) : 0;
+        const pct = totalGeral ? (total / totalGeral) * 100 : 0;
         return `
         <details class="rec-grupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[nome] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
             <span class="rec-grupo-contagem">${itens.length}</span>
-            <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${pct}%` : ''}</span>
+            <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
             ${itens.map(t => gerarHTMLTransacao(t, tipoUI, gerarOpts)).join('')}
@@ -488,7 +495,7 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
     const totalAtual = atuais.reduce((s, t) => s + valorDe(t), 0);
     const totalPendente = pendentes.reduce((s, t) => s + valorDe(t), 0);
     const totalGeral = totalAtual + totalPendente;
-    const pctAtual = totalGeral ? Math.round((totalAtual / totalGeral) * 100) : 0;
+    const pctAtual = totalGeral ? (totalAtual / totalGeral) * 100 : 0;
     const pctPendente = totalGeral ? 100 - pctAtual : 0;
 
     const abertos = _lerAbertosRecGrupo(container);
@@ -499,7 +506,7 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
             <span class="rec-grupo-contagem">${itens.length}</span>
-            <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${pct}%` : ''}</span>
+            <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
             ${itens.length ? itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('') : `<p class="empty-message">Nada aqui</p>`}
@@ -507,13 +514,13 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
         </details>`;
 
     container.innerHTML = `
-        <div class="cron-barra" role="img" aria-label="${pctAtual}% Atual, ${pctPendente}% ${rotuloPendente}">
+        <div class="cron-barra" role="img" aria-label="${formatarPct(pctAtual)}% Atual, ${formatarPct(pctPendente)}% ${rotuloPendente}">
           <button type="button" class="cron-barra-seg" data-cron-toggle="Atual"
                   style="--cor-rec:${corAtual}; flex-grow:${Math.max(pctAtual, totalAtual ? 2 : 0)}"
-                  title="Atual: ${pctAtual}% · ${formatarMoeda(totalAtual)}" ${totalAtual ? '' : 'hidden'}></button>
+                  title="Atual: ${formatarPct(pctAtual)}% · ${formatarMoeda(totalAtual)}" ${totalAtual ? '' : 'hidden'}></button>
           <button type="button" class="cron-barra-seg" data-cron-toggle="${rotuloPendente}"
                   style="--cor-rec:${corPendente}; flex-grow:${Math.max(pctPendente, totalPendente ? 2 : 0)}"
-                  title="${rotuloPendente}: ${pctPendente}% · ${formatarMoeda(totalPendente)}" ${totalPendente ? '' : 'hidden'}></button>
+                  title="${rotuloPendente}: ${formatarPct(pctPendente)}% · ${formatarMoeda(totalPendente)}" ${totalPendente ? '' : 'hidden'}></button>
         </div>
         ${grupoHTML('Atual', corAtual, atuais, totalAtual, pctAtual)}
         ${grupoHTML(rotuloPendente, corPendente, pendentes, totalPendente, pctPendente)}
@@ -581,13 +588,13 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
         const rotulo = (typeof rotuloRecorrencia === 'function') ? rotuloRecorrencia(tipoRec, ehDespesa) : tipoRec;
         const c = cores[tipoRec] || corPadraoChip(tipoRec);
         const total = totalGrupo(itens);
-        const pct = totalGeral ? Math.round((total / totalGeral) * 100) : 0;
+        const pct = totalGeral ? (total / totalGeral) * 100 : 0;
         return `
         <details class="rec-grupo" data-nome="${tipoRec.replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[tipoRec] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${rotulo}</span>
             <span class="rec-grupo-contagem">${itens.length}</span>
-            <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${pct}%` : ''}</span>
+            <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
             ${itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
@@ -1118,13 +1125,13 @@ function _agruparProximasPorTotal(ctxList, { chaveDe, semChave, cores, extraOpts
 
     return grupos.map(([nome, itens, total]) => {
         const c = cores[nome] || corPadraoChip(nome);
-        const pct = totalGeral ? Math.round((total / totalGeral) * 100) : 0;
+        const pct = totalGeral ? (total / totalGeral) * 100 : 0;
         return `
         <details class="rec-grupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[nome] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
             <span class="rec-grupo-contagem">${itens.length}</span>
-            <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${pct}%` : ''}</span>
+            <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
             ${itens.map(c2 => gerarHTMLTransacao(c2.trans, c2.tipoUI, { ...c2.opts, ...extraOpts })).join('')}
