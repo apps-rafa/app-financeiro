@@ -629,3 +629,34 @@
 }
 .import-csv-bloqueado { font-size: .78rem; color: var(--despesa-text); }
 .import-csv-progresso { font-size: .8rem; color: var(--text-muted); margin-top: .5rem; }
+
+/* ============ Conciliar PDF ============ */
+.conciliar-pdf-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: .8rem;
+  margin-top: .8rem;
+}
+.conciliar-pdf-card--erro { border-color: var(--despesa-text); color: var(--despesa-text); }
+.conciliar-pdf-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .8rem;
+  margin-bottom: .3rem;
+}
+.conciliar-pdf-metodo {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+.conciliar-pdf-metodo select {
+  padding: .3rem .5rem;
+  border: 1px solid var(--border-strong, #D1D5DB);
+  border-radius: var(--radius-sm);
+  font-size: .82rem;
+}
