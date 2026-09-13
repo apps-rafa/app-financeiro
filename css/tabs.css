@@ -10,7 +10,7 @@
    dashboard já abrem a aba correspondente. */
 .tabs {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 2fr 2fr 1.3fr;
     gap: var(--spacing-md);
     margin-bottom: var(--spacing-md);
 }
