@@ -161,14 +161,20 @@ header.header {
 .seta-lateral:disabled { opacity: .25; cursor: default; }
 .seta-lateral[hidden] { display: none; }
 
-/* Tema + Configurações encostados à direita, colados um no outro —
-   mesma altura/arredondado (os dois usam .month-btn como base). */
+/* Tema + Configurações alinhados com a 3ª coluna do dashboard (Balanço /
+   Gasto diário / Próximos, 150px) — mesma largura, começando na mesma
+   borda esquerda. Só faz sentido acima de 480px: abaixo disso o
+   dashboard já não tem uma 3ª coluna de 150px (vira grade 2x2). */
 .month-bar-acoes {
     flex: 0 0 auto;
     margin-left: auto;
     display: flex;
     align-items: center;
     gap: .4rem;
+}
+@media (min-width: 481px) {
+    .month-bar-acoes { width: 150px; }
+    .month-bar .month-btn--config { flex: 1 1 auto; }
 }
 .month-bar .month-btn--tema {
     flex: none;
@@ -183,6 +189,7 @@ header.header {
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: .25rem;
     white-space: nowrap;
     font-size: 0.6rem;
@@ -196,12 +203,23 @@ header.header {
     line-height: 1;
     vertical-align: -0.12em;
 }
+/* 3 níveis: "Configurações" -> "Config." -> só a engrenagem. A partir de
+   481px o botão fica preso nos 150px da coluna (regra acima) — "Configurações"
+   nunca cabe aí, então nessa faixa já entra direto em "Config.". Abaixo de
+   481px o botão não tem largura travada (o dashboard virou 2x2), aí o texto
+   cheio ainda cabe até apertar de vez em 400px. */
+.month-btn--config .cfg-label-curto { display: none; }
+@media (min-width: 481px) {
+    .month-btn--config .cfg-label-full { display: none; }
+    .month-btn--config .cfg-label-curto { display: inline; }
+}
 @media (max-width: 460px) {
     .month-bar .month-btn--config { font-size: 0.55rem; gap: 0.2rem; }
 }
 @media (max-width: 400px) {
-    /* "Configurações" some, fica só a engrenagem */
-    .month-btn--config .cfg-label { display: none; }
+    /* "Config."/"Configurações" somem, fica só a engrenagem */
+    .month-btn--config .cfg-label-full,
+    .month-btn--config .cfg-label-curto { display: none; }
     .month-bar .month-btn--config { gap: 0; padding: 0.3rem 0.5rem; }
 }
 .month-bar .month-btn {
