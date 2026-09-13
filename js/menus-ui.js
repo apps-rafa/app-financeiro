@@ -50,7 +50,7 @@ async function carregarAbaMenus() {
       <div class="menu-section menu-section--cols" data-sub="cat">
         <details class="cat-coluna">
           <summary class="cat-coluna-topo">
-            <span class="cat-subgrupo-titulo">📥 Receita</span>
+            <span class="cat-subgrupo-titulo"><svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg> Receita</span>
             <button type="button" class="h3-add h3-az" onclick="event.preventDefault();event.stopPropagation();ordenarAlfabetico('categoriasReceita')" title="Ordenar de A a Z">A→Z</button>
             <button type="button" class="h3-add" onclick="event.preventDefault();event.stopPropagation();abrirNovaCategoria('entradas')" title="Nova categoria de receita">+</button>
           </summary>
@@ -58,7 +58,7 @@ async function carregarAbaMenus() {
         </details>
         <details class="cat-coluna">
           <summary class="cat-coluna-topo">
-            <span class="cat-subgrupo-titulo">📤 Despesa</span>
+            <span class="cat-subgrupo-titulo"><svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--despesa-text)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg> Despesa</span>
             <button type="button" class="h3-add h3-az" onclick="event.preventDefault();event.stopPropagation();ordenarAlfabetico('categoriasDespesa')" title="Ordenar de A a Z">A→Z</button>
             <button type="button" class="h3-add" onclick="event.preventDefault();event.stopPropagation();abrirNovaCategoria('saidas')" title="Nova categoria de despesa">+</button>
           </summary>
