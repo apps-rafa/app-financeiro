@@ -143,6 +143,16 @@ function _pareceFaturaNubankCSV(texto) {
     return /^date,title,amount/i.test(primeiraLinha);
 }
 
+/** "273.94" / "-17.20" -> 273.94 / -17.2 — o export "date,title,amount" do
+ *  Nubank usa ponto como separador decimal (formato americano), diferente
+ *  do resto do app (_parsearValorBR, formato brasileiro com vírgula) —
+ *  usar o parser errado aqui multiplicava todo valor por ~100. */
+function _parsearValorUS(s) {
+    const limpo = String(s || '').trim().replace(/\s+/g, '');
+    const v = parseFloat(limpo);
+    return Number.isFinite(v) ? v : null;
+}
+
 function _parsearFaturaNubankCSV(texto) {
     // Mesmo parser de CSV com aspas do Importar CSV (js/importar-csv.js) —
     // aqui tem descrição com aspas duplicadas dentro ("Estorno de ""X""").
@@ -159,7 +169,7 @@ function _parsearFaturaNubankCSV(texto) {
 
         const descricao = String(tituloCru || '').trim();
         const dNorm = _normalizarTexto(descricao);
-        const valor = _parsearValorBR(valorCru);
+        const valor = _parsearValorUS(valorCru);
         if (valor == null) continue;
 
         linhas.push({
@@ -264,16 +274,26 @@ function _parsearExtratoMercadoPagoCSV(texto) {
 /* ---------- Comparação com o app ---------- */
 
 /** Busca transações do período — despesas restritas ao método escolhido
- *  (o extrato/fatura só cobre esse método), receitas sem restrição de
- *  método (o formulário de receita não tem campo de método). */
+ *  (o extrato/fatura só cobre esse método). Receitas: se o método é um
+ *  cartão de crédito, só entram as que têm esse mesmo método marcado (só
+ *  estorno/reembolso lançado na fatura tem método — ver "Reembolso/Estorno"
+ *  em js/ui.js); senão nenhuma receita bateria com uma fatura de cartão,
+ *  já que salário/freelance/etc. não passam por ele. Pra conta corrente
+ *  (Pix/Débito) o comportamento antigo se mantém: qualquer receita sem
+ *  método pode ter caído nessa conta, então todas entram na comparação. */
 async function _buscarTransacoesParaConciliar(metodoDespesa, dataIni, dataFim) {
+    const metodoObj = (estadoApp.menus.metodos || []).find(m => rotuloMetodo(m) === metodoDespesa);
+    const ehCredito = !!metodoObj && metodoObj.metodoKind === 'Crédito';
     const { data, error } = await sb
         .from('transacoes')
         .select('*')
         .gte('data', dataIni)
         .lte('data', dataFim);
     if (error) { console.error('Erro ao buscar transações pra conciliar:', error); return []; }
-    return (data || []).filter(t => t.tipo === 'entradas' || t.metodo === metodoDespesa);
+    return (data || []).filter(t => {
+        if (t.tipo !== 'entradas') return t.metodo === metodoDespesa;
+        return t.metodo === metodoDespesa || (!ehCredito && !t.metodo);
+    });
 }
 
 function _diffDias(iso1, iso2) {
@@ -325,8 +345,13 @@ async function onConciliarArquivos(e, secId, modo) {
 
         try {
             const texto = modo === 'csv' ? await file.text() : await _extrairTextoPDF(await file.arrayBuffer());
-            const credito = () => {
-                const m = (estadoApp.menus.metodos || []).find(m => m.metodoKind === 'Crédito');
+            // Prefere o cartão de crédito cujo banco bate com o emissor da fatura
+            // (ex.: 2 cartões cadastrados, Bradesco e Nubank — sem isso, uma
+            // fatura Nubank podia cair sozinha no primeiro crédito da lista,
+            // que podia ser o Bradesco, e a comparação toda saía errada).
+            const credito = (bancoAlvo) => {
+                const cands = (estadoApp.menus.metodos || []).filter(m => m.metodoKind === 'Crédito');
+                const m = (bancoAlvo && cands.find(c => _normalizarTexto(c.banco).includes(bancoAlvo))) || cands[0];
                 return m ? rotuloMetodo(m) : '';
             };
             const pixOuDebito = () => {
@@ -341,11 +366,11 @@ async function onConciliarArquivos(e, secId, modo) {
             if (podeBradesco && _pareceFaturaBradesco(texto)) {
                 entrada.formato = 'fatura';
                 entrada.linhas = _parsearFaturaBradesco(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
-                entrada.metodoEscolhido = credito();
+                entrada.metodoEscolhido = credito('bradesco');
             } else if (podeBradesco && _pareceFaturaBradescoBoleto(texto)) {
                 entrada.formato = 'fatura';
                 entrada.linhas = _parsearFaturaBradescoBoleto(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
-                entrada.metodoEscolhido = credito();
+                entrada.metodoEscolhido = credito('bradesco');
             } else if (modo === 'pdf' && podeMP && _pareceExtratoMercadoPago(texto)) {
                 entrada.formato = 'extrato';
                 entrada.linhas = _parsearExtratoMercadoPago(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
@@ -357,7 +382,7 @@ async function onConciliarArquivos(e, secId, modo) {
             } else if (podeNubank && _pareceFaturaNubankCSV(texto)) {
                 entrada.formato = 'fatura';
                 entrada.linhas = _parsearFaturaNubankCSV(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
-                entrada.metodoEscolhido = credito();
+                entrada.metodoEscolhido = credito('nubank');
             } else {
                 throw new Error(`Esse arquivo não parece ${_rotuloFormatoRestrito(fr, modo)}.`);
             }

@@ -264,9 +264,11 @@
 }
 
 /* ============ Resumo compacto fixo (aparece ao rolar) ============ */
+/* Grid de 4 colunas — mesma proporção do dashboard (4 summary-cards em
+   cima, "+ Lançamento" ocupando 3 colunas + "Próximos" na 4ª embaixo). */
 .mini-resumo {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: .35rem;
   padding: .45rem .55rem;
   background: var(--surface);
@@ -274,15 +276,16 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* 2ª linha: "+ Lançamento" + "Próximos" ocupando a largura inteira */
+/* 2ª linha: "+ Lançamento" (3 colunas) + "Próximos" (1 coluna, do tamanho
+   do box "Gasto diário" acima dele) */
 .mini-linha2 {
-  flex: 0 0 100%;
-  order: 2;
-  display: flex;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: .35rem;
 }
 .mini-lancamento {
-  flex: 1 1 auto;
+  grid-column: 1 / span 3;
   padding: .4rem;
   border: 1px solid var(--primary);
   border-radius: var(--radius-xs);
@@ -294,7 +297,7 @@
 }
 .mini-lancamento .tab-mais { color: #FFD54A; font-weight: 800; margin-right: .15rem; }
 .mini-proximos {
-  flex: 0 0 auto;
+  grid-column: span 1;
   padding: .4rem .7rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-xs);
@@ -304,9 +307,10 @@
   font-size: var(--font-size-sm);
   cursor: pointer;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mini-box {
-  flex: 1 1 0;
   min-width: 0;
   display: flex;
   align-items: center;
