@@ -462,8 +462,10 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
     const pctPendente = totalGeral ? 100 - pctAtual : 0;
 
     const abertos = _lerAbertosRecGrupo(container);
+    // Grupo vazio nunca abre (mesmo se estava aberto antes de esvaziar,
+    // ex.: depois de editar a última transação dele pra fora do grupo).
     const grupoHTML = (nome, cor, itens, total, pct) => `
-        <details class="rec-grupo" data-nome="${nome}" style="--cor-rec:${cor}" ${abertos[nome] ? 'open' : ''}>
+        <details class="rec-grupo" data-nome="${nome}" style="--cor-rec:${cor}" ${(itens.length && abertos[nome]) ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
             <span class="rec-grupo-contagem">${itens.length}</span>
@@ -1150,9 +1152,15 @@ function renderFaturasCartao() {
 
     const linhas = cartoes.map(m => {
         const rot = (typeof rotuloMetodo === 'function') ? rotuloMetodo(m) : m.nome;
-        const total = estadoApp.transacoes.saidas
+        const totalDespesas = estadoApp.transacoes.saidas
             .filter(t => t.metodo === rot)
             .reduce((s, t) => s + valorDe(t), 0);
+        // Receita com esse método = estorno/reembolso lançado na fatura —
+        // abate do total, não é receita separada (ver calcularResumoMes).
+        const totalEstornos = estadoApp.transacoes.entradas
+            .filter(t => t.metodo === rot)
+            .reduce((s, t) => s + valorDe(t), 0);
+        const total = totalDespesas - totalEstornos;
         if (!total) return '';
         const diaV = Math.min(parseInt(m.diaVencimento, 10) || 1, ultimoDia);
         const venc = `${String(diaV).padStart(2, '0')}/${String(mes.getMonth() + 1).padStart(2, '0')}`;
