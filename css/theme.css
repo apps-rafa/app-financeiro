@@ -309,9 +309,9 @@ input.campo-travado,
     font-size: 1rem;
 }
 .summary-card { padding: var(--spacing-sm) 0.7rem; }
-.summary-card h3 { font-size: 0.68rem; margin-bottom: 0.3rem; }
+.summary-card h3 { font-size: 0.68rem; margin-bottom: 0; }
 .card-linhas { gap: 0.2rem; }
-.card-linhas .linha.total { margin-top: 0.25rem; padding-top: 0.25rem; }
+.card-linhas .linha.total { margin-top: 0; padding-top: 0; }
 /* Balanço e Gasto diário: cards mais baixos (só título + valor). Tamanho
    de fonte NÃO é fixado aqui — .summary-card .amount (dashboard.css) já
    escala pela largura do card via container query; um valor fixo nessa
