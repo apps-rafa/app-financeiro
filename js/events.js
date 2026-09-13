@@ -405,9 +405,12 @@ async function submeterFormulario(e) {
         // Recarregar dados
         await recarregarDados();
 
-        // Edição volta para a tela onde o usuário estava; novo lançamento vai p/ a lista do tipo
-        const destino = foiEdicao ? (abaOrigem || dados.tipo) : dados.tipo;
-        setTimeout(() => mudarAba(destino), 500);
+        if (foiEdicao) {
+            // Edição volta para a tela onde o usuário estava
+            setTimeout(() => mudarAba(abaOrigem || dados.tipo), 500);
+        }
+        // Lançamento novo: fica no formulário em branco (já foi limpo acima),
+        // pra encadear vários lançamentos seguidos sem trocar de aba.
 
     } catch (error) {
         console.error('Erro ao salvar transação:', error);

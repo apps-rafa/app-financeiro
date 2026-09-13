@@ -258,11 +258,12 @@ function calcularResumoMes() {
     const hoje = new Date().toISOString().slice(0, 10);
     const r2 = n => parseFloat(n.toFixed(2));
 
-    // Métodos de crédito: o gasto ainda não foi "pago" -> conta sempre em "a pagar"
-    const metodosCredito = new Set(
+    // Métodos de crédito: o gasto só "realiza" (sai da fatura em aberto) depois
+    // que o vencimento da fatura daquela competência já passou.
+    const metodosCredito = new Map(
         ((estadoApp.menus && estadoApp.menus.metodos) || [])
             .filter(m => m.metodoKind === 'Crédito')
-            .map(m => (typeof rotuloMetodo === 'function' ? rotuloMetodo(m) : m.nome))
+            .map(m => [(typeof rotuloMetodo === 'function' ? rotuloMetodo(m) : m.nome), m])
     );
 
     // Para cada transação: total (Semanal usa valorMes/Y) e "atual" (já realizado)
@@ -271,8 +272,11 @@ function calcularResumoMes() {
         lista.forEach(t => {
             const tot = (t.valorMes != null ? t.valorMes : t.valor) || 0;
             let realizado;
-            if (metodosCredito.has(t.metodo)) {
-                realizado = 0;                            // crédito: sempre "a pagar"
+            const cartao = metodosCredito.get(t.metodo);
+            if (cartao) {
+                const venc = (cartao.diaVencimento && t.competencia)
+                    ? dataVencimento(t.competencia, cartao.diaVencimento) : null;
+                realizado = (venc && venc < hoje) ? tot : 0;
             } else if (t.tipoRecorrencia === 'Semanal' && t.valorMes != null) {
                 realizado = t.valor || 0;                 // X (sessões já ocorridas)
             } else {
