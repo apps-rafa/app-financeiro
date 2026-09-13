@@ -226,8 +226,8 @@ input.campo-travado,
     background: transparent;
     padding: 0.26rem 0.15rem;
     max-width: 11rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: .8em;
+    overflow-wrap: break-word;
 }
 @media (max-width: 460px) {
     .user-email { display: none; }

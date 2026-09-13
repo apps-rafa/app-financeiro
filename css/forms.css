@@ -95,9 +95,8 @@
     cursor: pointer;
     transition: all var(--transition-normal);
     text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    line-height: 1.15;
 }
 .seta-icone { flex: none; display: inline-block; vertical-align: -2px; }
 
@@ -276,16 +275,12 @@
     grid-column: span 1;
 }
 
-/* Labels — nunca quebram em mais de uma linha */
 .form-group label {
     display: block;
     margin-bottom: 0.25rem;
     font-weight: var(--font-weight-semibold);
     color: var(--dark);
     font-size: 0.76rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 .form-group.campo-mini label {
     font-size: 0.72rem;

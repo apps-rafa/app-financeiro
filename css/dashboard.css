@@ -323,9 +323,10 @@
   font-size: .64rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+@media (max-width: 360px) {
+  .mini-box b { font-size: .56rem; }
 }
 .mini-box.entradas { background: var(--receita-bg); color: var(--receita-text); border-color: var(--receita-border); }
 .mini-box.saidas   { background: var(--despesa-bg); color: var(--despesa-text); border-color: var(--despesa-border); }
