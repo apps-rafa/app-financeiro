@@ -203,6 +203,14 @@ function renderImportCSV() {
         </table>
     </div>`;
 
+    const faltaCompetencia = !st.competenciaISO;
+    const faltamData = paraRevisar.some(([l]) => !l.dataISO);
+    const faltamMetodoOuCategoria = paraRevisar.some(([l]) => !l.metodoResolvido || !l.categoriaResolvida);
+    const motivos = [];
+    if (faltamData) motivos.push(faltaCompetencia ? 'informe o mês de competência acima' : 'data');
+    if (faltamMetodoOuCategoria) motivos.push('método/categoria');
+    const msgBloqueio = motivos.length ? `Resolva ${motivos.join(' e ')} das linhas destacadas pra liberar a importação.` : '';
+
     sec.innerHTML = `
     <div class="import-csv-contexto">
         <label>Mês de competência
@@ -219,6 +227,7 @@ function renderImportCSV() {
         </label>
         <button type="button" class="mini-btn" id="importCsvTrocarArquivo">Trocar arquivo</button>
     </div>
+    ${faltaCompetencia ? `<p class="import-csv-aviso">⚠️ Informe o mês de competência pra calcular as datas — sem isso nenhuma linha fica pronta.</p>` : ''}
     <p class="import-csv-resumo">
         <b>${st.linhas.length}</b> linhas no arquivo — <span class="ok">${prontas} prontas</span>
         ${revisar ? ` · <span class="alerta">${revisar} para revisar</span>` : ''}
@@ -230,7 +239,7 @@ function renderImportCSV() {
             Importar ${prontas} lançamento${prontas === 1 ? '' : 's'}
         </button>
         <button type="button" class="mini-btn" id="importCsvCancelar">Cancelar</button>
-        ${revisar ? `<span class="import-csv-bloqueado">Resolva método/categoria das linhas destacadas pra liberar a importação.</span>` : ''}
+        ${msgBloqueio ? `<span class="import-csv-bloqueado">${msgBloqueio}</span>` : ''}
     </div>
     <div id="importCsvProgresso" class="import-csv-progresso" hidden></div>
     `;
