@@ -186,6 +186,7 @@ function _recalcularLinhas() {
 }
 
 function _linhaPronta(l) {
+    if (l.ignorarManual) return false;                 // usuário marcou pra não importar
     if (l.duplicataExata) return false;               // já existe idêntica — ignorada sem perguntar
     if (l.duplicataSuspeita && l.pularDuplicata) return false; // parecida — usuário decide (marcado por padrão)
     // Competência é sempre gravada na transação (mesmo com data completa,
@@ -196,27 +197,39 @@ function _linhaPronta(l) {
 
 /* ---------- Detecção de duplicatas contra o que já está no app ---------- */
 
-/** Busca no Supabase as transações que caem na janela de datas do arquivo
- *  (guardada em cache pra não refazer a query a cada troca de método/categoria
- *  — só refeita quando a data das linhas muda de verdade, ver _recomputarImportCSV). */
+/** Busca no Supabase as transações que caem perto da janela de datas do
+ *  arquivo (guardada em cache pra não refazer a query a cada troca de
+ *  método/categoria — só refeita quando a data das linhas muda de verdade,
+ *  ver _recomputarImportCSV). Alarga a janela ±35 dias: reimportações
+ *  anteriores (de antes do dia de corte ter virado obrigatório/data
+ *  completa) podem ter gravado a mesma compra até um mês fora do lugar —
+ *  descrição+valor+método batendo é sinal forte o bastante mesmo com a
+ *  data bem longe (ver _aplicarStatusDuplicata). */
 async function _buscarExistentesParaDuplicata(linhas) {
     const datas = linhas.map(l => l.dataISO).filter(Boolean).sort();
     if (!datas.length) return [];
+    const PAD_DIAS = 35 * 86400000;
+    const paraISO = ms => new Date(ms).toISOString().slice(0, 10);
+    const ini = paraISO(new Date(datas[0] + 'T00:00:00').getTime() - PAD_DIAS);
+    const fim = paraISO(new Date(datas[datas.length - 1] + 'T00:00:00').getTime() + PAD_DIAS);
     const { data, error } = await sb.from('transacoes').select('tipo,data,valor,metodo,categoria,descricao')
-        .gte('data', datas[0]).lte('data', datas[datas.length - 1]);
+        .gte('data', ini).lte('data', fim);
     if (error) { console.error('Erro ao checar duplicatas:', error); return []; }
     return data || [];
 }
 
 /** Marca cada linha como duplicata EXATA (mesmo dia, valor, forma de
- *  pagamento e descrição — ignorada sem perguntar) ou SUSPEITA (mesmo dia,
- *  valor e forma de pagamento, descrição diferente — usuário decide via
- *  checkbox, marcado por padrão pra pular). Categoria fica de fora do
- *  critério de propósito: receita (tipo 'entradas') nunca vem com categoria
- *  pré-resolvida (não dá pra advinhar — ver _recalcularLinhas), então
- *  exigir categoria bateria só por acaso. Não mexe em `pularDuplicata` se a
- *  linha já tinha uma escolha manual, pra não perder o que o usuário já
- *  decidiu ao reavaliar. */
+ *  pagamento e descrição — ignorada sem perguntar) ou SUSPEITA:
+ *  - mesmo dia + valor + forma de pagamento, descrição diferente; OU
+ *  - mesma descrição + valor + forma de pagamento, dia diferente (pega
+ *    duplicata de uma reimportação anterior que gravou a mesma compra num
+ *    dia errado — mesmo se for um mês inteiro fora do lugar).
+ *  Usuário decide via checkbox, marcado por padrão pra pular. Categoria
+ *  fica de fora do critério de propósito: receita (tipo 'entradas') nunca
+ *  vem com categoria pré-resolvida (não dá pra advinhar — ver
+ *  _recalcularLinhas), então exigir categoria bateria só por acaso. Não
+ *  mexe em `pularDuplicata` se a linha já tinha uma escolha manual, pra
+ *  não perder o que o usuário já decidiu ao reavaliar. */
 function _aplicarStatusDuplicata(linhas, existentes) {
     linhas.forEach(l => {
         l.duplicataExata = false;
@@ -225,16 +238,18 @@ function _aplicarStatusDuplicata(linhas, existentes) {
 
         const metodoL = l.metodoResolvido || '';
         const descL = _normalizarChave(l.descricao);
-
-        const mesmoDiaValorMetodo = existentes.filter(t => t.tipo === l.tipo && t.data === l.dataISO
+        const mesmoValorMetodoTipo = t => t.tipo === l.tipo
             && Math.abs(parseFloat(t.valor) - l.valor) < 0.005
-            && (t.metodo || '') === metodoL);
+            && (t.metodo || '') === metodoL;
 
-        if (mesmoDiaValorMetodo.some(t => _normalizarChave(t.descricao) === descL)) {
+        const candidatos = existentes.filter(mesmoValorMetodoTipo);
+
+        if (candidatos.some(t => t.data === l.dataISO && _normalizarChave(t.descricao) === descL)) {
             l.duplicataExata = true;
             return;
         }
-        if (mesmoDiaValorMetodo.length) {
+        const suspeita = candidatos.some(t => t.data === l.dataISO || _normalizarChave(t.descricao) === descL);
+        if (suspeita) {
             l.duplicataSuspeita = true;
             if (l.pularDuplicata === undefined) l.pularDuplicata = true;
         }
@@ -269,25 +284,29 @@ function renderImportCSV() {
     const exatas = linhasComIdx.filter(([l]) => l.duplicataExata);
     const suspeitas = linhasComIdx.filter(([l]) => l.duplicataSuspeita);
     const normais = linhasComIdx.filter(([l]) => !l.duplicataExata && !l.duplicataSuspeita);
-    const paraRevisar = normais.filter(([l]) => !_linhaPronta(l));
-    const prontasLinhas = normais.filter(([l]) => _linhaPronta(l));
+    // Ignorada manualmente conta como resolvida (não bloqueia a importação,
+    // não entra em "para revisar"), mas nunca é "pronta" — fica na mesma
+    // tabela de revisão, só com a caixinha já marcada.
+    const paraRevisarOuIgnorada = normais.filter(([l]) => l.ignorarManual || !_linhaPronta(l));
+    const prontasLinhas = normais.filter(([l]) => !l.ignorarManual && _linhaPronta(l));
     const prontas = st.linhas.filter(_linhaPronta).length;
-    const revisar = paraRevisar.length;
+    const revisar = paraRevisarOuIgnorada.filter(([l]) => !l.ignorarManual).length;
 
-    const tabela = (titulo, grupo) => !grupo.length ? '' : `
+    const tabela = (titulo, grupo, comCheckboxIgnorar = false) => !grupo.length ? '' : `
     <div class="import-csv-grupo-titulo">${titulo} (${grupo.length})</div>
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">
             <thead><tr>
+                ${comCheckboxIgnorar ? '<th>Ignorar?</th>' : ''}
                 <th>Data</th><th>Valor</th><th>Tipo</th><th>Método</th><th>Categoria</th><th>Descrição</th>
             </tr></thead>
-            <tbody>${grupo.map(([l, i]) => _renderLinhaImportCSV(l, i)).join('')}</tbody>
+            <tbody>${grupo.map(([l, i]) => _renderLinhaImportCSV(l, i, false, comCheckboxIgnorar)).join('')}</tbody>
         </table>
     </div>`;
 
     const tabelaSuspeitas = !suspeitas.length ? '' : `
     <div class="import-csv-grupo-titulo">🔁 Possíveis duplicatas — já existe algo parecido no app (${suspeitas.length})</div>
-    <p class="import-csv-desc">Mesmo tipo, data e valor de algo já lançado, mas com método/categoria/descrição diferente. Marcadas pra pular por padrão — desmarque se for mesmo um lançamento novo.</p>
+    <p class="import-csv-nota">Mesmo tipo, data e valor de algo já lançado, mas com método/categoria/descrição diferente. Marcadas pra pular por padrão — desmarque se for mesmo um lançamento novo.</p>
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">
             <thead><tr>
@@ -298,14 +317,14 @@ function renderImportCSV() {
     </div>`;
 
     const infoExatas = !exatas.length ? '' : `
-    <p class="import-csv-desc">🔁 ${exatas.length} linha${exatas.length === 1 ? '' : 's'} idêntica${exatas.length === 1 ? '' : 's'} a algo já lançado (mesmo tipo, data, valor, método e descrição) — ignorada${exatas.length === 1 ? '' : 's'} automaticamente, sem entrar na importação.</p>`;
+    <p class="import-csv-nota">🔁 ${exatas.length} linha${exatas.length === 1 ? '' : 's'} idêntica${exatas.length === 1 ? '' : 's'} a algo já lançado (mesmo tipo, data, valor, método e descrição) — ignorada${exatas.length === 1 ? '' : 's'} automaticamente, sem entrar na importação.</p>`;
 
     const faltaCompetencia = !st.competenciaISO;
-    const faltamData = paraRevisar.some(([l]) => !l.dataISO);
+    const faltamData = paraRevisarOuIgnorada.some(([l]) => !l.ignorarManual && !l.dataISO);
     // Se toda linha já veio com data completa (dd/mm/aaaa etc.), o corte não
     // serve pra nada — não tem "dia do mês" pra reconstruir.
     const todasComDataCompleta = st.linhas.length > 0 && st.linhas.every(l => l.dataCompletaISO);
-    const faltamMetodoOuCategoria = paraRevisar.some(([l]) => !l.metodoResolvido || !l.categoriaResolvida);
+    const faltamMetodoOuCategoria = paraRevisarOuIgnorada.some(([l]) => !l.ignorarManual && (!l.metodoResolvido || !l.categoriaResolvida));
     const motivos = [];
     if (faltaCompetencia) motivos.push('informe o mês de competência acima');
     else if (faltamData) motivos.push('data');
@@ -328,7 +347,7 @@ function renderImportCSV() {
         </label>
         <button type="button" class="mini-btn" id="importCsvTrocarArquivo">Trocar arquivo</button>
     </div>
-    ${todasComDataCompleta ? `<p class="import-csv-desc">📅 Data completa detectada na planilha — não precisa de "Dia de corte".</p>` : ''}
+    ${todasComDataCompleta ? `<p class="import-csv-nota">📅 Data completa detectada na planilha — não precisa de "Dia de corte".</p>` : ''}
     ${faltaCompetencia ? `<p class="import-csv-aviso">⚠️ Informe o mês de competência${todasComDataCompleta ? '' : ' pra calcular as datas'} — sem isso nenhuma linha fica pronta.</p>` : ''}
     <p class="import-csv-resumo">
         <b>${st.linhas.length}</b> linhas no arquivo — <span class="ok">${prontas} prontas</span>
@@ -337,7 +356,7 @@ function renderImportCSV() {
         ${suspeitas.length ? ` · <span class="alerta">${suspeitas.length} possível${suspeitas.length === 1 ? '' : 'is'} duplicata${suspeitas.length === 1 ? '' : 's'}</span>` : ''}
     </p>
     ${infoExatas}
-    ${tabela('⚠️ Para revisar', paraRevisar)}
+    ${tabela('⚠️ Para revisar', paraRevisarOuIgnorada, true)}
     ${tabelaSuspeitas}
     ${tabela('✓ Prontas', prontasLinhas)}
     <div class="import-csv-acoes">
@@ -407,6 +426,13 @@ function renderImportCSV() {
             _renderImportCSVPreservandoScroll();
         });
     });
+    sec.querySelectorAll('[data-import-ignorar]').forEach(chk => {
+        chk.addEventListener('change', e => {
+            const i = parseInt(e.target.dataset.importIgnorar, 10);
+            st.linhas[i].ignorarManual = e.target.checked;
+            _renderImportCSVPreservandoScroll();
+        });
+    });
 }
 
 /** Recalcula data/tipo/valor (e método/categoria na 1ª vez) e, quando a
@@ -448,7 +474,7 @@ function _rotuloCategoriaResolvida(l) {
     return typeof l.categoriaResolvida === 'object' ? `__nova__` : l.categoriaResolvida;
 }
 
-function _renderLinhaImportCSV(l, i, comCheckboxPular = false) {
+function _renderLinhaImportCSV(l, i, comCheckboxPular = false, comCheckboxIgnorar = false) {
     const pronta = _linhaPronta(l);
     const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
     const categorias = l.tipo === 'entradas'
@@ -460,6 +486,7 @@ function _renderLinhaImportCSV(l, i, comCheckboxPular = false) {
     return `
     <tr class="${pronta ? '' : 'import-csv-linha-revisar'}">
         ${comCheckboxPular ? `<td><input type="checkbox" data-import-pular-dup="${i}" ${l.pularDuplicata ? 'checked' : ''}></td>` : ''}
+        ${comCheckboxIgnorar ? `<td><input type="checkbox" data-import-ignorar="${i}" title="Não importar esta linha" ${l.ignorarManual ? 'checked' : ''}></td>` : ''}
         <td>${l.dataISO ? l.dataISO.split('-').reverse().join('/') : '?'}</td>
         <td>${formatarMoeda(l.valor)}</td>
         <td><span class="chip-tipo chip-tipo--${l.tipo}">${l.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
@@ -485,6 +512,24 @@ function _renderLinhaImportCSV(l, i, comCheckboxPular = false) {
 
 /* ---------- Eventos ---------- */
 
+/** Mês/ano mais comum entre as datas completas do arquivo — usado só pra
+ *  pré-preencher "Mês de competência" quando a coluna Data já veio
+ *  completa (não tem "dia + corte" pra advinhar, então não tem por que
+ *  deixar o campo vazio esperando o usuário digitar o óbvio). O usuário
+ *  ainda pode trocar se o mês sugerido não for o que ele queria gravar. */
+function _competenciaSugeridaDeDataCompleta(linhas) {
+    const contagem = new Map();
+    linhas.forEach(l => {
+        if (!l.dataCompletaISO) return;
+        const chave = l.dataCompletaISO.slice(0, 7); // 'YYYY-MM'
+        contagem.set(chave, (contagem.get(chave) || 0) + 1);
+    });
+    if (!contagem.size) return null;
+    const [maisComum] = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0];
+    const [ano, mes] = maisComum.split('-').map(Number);
+    return { mes, ano };
+}
+
 function onImportCsvArquivoEscolhido(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -495,12 +540,14 @@ function onImportCsvArquivoEscolhido(e) {
             mostrarNotificacao('Não achei linhas válidas nesse CSV', 'erro');
             return;
         }
+        const todasComDataCompleta = linhas.every(l => l.dataCompletaISO);
         const anoAtual = new Date().getFullYear();
+        const sugestao = todasComDataCompleta ? _competenciaSugeridaDeDataCompleta(linhas) : null;
         estadoImportCSV = {
             linhas,
-            competenciaMes: null,
-            competenciaAno: anoAtual,
-            competenciaISO: null,
+            competenciaMes: sugestao ? sugestao.mes : null,
+            competenciaAno: sugestao ? sugestao.ano : anoAtual,
+            competenciaISO: sugestao ? `${sugestao.ano}-${String(sugestao.mes).padStart(2, '0')}-01` : null,
             corte: null
         };
         _recomputarImportCSV({ refazerDuplicatas: true });

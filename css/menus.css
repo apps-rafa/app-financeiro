@@ -685,6 +685,15 @@
   white-space: normal;
   overflow-wrap: break-word;
 }
+/* Texto corrido fora da tabela (avisos/notas) — largura cheia, fonte
+   menor; não usa .import-csv-desc, que é pras células estreitas da
+   tabela (220px encolhia esse texto numa coluna estreitinha). */
+.import-csv-nota {
+  max-width: 100%;
+  font-size: .8rem;
+  color: var(--text-muted);
+  margin: .4rem 0;
+}
 .import-csv-tag-original { font-style: italic; opacity: .7; }
 .chip-tipo {
   display: inline-block;
