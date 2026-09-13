@@ -22,7 +22,7 @@
     border-left: 3px solid var(--cor-cartao, var(--primary));
     border-radius: var(--radius-sm);
 }
-.fatura-nome { flex: 1; min-width: 0; font-weight: var(--font-weight-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fatura-nome { flex: 1; min-width: 0; font-weight: var(--font-weight-semibold); overflow-wrap: break-word; }
 .fatura-venc { font-size: .72rem; color: var(--text-muted); white-space: nowrap; }
 .fatura-total { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
@@ -69,9 +69,9 @@
     font-size: .8rem;
     font-weight: var(--font-weight-semibold);
     cursor: pointer;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    line-height: 1.15;
+    text-align: center;
 }
 @media (max-width: 480px) {
     .modo-lista .modo-btn { font-size: .62rem; padding: .35rem .15rem; }
@@ -169,9 +169,7 @@
     border-radius: 999px;
     font-weight: var(--font-weight-semibold);
     max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: break-word;
     vertical-align: middle;
 }
 .chip--neutro { background: var(--surface-3); color: var(--text-muted); }

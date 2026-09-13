@@ -44,9 +44,12 @@
   font-weight: 600;
   font-size: 0.75rem;
   cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.15;
+  text-align: center;
+}
+@media (max-width: 480px) {
+  .subtabs .subtab { font-size: 0.68rem; padding: 0.4rem 0.3rem; }
 }
 .subtabs .subtab.active {
   background: var(--primary);
@@ -622,9 +625,8 @@
 .import-csv-linha-revisar select { border-color: var(--despesa-text); }
 .import-csv-desc {
   max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 .import-csv-tag-original { font-style: italic; opacity: .7; }
 .chip-tipo {
