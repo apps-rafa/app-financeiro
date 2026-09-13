@@ -1,9 +1,11 @@
 ﻿/**
  * CONCILIAR PDF
- * Compara a fatura do cartão (Bradesco Cartões) ou o extrato da conta
- * (Mercado Pago) com os lançamentos já registrados no app, e aponta o que
- * está num lado e não no outro. Só relatório — não grava nada no banco.
- * Suporta só esses 2 formatos específicos por enquanto.
+ * Compara a fatura do cartão (Bradesco) ou o extrato da conta (Mercado
+ * Pago) com os lançamentos já registrados no app, e aponta o que está num
+ * lado e não no outro. Só relatório — não grava nada no banco.
+ * Formatos suportados: fatura Bradesco em PDF (2 layouts — export do app
+ * "Bradesco Cartões" e a fatura/boleto "Fatura Mensal") e extrato Mercado
+ * Pago em PDF ou CSV.
  */
 
 let estadoConciliarPDF = null; // { pdfs: [ {..., linhas, transacoes, metodoEscolhido} ] }
@@ -76,6 +78,57 @@ function _parsearFaturaBradesco(texto) {
     return linhas;
 }
 
+/* ---------- Parser: fatura Bradesco (layout "boleto"/Fatura Mensal) ---------- */
+/* Segundo formato de fatura do Bradesco — o PDF que vem junto do boleto,
+ * bem diferente do export do app (sem BRL/USD explícito por linha, e com
+ * uma coluna de Cidade solta entre a descrição e o valor). */
+
+function _pareceFaturaBradescoBoleto(texto) {
+    return /Fatura Mensal/i.test(texto) && /Lan[cç]amentos/i.test(texto) && /bradesco/i.test(texto);
+}
+
+function _parsearFaturaBradescoBoleto(texto) {
+    const mVenc = texto.match(/Data de Vencimento\s*(\d{2})\/(\d{2})\/(\d{4})/) || texto.match(/Vencimento\s*(\d{2})\/(\d{2})\/(\d{4})/);
+    const refMes = mVenc ? parseInt(mVenc[2], 10) : (new Date().getMonth() + 1);
+    const refAno = mVenc ? parseInt(mVenc[3], 10) : new Date().getFullYear();
+    const anoDe = mes => (mes <= refMes ? refAno : refAno - 1);
+
+    // Restringe à seção "Lançamentos" (antes do "Total para..."), pra não
+    // pegar números soltos do resto do boleto (limites, taxas, juros...).
+    const inicio = texto.search(/Lan[cç]amentos/i);
+    if (inicio < 0) return [];
+    const aposInicio = texto.slice(inicio);
+    const fimRel = aposInicio.search(/Total (para|da fatura)/i);
+    const trecho = fimRel >= 0 ? aposInicio.slice(0, fimRel) : aposInicio;
+
+    // Descrição não-gulosa até o primeiro valor "1.234,56" — não tenta achar
+    // a próxima data como limite, então uma linha com US$ (2 valores antes
+    // do R$) só pega o 1º valor certo se não houver conversão de moeda.
+    const re = /(\d{2})\/(\d{2})\s+(.+?)\s+([\d.]+,\d{2})\s*(-)?/g;
+    const linhas = [];
+    let m;
+    while ((m = re.exec(trecho))) {
+        const [, dia, mes, descricaoRaw, valorRaw, sinal] = m;
+        const descricao = descricaoRaw.trim();
+        const dNorm = _normalizarTexto(descricao);
+        if (/^cart[aã]o \d/.test(dNorm)) continue; // sub-cabeçalho "Cartão 4066 XXXX..." de um 2º cartão na mesma fatura
+
+        let valor = _parsearValorBR(valorRaw);
+        if (valor == null) continue;
+        if (sinal === '-') valor = -Math.abs(valor);
+
+        linhas.push({
+            dataISO: `${anoDe(parseInt(mes, 10))}-${mes}-${dia}`,
+            descricao,
+            valorBruto: valor,
+            tipo: valor < 0 ? 'entradas' : 'saidas',
+            valor: Math.abs(valor),
+            ignorarDefault: dNorm === 'pag boleto bancario'
+        });
+    }
+    return linhas;
+}
+
 /* ---------- Parser: extrato Mercado Pago ---------- */
 
 function _pareceExtratoMercadoPago(texto) {
@@ -99,21 +152,63 @@ function _parsearExtratoMercadoPago(texto) {
         const valor = _parsearValorBR(valorRaw);
         if (valor == null) continue;
 
-        const ehRendimento = dNorm.startsWith('rendimentos');
-        const ehPouquinho = dNorm.startsWith('dinheiro reservado') || dNorm.startsWith('dinheiro retirado');
-        const ehCDB = dNorm.startsWith('liberacao cdb') || dNorm.startsWith('liberacao de cdb');
-        const ehPixParaSiMesmo = /^pix (enviado|recebido) rafael loureiro braz$/.test(dNorm);
-
         linhas.push({
             dataISO: `${ano}-${mes}-${dia}`,
             descricao,
             valorBruto: valor,
             tipo: valor < 0 ? 'saidas' : 'entradas',
             valor: Math.abs(valor),
-            ignorarDefault: ehRendimento || ehPouquinho || ehCDB || ehPixParaSiMesmo
+            ignorarDefault: _ehLinhaInternaMercadoPago(dNorm)
         });
     }
     return linhas;
+}
+
+/** Linhas que não são gasto/receita real (movimentação interna do usuário
+ *  consigo mesmo) — usado tanto no extrato em PDF quanto no CSV. */
+function _ehLinhaInternaMercadoPago(dNorm) {
+    const ehRendimento = dNorm.startsWith('rendimentos');
+    const ehPouquinho = dNorm.startsWith('dinheiro reservado') || dNorm.startsWith('dinheiro retirado');
+    const ehCDB = dNorm.startsWith('liberacao cdb') || dNorm.startsWith('liberacao de cdb');
+    const ehPixParaSiMesmo = /^pix (enviado|recebido) rafael loureiro braz$/.test(dNorm);
+    const ehPagamentoFatura = dNorm.startsWith('pagamento de fatura');
+    return ehRendimento || ehPouquinho || ehCDB || ehPixParaSiMesmo || ehPagamentoFatura;
+}
+
+/* ---------- Parser: extrato Mercado Pago (CSV) ---------- */
+
+function _pareceExtratoMercadoPagoCSV(texto) {
+    return /RELEASE_DATE;TRANSACTION_TYPE;REFERENCE_ID/i.test(texto);
+}
+
+function _parsearExtratoMercadoPagoCSV(texto) {
+    // Delimitador ';' (não ',' como o resto do app) e sem aspas nos campos
+    // nesse export — um split simples por linha já basta.
+    const linhas = texto.replace(/\r\n/g, '\n').split('\n').map(l => l.split(';'));
+    const cabecalhoIdx = linhas.findIndex(l => l[0] && l[0].trim() === 'RELEASE_DATE');
+    if (cabecalhoIdx < 0) return [];
+
+    const resultado = [];
+    for (let i = cabecalhoIdx + 1; i < linhas.length; i++) {
+        const [dataCru, tipoCru, , valorCru] = linhas[i];
+        const mData = String(dataCru || '').trim().match(/^(\d{2})-(\d{2})-(\d{4})$/);
+        if (!mData) continue;
+
+        const descricao = String(tipoCru || '').trim();
+        const dNorm = _normalizarTexto(descricao);
+        const valor = _parsearValorBR(valorCru);
+        if (valor == null) continue;
+
+        resultado.push({
+            dataISO: `${mData[3]}-${mData[2]}-${mData[1]}`,
+            descricao,
+            valorBruto: valor,
+            tipo: valor < 0 ? 'saidas' : 'entradas',
+            valor: Math.abs(valor),
+            ignorarDefault: _ehLinhaInternaMercadoPago(dNorm)
+        });
+    }
+    return resultado;
 }
 
 /* ---------- Comparação com o app ---------- */
@@ -178,21 +273,35 @@ async function onConciliarPdfArquivos(e) {
         renderConciliarPDF();
 
         try {
-            const buffer = await file.arrayBuffer();
-            const texto = await _extrairTextoPDF(buffer);
+            const ehCSV = /\.csv$/i.test(file.name) || file.type === 'text/csv';
+            const texto = ehCSV ? await file.text() : await _extrairTextoPDF(await file.arrayBuffer());
+            const credito = () => {
+                const m = (estadoApp.menus.metodos || []).find(m => m.metodoKind === 'Crédito');
+                return m ? rotuloMetodo(m) : '';
+            };
+            const pixOuDebito = () => {
+                const m = (estadoApp.menus.metodos || []).find(m => _normalizarTexto(rotuloMetodo(m)).includes('pix'));
+                return m ? rotuloMetodo(m) : '';
+            };
 
-            if (_pareceFaturaBradesco(texto)) {
+            if (!ehCSV && _pareceFaturaBradesco(texto)) {
                 entrada.formato = 'fatura';
                 entrada.linhas = _parsearFaturaBradesco(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
-                const credito = (estadoApp.menus.metodos || []).find(m => m.metodoKind === 'Crédito');
-                entrada.metodoEscolhido = credito ? rotuloMetodo(credito) : '';
-            } else if (_pareceExtratoMercadoPago(texto)) {
+                entrada.metodoEscolhido = credito();
+            } else if (!ehCSV && _pareceFaturaBradescoBoleto(texto)) {
+                entrada.formato = 'fatura';
+                entrada.linhas = _parsearFaturaBradescoBoleto(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
+                entrada.metodoEscolhido = credito();
+            } else if (!ehCSV && _pareceExtratoMercadoPago(texto)) {
                 entrada.formato = 'extrato';
                 entrada.linhas = _parsearExtratoMercadoPago(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
-                const pix = (estadoApp.menus.metodos || []).find(m => _normalizarTexto(rotuloMetodo(m)).includes('pix'));
-                entrada.metodoEscolhido = pix ? rotuloMetodo(pix) : '';
+                entrada.metodoEscolhido = pixOuDebito();
+            } else if (ehCSV && _pareceExtratoMercadoPagoCSV(texto)) {
+                entrada.formato = 'extrato';
+                entrada.linhas = _parsearExtratoMercadoPagoCSV(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
+                entrada.metodoEscolhido = pixOuDebito();
             } else {
-                throw new Error('Formato não reconhecido — só suportamos fatura Bradesco Cartões e extrato Mercado Pago por enquanto.');
+                throw new Error('Formato não reconhecido — só suportamos fatura Bradesco Cartões (PDF) e extrato Mercado Pago (PDF ou CSV) por enquanto.');
             }
 
             if (!entrada.linhas.length) throw new Error('Não encontrei nenhum lançamento nesse PDF.');
@@ -224,11 +333,11 @@ function renderConciliarPDF() {
     sec.innerHTML = `
     <h3>🧾 Conciliar PDF</h3>
     <p class="menu-hint">
-        Sobe a fatura do cartão (Bradesco Cartões) ou o extrato da conta (Mercado Pago) em PDF e compara com o que
-        já está lançado no app — só aponta as diferenças, não grava nada automaticamente.
+        Sobe a fatura do cartão Bradesco (PDF, em qualquer um dos 2 formatos) ou o extrato da conta Mercado Pago
+        (PDF ou CSV) e compara com o que já está lançado no app — só aponta as diferenças, não grava nada automaticamente.
     </p>
     <div class="import-csv-upload">
-        <input type="file" id="conciliarPdfArquivo" accept=".pdf,application/pdf" multiple>
+        <input type="file" id="conciliarPdfArquivo" accept=".pdf,application/pdf,.csv,text/csv" multiple>
     </div>
     <div id="conciliarPdfLista"></div>
     `;
