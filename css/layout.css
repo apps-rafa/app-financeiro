@@ -115,7 +115,9 @@ header.header {
 }
 .seta-lateral.seta-esq { transform: rotate(-90deg); }
 .seta-lateral.seta-dir { transform: rotate(90deg); }
-.seta-lateral:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
+/* Só opacidade no hover — mudar background/color mexia com a nitidez do
+   glifo girado e dava a impressão de a seta trocar de direção. */
+.seta-lateral:hover:not(:disabled) { opacity: .6; }
 .seta-lateral:disabled { opacity: .3; cursor: default; }
 .seta-lateral[hidden] { display: none; }
 

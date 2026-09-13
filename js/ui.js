@@ -23,9 +23,16 @@ function atualizarUI() {
 }
 
 // Deslocamento (em meses, +/-) da janela em relação ao mês selecionado —
-// só muda pelas setas laterais; navegar não altera a seleção, só o que
-// aparece. Zera sempre que a seleção muda (clique num mês ou troca de ano).
+// só muda pelas setas laterais de meses; navegar não altera a seleção, só o
+// que aparece. Zera sempre que a seleção muda (clique num mês).
 let mesesJanelaOffset = 0;
+
+// Ano usado como referência pro sufixo "/AA" e pro rótulo ao lado dos meses.
+// null = usa o ano do mês selecionado (comportamento padrão). As setas de
+// ano SÓ mudam essa referência — não a seleção nem os meses exibidos: é
+// uma lupa sobre a mesma janela, pra comparar com outro ano sem navegar de
+// verdade. Zera (volta a acompanhar a seleção) sempre que um mês é clicado.
+let anoReferenciaExibicao = null;
 
 // Tamanhos possíveis da janela (sempre ímpar/simétrico: N pra trás, atual, N
 // pra frente), da mais larga pra mais estreita.
@@ -34,12 +41,14 @@ const TAMANHOS_JANELA_MESES = [7, 5, 3, 1];
 /**
  * (Re)desenha a tira de meses + o ano no calendário do topo, tudo numa
  * linha só. Sempre mostra uma janela simétrica (3 antes + atual + 3 depois,
- * no máximo) com setas laterais pra navegar os meses escondidos sem mudar a
- * seleção — a janela só encolhe (7 -> 5 -> 3 -> 1) até caber na largura
- * disponível. A janela pode atravessar a virada do ano (ex.: NOV DEZ JAN/27
- * FEV/27); mês de um ano diferente do "ano" mostrado ao lado leva o sufixo
- * "/AA". Não depende de dados carregados — seguro de chamar em qualquer
- * resize.
+ * no máximo) em volta do mês SELECIONADO, com setas laterais pra navegar os
+ * meses escondidos sem mudar a seleção — a janela só encolhe (7 -> 5 -> 3 ->
+ * 1) até caber na largura disponível, e pode atravessar a virada do ano
+ * (ex.: NOV DEZ JAN FEV). Cada mês leva o sufixo "/AA" quando seu ano não
+ * bate com o "ano de referência" (o mostrado ao lado, que por padrão é o
+ * ano do mês selecionado, mas pode ser mudado pelas setas de ano sem
+ * navegar de verdade — ver anoReferenciaExibicao). Não depende de dados
+ * carregados — seguro de chamar em qualquer resize.
  */
 function atualizarCalendarioNav() {
     const lista = document.getElementById('mesesLista');
@@ -53,8 +62,9 @@ function atualizarCalendarioNav() {
     const mesSelecionado = estadoApp.mesAtual.getMonth();
     const absSelecionado = absDe(anoSelecionado, mesSelecionado);
     const absCentro = absSelecionado + mesesJanelaOffset;
+    const anoRef = anoReferenciaExibicao != null ? anoReferenciaExibicao : anoSelecionado;
 
-    if (anoLabel) anoLabel.textContent = String(anoSelecionado);
+    if (anoLabel) anoLabel.textContent = String(anoRef);
 
     const montarBtn = abs => {
         const ano = Math.floor(abs / 12);
@@ -62,7 +72,7 @@ function atualizarCalendarioNav() {
         const selecionado = abs === absSelecionado;
         const ehHoje = abs === absHoje;
         const classes = ['mes-btn', selecionado && 'selecionado', ehHoje && 'hoje'].filter(Boolean).join(' ');
-        const rotulo = MESES_TRI[mes] + (ano === anoSelecionado ? '' : '/' + String(ano).slice(-2));
+        const rotulo = MESES_TRI[mes] + (ano === anoRef ? '' : '/' + String(ano).slice(-2));
         return `<button type="button" class="${classes}" data-ano="${ano}" data-mes="${mes}">${rotulo}</button>`;
     };
 
