@@ -48,9 +48,9 @@
     cursor: pointer;   /* abre a aba correspondente */
 }
 
-/* Linhas "Atual / A receber|pagar" + Total dentro dos cards. Rótulo à
-   esquerda (alinhado com o título "Receita"/"Despesa"), valor à direita —
-   cada .linha é sua própria linha, com o rótulo e o valor nas pontas. */
+/* Linhas "Atual / A receber|pagar" + Total dentro dos cards. Rótulo
+   "colado" no valor (pouco espaço entre os dois) e a linha inteira (valor
+   + rótulo, como um bloco só) alinhada à direita do card. */
 .card-linhas-topo {
     display: flex;
     flex-direction: column;
@@ -58,9 +58,9 @@
 }
 .card-linhas-topo .linha {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: baseline;
-    gap: .5rem;
+    gap: .3rem;
 }
 .card-linhas-topo .linha b {
     text-align: right;

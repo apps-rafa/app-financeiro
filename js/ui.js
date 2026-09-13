@@ -914,7 +914,7 @@ let tipoProximasAtual = (() => {
 const MODOS_PROXIMAS_SAIDAS = ['recorrencia', 'metodo', 'categoria', 'cronologica'];
 const MODOS_PROXIMAS_ENTRADAS = ['recorrencia', 'categoria', 'cronologica'];
 const ROTULOS_MODO_PROXIMAS = {
-    recorrencia: 'Por recorrência', metodo: 'Por método', categoria: 'Por categoria', cronologica: 'Cronológica'
+    recorrencia: 'Recorrência', metodo: 'Método', categoria: 'Categoria', cronologica: 'Cronológica'
 };
 function _modosProximasValidos() {
     return tipoProximasAtual === 'entradas' ? MODOS_PROXIMAS_ENTRADAS : MODOS_PROXIMAS_SAIDAS;
