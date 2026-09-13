@@ -186,50 +186,74 @@ function _modoListaSalvo(chave, validos) {
     } catch (_) { return 'cronologica'; }
 }
 
-// Filtro de status (Atual / A receber|pagar) da barra proporcional —
-// independente do modo de visualização, um por tipo (Receitas/Despesas).
-// null = mostra tudo. Só usado pelos modos QUE NÃO SÃO Cronológica (essa já
-// mostra os 2 grupos lado a lado; nos outros, sem "grupo" pra abrir/fechar,
-// clicar na barra filtra a lista pra só aquele status).
-let filtroStatusEntradas = null;
-let filtroStatusSaidas = null;
-const _filtroStatusDe = tipoUI => tipoUI === 'entrada' ? filtroStatusEntradas : filtroStatusSaidas;
-const _setFiltroStatus = (tipoUI, valor) => {
-    if (tipoUI === 'entrada') filtroStatusEntradas = valor; else filtroStatusSaidas = valor;
-};
+// Filtro de grupo da barra proporcional, um por combinação modo+tipo (um
+// filtro escolhido em "Por método" não deve valer se o usuário for pra
+// "Por categoria"). null = mostra tudo. Só usado pelos modos QUE NÃO SÃO
+// Cronológica (essa já mostra os 2 grupos lado a lado, com o clique
+// abrindo/fechando em vez de filtrar).
+const _filtrosGrupoBarra = {};
+const _filtroGrupoDe = (tipoUI, modo) => _filtrosGrupoBarra[`${tipoUI}:${modo}`] || null;
+const _setFiltroGrupoBarra = (tipoUI, modo, valor) => { _filtrosGrupoBarra[`${tipoUI}:${modo}`] = valor; };
 
-/** Barra proporcional Atual/Pendente reaproveitada pelos modos "Por
- *  recorrência/método/categoria" — a de Cronológica é própria (embutida
- *  em renderListaCronologica, com os 2 grupos abrindo/fechando). Aqui,
- *  sem grupo pra abrir/fechar, clicar num segmento filtra a lista. */
-function _renderBarraStatusFiltro(transacoes, tipoUI) {
-    const rotuloPendente = tipoUI === 'entrada' ? 'A receber' : 'A pagar';
-    const corAtual = tipoUI === 'entrada' ? 'var(--receita-text)' : 'var(--despesa-text)';
-    const corPendente = 'var(--balanco-text)';
+/** Agrupa `transacoes` pela MESMA dimensão que o modo de visualização usa
+ *  (recorrência/método/categoria) — usado só pra montar a barra proporcional
+ *  com as cores/nomes certos; a lista embaixo continua sendo agrupada pelas
+ *  funções renderListaAgrupada/PorMetodo/PorCategoria como sempre. */
+function _agruparParaBarra(modo, transacoes, tipoUI) {
+    const cores = (estadoApp.menus && estadoApp.menus.cores) || {};
     const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
-    const totalAtual = transacoes.filter(_transacaoRealizada).reduce((s, t) => s + valorDe(t), 0);
-    const totalPendente = transacoes.filter(t => !_transacaoRealizada(t)).reduce((s, t) => s + valorDe(t), 0);
-    const totalGeral = totalAtual + totalPendente;
+    let chaveDe, semChave, corMapa, rotuloDe = k => k;
+    if (modo === 'metodo') {
+        chaveDe = t => t.metodo; semChave = 'Sem método'; corMapa = cores.metodo || {};
+    } else if (modo === 'categoria') {
+        chaveDe = t => t.categoria; semChave = 'Sem categoria'; corMapa = cores.categoria || {};
+    } else {
+        const ehDespesa = tipoUI === 'saida';
+        chaveDe = t => t.tipoRecorrencia || 'Pontual'; semChave = 'Pontual'; corMapa = cores.recorrencia || {};
+        rotuloDe = k => (typeof rotuloRecorrencia === 'function' ? rotuloRecorrencia(k, ehDespesa) : k);
+    }
+    const mapa = new Map();
+    transacoes.forEach(t => {
+        const k = chaveDe(t) || semChave;
+        if (!mapa.has(k)) mapa.set(k, []);
+        mapa.get(k).push(t);
+    });
+    const grupos = [...mapa.entries()]
+        .map(([chave, itens]) => ({
+            chave,
+            nome: rotuloDe(chave),
+            cor: corMapa[chave] || corPadraoChip(chave),
+            total: itens.reduce((s, t) => s + valorDe(t), 0)
+        }))
+        .sort((a, b) => b.total - a.total);
+    return { grupos, chaveDe, semChave };
+}
+
+/** Barra proporcional com 1 segmento por grupo da dimensão do modo atual
+ *  (Por recorrência/método/categoria — Cronológica tem a sua própria,
+ *  embutida em renderListaCronologica). Clique num segmento filtra a lista
+ *  pra só aquele grupo; clicar de novo no mesmo volta a mostrar tudo. */
+function _renderBarraGrupos(grupos, tipoUI, modo) {
+    const totalGeral = grupos.reduce((s, g) => s + g.total, 0);
     if (!totalGeral) return '';
-    const pctAtual = Math.round((totalAtual / totalGeral) * 100);
-    const pctPendente = 100 - pctAtual;
-    const filtro = _filtroStatusDe(tipoUI);
-    const apagado = valor => filtro && filtro !== valor ? ' cron-barra-seg--apagado' : '';
-    return `
-        <div class="cron-barra" role="img" aria-label="${pctAtual}% Atual, ${pctPendente}% ${rotuloPendente}">
-          <button type="button" class="cron-barra-seg${apagado('Atual')}" data-status-toggle="Atual"
-                  style="--cor-rec:${corAtual}; flex-grow:${Math.max(pctAtual, totalAtual ? 2 : 0)}"
-                  title="Atual: ${pctAtual}% · ${formatarMoeda(totalAtual)}" ${totalAtual ? '' : 'hidden'}></button>
-          <button type="button" class="cron-barra-seg${apagado(rotuloPendente)}" data-status-toggle="${rotuloPendente}"
-                  style="--cor-rec:${corPendente}; flex-grow:${Math.max(pctPendente, totalPendente ? 2 : 0)}"
-                  title="${rotuloPendente}: ${pctPendente}% · ${formatarMoeda(totalPendente)}" ${totalPendente ? '' : 'hidden'}></button>
-        </div>`;
+    const filtro = _filtroGrupoDe(tipoUI, modo);
+    const segs = grupos.map(g => {
+        const pct = Math.round((g.total / totalGeral) * 100);
+        const apagado = filtro && filtro !== g.chave ? ' cron-barra-seg--apagado' : '';
+        const chaveAttr = String(g.chave).replace(/"/g, '&quot;');
+        return `<button type="button" class="cron-barra-seg${apagado}" data-grupo-toggle="${chaveAttr}"
+                  style="--cor-rec:${g.cor}; flex-grow:${Math.max(pct, g.total ? 2 : 0)}"
+                  title="${g.nome}: ${pct}% · ${formatarMoeda(g.total)}" ${g.total ? '' : 'hidden'}></button>`;
+    }).join('');
+    return `<div class="cron-barra" role="img">${segs}</div>`;
 }
 
 /** Escolhe a renderização certa pro modo de visualização selecionado — usado
  *  tanto por Receitas quanto por Despesas. Nos modos que não são
- *  Cronológica, prepend uma barra Atual/Pendente cujo clique filtra a
- *  lista (Cronológica já tem sua própria barra + grupos). */
+ *  Cronológica, prepend uma barra com 1 segmento por grupo (recorrência/
+ *  método/categoria, conforme o modo) cujo clique filtra a lista pra só
+ *  aquele grupo (Cronológica já tem sua própria barra + grupos abrindo/
+ *  fechando, em vez de filtrar). */
 function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
     if (!container) return;
     if (modo === 'cronologica') {
@@ -242,28 +266,28 @@ function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
         return;
     }
 
-    const barraHTML = _renderBarraStatusFiltro(transacoes, tipoUI);
-    const filtro = _filtroStatusDe(tipoUI);
-    const rotuloPendente = tipoUI === 'entrada' ? 'A receber' : 'A pagar';
-    const filtrados = filtro
-        ? transacoes.filter(t => (_transacaoRealizada(t) ? 'Atual' : rotuloPendente) === filtro)
-        : transacoes;
+    const { grupos, chaveDe, semChave } = _agruparParaBarra(modo, transacoes, tipoUI);
+    const barraHTML = _renderBarraGrupos(grupos, tipoUI, modo);
+    const filtro = _filtroGrupoDe(tipoUI, modo);
+    const filtrados = filtro ? transacoes.filter(t => (chaveDe(t) || semChave) === filtro) : transacoes;
+    const grupoAtivo = grupos.find(g => g.chave === filtro);
+    const msgFiltrado = grupoAtivo ? `Nada em "${grupoAtivo.nome}"` : msgVazia;
 
     if (modo === 'metodo') {
-        renderListaPorMetodo(container, filtrados, tipoUI, `Nada em "${filtro}"`);
+        renderListaPorMetodo(container, filtrados, tipoUI, msgFiltrado);
     } else if (modo === 'categoria') {
-        renderListaPorCategoria(container, filtrados, tipoUI, `Nada em "${filtro}"`);
+        renderListaPorCategoria(container, filtrados, tipoUI, msgFiltrado);
     } else {
-        renderListaAgrupada(container, filtrados, tipoUI, `Nada em "${filtro}"`);
+        renderListaAgrupada(container, filtrados, tipoUI, msgFiltrado);
     }
 
     container.insertAdjacentHTML('afterbegin', barraHTML);
     const onClickConteudo = container.onclick;
     container.onclick = e => {
-        const seg = e.target.closest('[data-status-toggle]');
+        const seg = e.target.closest('[data-grupo-toggle]');
         if (seg) {
-            const valor = seg.dataset.statusToggle;
-            _setFiltroStatus(tipoUI, filtro === valor ? null : valor);
+            const valor = seg.dataset.grupoToggle;
+            _setFiltroGrupoBarra(tipoUI, modo, filtro === valor ? null : valor);
             renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia);
             return;
         }
