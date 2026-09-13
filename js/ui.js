@@ -539,6 +539,9 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
     const resto = transacoes.filter(t => !conhecidos.has(chaveDe(t))).sort(_porDataDesc);
     if (resto.length) grupos.push(['Outros', resto]);
 
+    // Maior total primeiro — mesma ordem da barra proporcional acima (_agruparParaBarra)
+    grupos.sort((a, b) => totalGrupo(b[1]) - totalGrupo(a[1]));
+
     const totalGeral = grupos.reduce((s, [, itens]) => s + totalGrupo(itens), 0);
     const abertos = _lerAbertosRecGrupo(container);
 
@@ -708,17 +711,18 @@ function onListaTransacaoClick(e) {
             break;
         }
         case 'excluir-trans':
-            // Parcela que não é a original: aviso, sem arme de 2 cliques
+            // Parcela que não é a original: aviso, sem confirmação prévia
             if (trans.parcelasTotal && trans.parcelaNum !== 1) {
                 excluirTransacao(id); // deixa a API lançar o detalhe e o catch mostra o diálogo
-            } else if (el.dataset.armed) {
-                excluirTransacao(id);
             } else {
-                const orig = el.textContent;
-                el.dataset.armed = '1';
-                el.textContent = 'excluir?';
-                el.classList.add('armed');
-                setTimeout(() => { delete el.dataset.armed; el.textContent = orig; el.classList.remove('armed'); }, 3000);
+                mostrarDialogo({
+                    titulo: 'Excluir lançamento?',
+                    texto: `Remove <strong>${trans.descricao || trans.categoria || 'este lançamento'}</strong>. Não dá para desfazer.`,
+                    acoes: [
+                        { label: 'Cancelar' },
+                        { label: 'Excluir', primario: true, perigo: true, onClick: () => excluirTransacao(id) }
+                    ]
+                });
             }
             break;
     }
@@ -807,6 +811,9 @@ function iniciarEdicaoTransacao(trans, tipoTransacao) {
     semanasMarcadas = new Set(trans.semanas || []);
     document.querySelector(SELECTORS.categoria).value = trans.categoria;
     document.querySelector(SELECTORS.descricao).value = trans.descricao || '';
+    // Precisa vir depois de setar a categoria: é ela que decide se o campo
+    // Método aparece pra receita (categoria "Reembolso/Estorno").
+    if (tipoTransacao === 'entradas' && typeof atualizarCampoMetodoReceita === 'function') atualizarCampoMetodoReceita();
     document.querySelector(SELECTORS.metodo).value = trans.metodo || '';
     document.querySelector(SELECTORS.tipoRecorrencia).value = trans.tipoRecorrencia || 'Pontual';
 
@@ -1355,19 +1362,18 @@ function atualizarLabelsPorTipo() {
     const ehReceita = document.querySelector(SELECTORS.tipoTransacao)?.value === 'entradas';
 
     const metodoSel = document.querySelector(SELECTORS.metodo);
-    // Esconde o bloco inteiro (não só o form-group do método) pra "Valor"
-    // ocupar 100% da linha quando é receita, em vez de sobrar um buraco.
-    const blocoMetodo = document.getElementById('metodoBloco');
-    if (blocoMetodo) blocoMetodo.hidden = ehReceita;
-    if (metodoSel) {
-        metodoSel.required = !ehReceita;
-        if (ehReceita) metodoSel.value = '';
-    }
     if (ehReceita) {
+        // Receita normalmente não tem método — exceto "Reembolso/Estorno"
+        // (ver atualizarCampoMetodoReceita), que pode vir via Pix ou direto
+        // na fatura do cartão.
+        atualizarCampoMetodoReceita();
         const compGrp = document.getElementById('competenciaGroup');
         if (compGrp) compGrp.hidden = true;
-    } else if (typeof atualizarCampoCredito === 'function') {
-        atualizarCampoCredito();
+    } else {
+        const blocoMetodo = document.getElementById('metodoBloco');
+        if (blocoMetodo) blocoMetodo.hidden = false;
+        if (metodoSel) metodoSel.required = true;
+        if (typeof atualizarCampoCredito === 'function') atualizarCampoCredito();
     }
 
     const grpDiaRec2 = document.getElementById('diaRecorrenciaGroup');
@@ -1634,6 +1640,29 @@ function atualizarValorTotal() {
  */
 function atualizarCampoCredito() {
     if (typeof atualizarCamposRecorrencia === 'function') atualizarCamposRecorrencia();
+}
+
+/**
+ * Receita normalmente não tem campo Método (bloco inteiro escondido). A
+ * exceção é a categoria fixa "Reembolso/Estorno": um estorno pode vir tanto
+ * via Pix quanto direto na fatura do cartão, então o Método passa a
+ * determinar isso — mostra o campo (opcional) só quando essa categoria está
+ * selecionada.
+ */
+function atualizarCampoMetodoReceita() {
+    const categoriaAtual = document.querySelector(SELECTORS.categoria)?.value;
+    const comMetodo = categoriaAtual === CATEGORIA_REEMBOLSO_ESTORNO;
+
+    const blocoMetodo = document.getElementById('metodoBloco');
+    if (blocoMetodo) blocoMetodo.hidden = !comMetodo;
+    const metodoSel = document.querySelector(SELECTORS.metodo);
+    if (metodoSel) {
+        metodoSel.required = false;
+        if (!comMetodo) metodoSel.value = '';
+    }
+    const compGrp = document.getElementById('competenciaGroup');
+    if (compGrp) compGrp.hidden = true; // receita nunca mostra o select "Comp."
+    ajustarCamposSozinhos();
 }
 
 /**

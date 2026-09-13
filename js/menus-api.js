@@ -10,7 +10,7 @@
 const CATEGORIAS_DESPESA_SEED = ['Alimentação', 'Alimentação app', 'Assinaturas', 'Contas',
     'Compras', 'Compras online', 'Lazer', 'Mercado', 'Saúde', 'Serviços',
     'Transporte app', 'Transporte'];
-const CATEGORIAS_RECEITA_SEED = ['Salário', 'Bônus', '13º', 'PL', 'Freelance', 'Devolução'];
+const CATEGORIAS_RECEITA_SEED = ['Salário', 'Bônus', '13º', 'PL', 'Freelance', CATEGORIA_REEMBOLSO_ESTORNO];
 // Vocabulário fixo de tipos de recorrência (não vão para o banco)
 const RECORRENCIAS_KINDS = ['Pontual', 'Mensal', 'Parcelada',
   'Primeiro dia útil do mês', 'Até o 5º dia útil do mês', 'Último dia útil do mês',
@@ -72,6 +72,30 @@ async function garantirRecorrenciasNoBanco() {
     }
 }
 
+let _categoriaReembolsoGarantida = false;
+/**
+ * Garante que existe a categoria de receita fixa "Reembolso/Estorno". Para
+ * usuários antigos que já tinham a lista de categorias antes dela existir.
+ */
+async function garantirCategoriaReembolsoNoBanco() {
+    if (_categoriaReembolsoGarantida) return;
+    try {
+        const { data, error } = await sb.from('menu_itens')
+            .select('id').eq('tipo', 'Categoria').eq('categoria_tipo', 'entradas')
+            .eq('nome', CATEGORIA_REEMBOLSO_ESTORNO).limit(1);
+        if (error) throw error;
+        if (!data || !data.length) {
+            const cor = typeof corPadraoChip === 'function' ? corPadraoChip(CATEGORIA_REEMBOLSO_ESTORNO) : null;
+            await sb.from('menu_itens').insert({
+                tipo: 'Categoria', nome: CATEGORIA_REEMBOLSO_ESTORNO, categoria_tipo: 'entradas', cor
+            });
+        }
+        _categoriaReembolsoGarantida = true;
+    } catch (e) {
+        console.error('Erro ao garantir categoria de reembolso no banco:', e);
+    }
+}
+
 function mapearItemMenu(row) {
     return {
         linha: row.id,
@@ -103,6 +127,7 @@ function rotuloMetodo(item) {
 async function carregarMenusCompleto() {
     try {
         await garantirRecorrenciasNoBanco();
+        await garantirCategoriaReembolsoNoBanco();
         const { data, error } = await sb
             .from('menu_itens')
             .select('*')

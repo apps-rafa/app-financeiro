@@ -445,8 +445,13 @@ function obterDadosFormulario() {
     // nunca foi tocado e fica preso na 1ª <option> ("01"/Janeiro) do HTML. Ler
     // esse valor fora do contexto de crédito jogava a competência pra Janeiro
     // de qualquer lançamento (Dinheiro, PIX, Semanal, Pontual sem cartão...).
+    // Crédito conta pra competência tanto em despesa quanto em receita (ex.:
+    // estorno/reembolso lançado direto na fatura) — só a despesa mostra o
+    // select "Comp." (ver atualizarCamposRecorrencia), então na receita a
+    // competência sempre cai no ramo "Pontual" logo abaixo.
     const _met = typeof metodoSelecionado === 'function' ? metodoSelecionado() : null;
-    const ehCreditoDespesa = !ehEntrada && !!_met && _met.metodoKind === 'Crédito';
+    const ehMetodoCredito = !!_met && _met.metodoKind === 'Crédito';
+    const ehCreditoDespesa = !ehEntrada && ehMetodoCredito;
 
     let compISO = ehDiaUtil
         ? competenciaDeMes(document.getElementById('compRecorrente')?.value || '')
@@ -466,7 +471,7 @@ function obterDadosFormulario() {
     // "Comp." (calculada em cima do mês em exibição, não da data travada —
     // senão o fechamento seria aplicado 2x e a competência pularia de mês).
     const _comDiaCredito = tipoRecorrencia === 'Mensal' || tipoRecorrencia === 'Parcelada';
-    if (ehCreditoDespesa && dataISO && !ehDiaUtil && !_comDiaCredito) {
+    if (ehMetodoCredito && dataISO && !ehDiaUtil && !_comDiaCredito) {
         compISO = competenciaDe(dataISO, _met.diaFechamento || null);
     }
     // Última rede: se ainda não há competência, usa o mês em exibição
