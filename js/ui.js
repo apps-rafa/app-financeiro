@@ -566,7 +566,7 @@ function iniciarEdicaoTransacao(trans, tipoTransacao) {
     estadoApp.tipoAtual = tipoTransacao;
     const tipoField = document.querySelector(SELECTORS.tipoTransacao);
     if (tipoField) tipoField.value = tipoTransacao;
-    document.querySelectorAll('.tipo-btn').forEach(b =>
+    document.querySelector(SELECTORS.formTransacao)?.querySelectorAll('.tipo-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.tipo === tipoTransacao));
     atualizarLabelsPorTipo();
 
@@ -1037,14 +1037,17 @@ function atualizarCamposRecorrencia() {
     // Cartão de crédito: o dia de vencimento é o do cartão, não dá pra escolher.
     // Fora isso, só um prefill (com o dia da data digitada) pra quem ainda não mexeu.
     const diaInput = document.getElementById('diaRecorrencia');
+    const diaSteppers = document.querySelectorAll('[data-stepper="diaRecorrencia"]');
     if (diaInput) {
         if (credito) {
             diaInput.value = metodoAtual.diaVencimento != null ? String(metodoAtual.diaVencimento) : '';
             diaInput.readOnly = true;
             diaInput.classList.add('campo-travado');
+            diaSteppers.forEach(b => { b.disabled = true; });
         } else {
             diaInput.readOnly = false;
             diaInput.classList.remove('campo-travado');
+            diaSteppers.forEach(b => { b.disabled = false; });
             if (comDia && !diaInput.value) {
                 const iso = dataCampoParaISO(document.querySelector(SELECTORS.data).value);
                 if (iso) diaInput.value = String(parseInt(iso.slice(8, 10), 10));

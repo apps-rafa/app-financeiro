@@ -45,8 +45,10 @@ function configurarEventListeners() {
         if (typeof atualizarCalendarioNav === 'function') atualizarCalendarioNav();
     }, 150));
 
-    // Seletor de tipo
-    const tipoButtons = document.querySelectorAll('.tipo-btn');
+    // Seletor de tipo (Despesa/Receita) do formulário "Novo lançamento" —
+    // escopado: "Próximas" tem seu próprio filtro com a mesma classe
+    // .tipo-btn, e não deve disparar mudarTipoTransacao().
+    const tipoButtons = document.querySelectorAll(`${SELECTORS.formTransacao} .tipo-btn`);
     tipoButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             const tipo = btn.dataset.tipo;
@@ -206,7 +208,24 @@ function configurarEventListeners() {
         soNumeros(parcInput, 2);
         if (typeof atualizarValorTotal === 'function') atualizarValorTotal();
     });
-    
+
+    // Setinhas ▲▼ de "Qtd." e "vcto.": aumentam/diminuem 1 e disparam o
+    // mesmo "input" que digitar direto no campo dispararia.
+    document.querySelectorAll('[data-stepper]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const input = document.getElementById(btn.dataset.stepper);
+            if (!input || input.readOnly || input.disabled) return;
+            const min = parseInt(btn.dataset.min, 10) || 1;
+            const max = parseInt(btn.dataset.max, 10) || 99;
+            const dir = parseInt(btn.dataset.dir, 10) || 0;
+            let v = parseInt(input.value, 10);
+            if (Number.isNaN(v)) v = dir > 0 ? min - 1 : min + 1;
+            v = Math.min(max, Math.max(min, v + dir));
+            input.value = String(v);
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    });
+
     // Campo de categoria para sugestões (opcional)
     const categoriaInput = document.querySelector(SELECTORS.categoria);
     if (categoriaInput && categoriaInput.tagName === 'INPUT') {
@@ -254,11 +273,14 @@ function mudarTipoTransacao(tipo) {
     estadoApp.tipoAtual = tipo;
     console.log(`🔄 Tipo alterado para: ${tipo}`);
 
-    // Atualizar botões
-    document.querySelectorAll('.tipo-btn').forEach(btn => {
+    // Atualizar botões — escopado ao formulário: "Próximas" reusa a mesma
+    // classe .tipo-btn pro filtro dela, então um seletor global aqui acaba
+    // grudando o "active" no botão errado (o da outra tela).
+    const formEl = document.querySelector(SELECTORS.formTransacao);
+    formEl?.querySelectorAll('.tipo-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    document.querySelector(`[data-tipo="${tipo}"]`)?.classList.add('active');
+    formEl?.querySelector(`.tipo-btn[data-tipo="${tipo}"]`)?.classList.add('active');
 
     // Atualizar campo oculto
     const tipoField = document.querySelector(SELECTORS.tipoTransacao);

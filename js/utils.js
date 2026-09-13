@@ -405,7 +405,7 @@ function limparFormulario() {
         // "Receita" enquanto os campos mostram "Despesa")
         document.querySelector(SELECTORS.tipoTransacao).value = 'saidas';
         if (typeof estadoApp !== 'undefined') estadoApp.tipoAtual = 'saidas';
-        document.querySelectorAll('.tipo-btn').forEach(b =>
+        form.querySelectorAll('.tipo-btn').forEach(b =>
             b.classList.toggle('active', b.dataset.tipo === 'saidas'));
         const pv = document.getElementById('pagarVencimento');
         if (pv) pv.checked = false;
