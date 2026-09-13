@@ -89,7 +89,8 @@
     justify-content: flex-end;
 }
 .card-linhas .linha.total .amount {
-    font-size: clamp(1.3rem, 15cqw, 2.4rem);
+    font-size: clamp(1.3rem, 17cqw, 2.9rem);
+    white-space: nowrap;
 }
 
 .summary-card {
@@ -126,13 +127,14 @@
     font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 0;
 }
 
 .summary-card .amount {
-    font-size: clamp(1.1rem, 14cqw, 2.2rem);
+    font-size: clamp(1.1rem, 16cqw, 2.6rem);
     font-weight: var(--font-weight-bold);
     margin: 0;
+    white-space: nowrap;
 }
 
 /* Card Entradas */
