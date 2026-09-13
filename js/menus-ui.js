@@ -53,8 +53,7 @@ async function carregarAbaMenus() {
         <button class="subtab" data-sub="met">Métodos de pagamento</button>
         <button class="subtab" data-sub="rec">Recorrências</button>
         <button class="subtab" data-sub="fer">Feriados</button>
-        <button class="subtab" data-sub="csv">Importar CSV</button>
-        <button class="subtab" data-sub="pdf">Conciliar PDF</button>
+        <button class="subtab" data-sub="importar">Importar</button>
         <button type="button" class="btn-fechar-form btn-fechar-aba" title="Fechar" aria-label="Fechar">&times;</button>
       </div>
 
@@ -161,9 +160,14 @@ async function carregarAbaMenus() {
         </details>`).join('')}
       </div>
 
-      <div class="menu-section" data-sub="csv" hidden id="secImportarCSV"></div>
-
-      <div class="menu-section" data-sub="pdf" hidden id="secConciliarPDF"></div>
+      <div class="menu-section" data-sub="importar" hidden>
+        <div class="importar-toggle" role="tablist">
+          <button type="button" class="importar-toggle-btn active" data-importar-modo="csv">CSV</button>
+          <button type="button" class="importar-toggle-btn" data-importar-modo="pdf">PDF</button>
+        </div>
+        <div id="secImportarCSV" data-importar-modo="csv"></div>
+        <div id="secConciliarPDF" data-importar-modo="pdf" hidden></div>
+      </div>
 
     </div>
   `;
@@ -195,6 +199,18 @@ async function carregarAbaMenus() {
 
   if (typeof iniciarImportarCSV === 'function') iniciarImportarCSV();
   if (typeof iniciarConciliarPDF === 'function') iniciarConciliarPDF();
+
+  // Sub-toggle "CSV" / "PDF" dentro da sub-aba "Importar"
+  document.querySelectorAll('.importar-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const modo = btn.dataset.importarModo;
+      document.querySelectorAll('.importar-toggle-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.importarModo === modo));
+      document.querySelectorAll('[data-importar-modo]:not(.importar-toggle-btn)').forEach(el => {
+        el.hidden = el.dataset.importarModo !== modo;
+      });
+    });
+  });
 }
 
 let feriadosAnoView = new Date().getFullYear();
