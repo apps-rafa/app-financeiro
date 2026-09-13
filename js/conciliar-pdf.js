@@ -14,13 +14,13 @@
 // .pdf) — nunca menciona um formato que não seja o da própria aba.
 const _estadosConciliar = {}; // secId -> { pdfs: [...] }
 
-function iniciarConciliarCSV() { _iniciarConciliar('secConciliarCSV', 'csv'); }
-function iniciarConciliarPDF() { _iniciarConciliar('secConciliarPDF', 'pdf'); }
-
-function _iniciarConciliar(secId, modo) {
+/** formatoRestrito: null (aceita qualquer formato da aba) | 'bradesco' | 'nubank' | 'mp'
+ *  — o dropdown de formato em Importar sempre manda um valor específico;
+ *  null só existe pra chamadas antigas/testes. */
+function _iniciarConciliar(secId, modo, formatoRestrito = null) {
     const sec = document.getElementById(secId);
     if (!sec) return;
-    _estadosConciliar[secId] = { pdfs: [] };
+    _estadosConciliar[secId] = { pdfs: [], formatoRestrito };
     if (modo === 'pdf' && typeof pdfjsLib !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
@@ -333,31 +333,33 @@ async function onConciliarArquivos(e, secId, modo) {
                 const m = (estadoApp.menus.metodos || []).find(m => _normalizarTexto(rotuloMetodo(m)).includes('pix'));
                 return m ? rotuloMetodo(m) : '';
             };
+            const fr = estado.formatoRestrito; // 'bradesco' | 'nubank' | 'mp' | null (aceita qualquer um da aba)
+            const podeBradesco = modo === 'pdf' && (!fr || fr === 'bradesco');
+            const podeNubank = modo === 'csv' && (!fr || fr === 'nubank');
+            const podeMP = !fr || fr === 'mp';
 
-            if (modo === 'pdf' && _pareceFaturaBradesco(texto)) {
+            if (podeBradesco && _pareceFaturaBradesco(texto)) {
                 entrada.formato = 'fatura';
                 entrada.linhas = _parsearFaturaBradesco(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
                 entrada.metodoEscolhido = credito();
-            } else if (modo === 'pdf' && _pareceFaturaBradescoBoleto(texto)) {
+            } else if (podeBradesco && _pareceFaturaBradescoBoleto(texto)) {
                 entrada.formato = 'fatura';
                 entrada.linhas = _parsearFaturaBradescoBoleto(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
                 entrada.metodoEscolhido = credito();
-            } else if (modo === 'pdf' && _pareceExtratoMercadoPago(texto)) {
+            } else if (modo === 'pdf' && podeMP && _pareceExtratoMercadoPago(texto)) {
                 entrada.formato = 'extrato';
                 entrada.linhas = _parsearExtratoMercadoPago(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
                 entrada.metodoEscolhido = pixOuDebito();
-            } else if (modo === 'csv' && _pareceExtratoMercadoPagoCSV(texto)) {
+            } else if (modo === 'csv' && podeMP && _pareceExtratoMercadoPagoCSV(texto)) {
                 entrada.formato = 'extrato';
                 entrada.linhas = _parsearExtratoMercadoPagoCSV(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
                 entrada.metodoEscolhido = pixOuDebito();
-            } else if (modo === 'csv' && _pareceFaturaNubankCSV(texto)) {
+            } else if (podeNubank && _pareceFaturaNubankCSV(texto)) {
                 entrada.formato = 'fatura';
                 entrada.linhas = _parsearFaturaNubankCSV(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
                 entrada.metodoEscolhido = credito();
             } else {
-                throw new Error(modo === 'pdf'
-                    ? 'Formato não reconhecido — só suportamos fatura Bradesco Cartões e extrato Mercado Pago em PDF por enquanto.'
-                    : 'Formato não reconhecido — só suportamos fatura Nubank e extrato Mercado Pago em CSV por enquanto.');
+                throw new Error(`Esse arquivo não parece ${_rotuloFormatoRestrito(fr, modo)}.`);
             }
 
             if (!entrada.linhas.length) throw new Error('Não encontrei nenhum lançamento nesse arquivo.');
@@ -382,6 +384,15 @@ async function _recompararPDV(entrada) {
 
 /* ---------- Render ---------- */
 
+/** Nome legível do formato pra que o dropdown de Importar restringiu essa
+ *  instância — usado no texto de ajuda e na mensagem de erro. */
+function _rotuloFormatoRestrito(formatoRestrito, modo) {
+    if (formatoRestrito === 'bradesco') return 'uma fatura Bradesco';
+    if (formatoRestrito === 'nubank') return 'uma fatura Nubank';
+    if (formatoRestrito === 'mp') return `um extrato Mercado Pago (${modo === 'pdf' ? 'PDF' : 'CSV'})`;
+    return modo === 'pdf' ? 'fatura Bradesco ou extrato Mercado Pago' : 'fatura Nubank ou extrato Mercado Pago';
+}
+
 function renderConciliar(secId, modo) {
     const sec = document.getElementById(secId);
     const estado = _estadosConciliar[secId];
@@ -389,14 +400,11 @@ function renderConciliar(secId, modo) {
 
     const listaId = `${secId}Lista`;
     const arquivoId = `${secId}Arquivo`;
-    const titulo = modo === 'pdf' ? '🧾 Conciliar PDF' : '🧾 Conciliar CSV';
-    const dica = modo === 'pdf'
-        ? 'Sobe a fatura do cartão Bradesco ou o extrato da conta Mercado Pago em PDF e compara com o que já está lançado no app — só aponta as diferenças, não grava nada automaticamente.'
-        : 'Sobe a fatura do cartão Nubank ou o extrato da conta Mercado Pago em CSV e compara com o que já está lançado no app — só aponta as diferenças, não grava nada automaticamente.';
+    const dica = `Sobe ${_rotuloFormatoRestrito(estado.formatoRestrito, modo)} — compara com o que já está lançado
+        no app e só aponta as diferenças, não grava nada automaticamente.`;
     const accept = modo === 'pdf' ? '.pdf,application/pdf' : '.csv,text/csv';
 
     sec.innerHTML = `
-    <h3>${titulo}</h3>
     <p class="menu-hint">${dica}</p>
     <div class="import-csv-upload">
         <input type="file" id="${arquivoId}" accept="${accept}" multiple>
