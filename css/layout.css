@@ -37,15 +37,81 @@ header.header {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
 }
-/* Grupo "← Mês →" encostado à esquerda */
-.month-nav {
-    flex: 0 1 auto;
+/* Calendário: tira de meses (JAN..DEZ) + linha do ano, encostado à esquerda */
+.cal-nav {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.meses-strip {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    gap: var(--spacing-sm);
+    gap: 5px;
     min-width: 0;
 }
+.meses-lista {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    overflow: hidden;
+    flex: 1 1 auto;
+}
+.mes-btn {
+    flex: none;
+    background: none;
+    border: none;
+    padding: .15rem .35rem;
+    border-radius: 3px;
+    color: var(--text);
+    opacity: .45;
+    font-size: .7rem;
+    font-weight: var(--font-weight-bold);
+    white-space: nowrap;
+    cursor: pointer;
+}
+.mes-btn:hover { opacity: .75; background: var(--surface-2); }
+.mes-btn.selecionado { opacity: 1; }
+.mes-btn.hoje { text-decoration: underline; text-underline-offset: 2px; }
+
+.ano-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+}
+.ano-atual {
+    font-size: .68rem;
+    font-weight: var(--font-weight-bold);
+    color: var(--text-muted);
+    min-width: 2.6rem;
+    text-align: center;
+}
+
+/* Setas laterais ‹ › — mesmo desenho das setinhas ▲▼ de reordenar em
+   Configurações (.btn-mini-seta), só que giradas pro lado. */
+.seta-lateral {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    font-size: 11px;
+    line-height: 1;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: 3px;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+.seta-lateral:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
+.seta-lateral[hidden] { display: none; }
+
 /* Toggle "Configurações" encostado à direita */
 .month-bar .month-btn--config {
     flex: 0 0 auto;
@@ -57,41 +123,21 @@ header.header {
     font-size: 0.6rem;
     padding: 0.3rem 0.55rem;
 }
-/* Impede que o "* { font-size }" do mobile aumente estes textos filhos */
-.month-bar .month-btn--config .cfg-label,
-.month-bar .current-month > span { font-size: inherit; }
+/* Impede que o "* { font-size }" do mobile aumente este texto filho */
+.month-bar .month-btn--config .cfg-label { font-size: inherit; }
 /* Emoji da engrenagem um pouco maior que o texto do botão */
 .month-bar .month-btn--config .cfg-ico {
     font-size: 1.05rem;
     line-height: 1;
     vertical-align: -0.12em;
 }
-.month-bar .current-month {
-    font-weight: var(--font-weight-bold);
-    font-size: var(--font-size-base);
-    color: var(--text);
-    min-width: 8rem;
-    text-align: center;
-    white-space: nowrap;
-}
-/* Data em 3 níveis conforme a largura:
-   "Setembro de 2026"  ->  "SET/2026"  ->  "09/26" */
-.current-month .mes-curto,
-.current-month .mes-mini { display: none; }
 @media (max-width: 460px) {
     .month-bar .month-btn--config { font-size: 0.55rem; gap: 0.2rem; }
 }
 @media (max-width: 400px) {
-    .current-month .mes-full { display: none; }
-    .current-month .mes-curto { display: inline; }
-    .month-bar .current-month { min-width: 0; }
     /* "Configurações" some, fica só a engrenagem */
     .month-btn--config .cfg-label { display: none; }
     .month-bar .month-btn--config { gap: 0; padding: 0.3rem 0.5rem; }
-}
-@media (max-width: 340px) {
-    .current-month .mes-curto { display: none; }
-    .current-month .mes-mini { display: inline; }
 }
 .month-bar .month-btn {
     background: var(--surface-2);

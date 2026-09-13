@@ -7,24 +7,11 @@
  * Atualiza toda a interface
  */
 function atualizarUI() {
-    // Atualizar cabeçalho com mês
-    const mesEl = document.querySelector(SELECTORS.currentMonth);
-    if (mesEl) {
-        const full = mesEl.querySelector('.mes-full');
-        const curto = mesEl.querySelector('.mes-curto');
-        const mini = mesEl.querySelector('.mes-mini');
-        if (full && curto) {
-            full.textContent = obterMesAnoFormatado(estadoApp.mesAtual);
-            curto.textContent = obterMesAnoCurto(estadoApp.mesAtual);
-            if (mini) mini.textContent = obterMesAnoMini(estadoApp.mesAtual);
-        } else {
-            mesEl.textContent = obterMesAnoFormatado(estadoApp.mesAtual);
-        }
-    }
-    
+    atualizarCalendarioNav();
+
     // Atualizar resumo
     atualizarResumo();
-    
+
     // Atualizar listas
     atualizarEntradasLista();
     atualizarSaidasLista();
@@ -33,6 +20,59 @@ function atualizarUI() {
     if (document.getElementById('proximas')?.classList.contains('active')) {
         atualizarProximasTransacoes();
     }
+}
+
+// Índice (0-11) do mês no centro da janela compacta (quando os 12 meses não
+// cabem numa linha só). null = ainda não foi definido manualmente pelas
+// setas laterais — usa o mês selecionado como centro.
+let mesesJanelaCentro = null;
+
+/**
+ * (Re)desenha a tira de meses + o ano no calendário do topo.
+ * Tenta mostrar os 12 meses numa linha; se não couber, cai pra uma janela
+ * compacta de 3 (selecionado + vizinhos), navegável pelas setas laterais.
+ * Não depende de dados carregados — seguro de chamar em qualquer resize.
+ */
+function atualizarCalendarioNav() {
+    const lista = document.getElementById('mesesLista');
+    const setaEsq = document.getElementById('mesesSetaEsq');
+    const setaDir = document.getElementById('mesesSetaDir');
+    const anoLabel = document.getElementById('anoAtualLabel');
+    if (!lista || typeof estadoApp === 'undefined' || !estadoApp.mesAtual) return;
+
+    const hoje = new Date();
+    const anoSelecionado = estadoApp.mesAtual.getFullYear();
+    const mesSelecionado = estadoApp.mesAtual.getMonth();
+    const ehAnoAtual = anoSelecionado === hoje.getFullYear();
+    const mesHojeIdx = hoje.getMonth();
+
+    if (anoLabel) anoLabel.textContent = String(anoSelecionado);
+
+    const montarBtn = idx => {
+        const selecionado = idx === mesSelecionado;
+        const ehHoje = ehAnoAtual && idx === mesHojeIdx;
+        const classes = ['mes-btn', selecionado && 'selecionado', ehHoje && 'hoje'].filter(Boolean).join(' ');
+        return `<button type="button" class="${classes}" data-mes="${idx}">${MESES_TRI[idx]}</button>`;
+    };
+
+    // 1ª tentativa: todos os 12 numa linha só
+    lista.innerHTML = MESES_TRI.map((_, i) => montarBtn(i)).join('');
+    if (setaEsq) setaEsq.hidden = true;
+    if (setaDir) setaDir.hidden = true;
+
+    // Mede depois do layout: se estourou, refaz em modo compacto (janela de 3)
+    requestAnimationFrame(() => {
+        const cabemTodos = lista.scrollWidth <= lista.clientWidth + 1;
+        if (cabemTodos) {
+            mesesJanelaCentro = null;
+            return;
+        }
+        const centro = mesesJanelaCentro != null ? mesesJanelaCentro : mesSelecionado;
+        const idxs = [centro - 1, centro, centro + 1].filter(i => i >= 0 && i <= 11);
+        lista.innerHTML = idxs.map(montarBtn).join('');
+        if (setaEsq) setaEsq.hidden = centro <= 0;
+        if (setaDir) setaDir.hidden = centro >= 11;
+    });
 }
 
 /**

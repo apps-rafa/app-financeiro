@@ -9,21 +9,45 @@
 function configurarEventListeners() {
     console.log('⚙️ Configurando event listeners...');
     
-    // Navegação de meses
-    const prevBtn = document.getElementById('prevMonth');
-    const nextBtn = document.getElementById('nextMonth');
-    
-    if (prevBtn) prevBtn.addEventListener('click', mesAnterior);
-    if (nextBtn) nextBtn.addEventListener('click', proximoMes);
+    // Navegação de calendário: tira de meses (clique seleciona; setas laterais
+    // só passeiam pela janela compacta quando não cabem os 12 numa linha) +
+    // navegação de ano.
+    const mesesLista = document.getElementById('mesesLista');
+    if (mesesLista) mesesLista.addEventListener('click', e => {
+        const btn = e.target.closest('.mes-btn');
+        if (!btn) return;
+        const idx = parseInt(btn.dataset.mes, 10);
+        if (Number.isNaN(idx)) return;
+        mesesJanelaCentro = idx;
+        estadoApp.mesAtual = new Date(estadoApp.mesAtual.getFullYear(), idx, 1);
+        recarregarDados();
+    });
+    const mesesSetaEsq = document.getElementById('mesesSetaEsq');
+    if (mesesSetaEsq) mesesSetaEsq.addEventListener('click', () => {
+        if (mesesJanelaCentro == null) mesesJanelaCentro = estadoApp.mesAtual.getMonth();
+        mesesJanelaCentro = Math.max(0, mesesJanelaCentro - 1);
+        atualizarCalendarioNav();
+    });
+    const mesesSetaDir = document.getElementById('mesesSetaDir');
+    if (mesesSetaDir) mesesSetaDir.addEventListener('click', () => {
+        if (mesesJanelaCentro == null) mesesJanelaCentro = estadoApp.mesAtual.getMonth();
+        mesesJanelaCentro = Math.min(11, mesesJanelaCentro + 1);
+        atualizarCalendarioNav();
+    });
+    const anoAnterior = document.getElementById('anoAnterior');
+    if (anoAnterior) anoAnterior.addEventListener('click', () => {
+        estadoApp.mesAtual = new Date(estadoApp.mesAtual.getFullYear() - 1, estadoApp.mesAtual.getMonth(), 1);
+        recarregarDados();
+    });
+    const anoProximo = document.getElementById('anoProximo');
+    if (anoProximo) anoProximo.addEventListener('click', () => {
+        estadoApp.mesAtual = new Date(estadoApp.mesAtual.getFullYear() + 1, estadoApp.mesAtual.getMonth(), 1);
+        recarregarDados();
+    });
+    window.addEventListener('resize', debounce(() => {
+        if (typeof atualizarCalendarioNav === 'function') atualizarCalendarioNav();
+    }, 150));
 
-    // Clicar no nome do mês volta para o mês vigente
-    const mesLabel = document.getElementById('currentMonth');
-    if (mesLabel) {
-        mesLabel.style.cursor = 'pointer';
-        mesLabel.title = 'Voltar ao mês atual';
-        mesLabel.addEventListener('click', irParaMesVigente);
-    }
-    
     // Seletor de tipo
     const tipoButtons = document.querySelectorAll('.tipo-btn');
     tipoButtons.forEach(btn => {
@@ -210,22 +234,6 @@ function configurarEventListeners() {
 }
 
 /**
- * Muda para mês anterior
- */
-function mesAnterior() {
-    estadoApp.mesAtual.setMonth(estadoApp.mesAtual.getMonth() - 1);
-    recarregarDados();
-}
-
-/**
- * Muda para próximo mês
- */
-function proximoMes() {
-    estadoApp.mesAtual.setMonth(estadoApp.mesAtual.getMonth() + 1);
-    recarregarDados();
-}
-
-/**
  * Se o mês "digitado"/escolhido no formulário de lançamento for diferente do
  * mês em exibição no topo, a navegação acompanha (some meses no formulário
  * — Data, Comp., mês de referência do dia útil — não têm campo de ano; o
@@ -237,18 +245,8 @@ function sincronizarMesComFormulario(mes) {
     if (!(mes >= 1 && mes <= 12)) return;
     if (estadoApp.mesAtual.getMonth() + 1 === mes) return;
     estadoApp.mesAtual = new Date(estadoApp.mesAtual.getFullYear(), mes - 1, 1);
+    mesesJanelaCentro = null;
     if (typeof recarregarDados === 'function') recarregarDados();
-}
-
-/**
- * Volta para o mês vigente (hoje)
- */
-function irParaMesVigente() {
-    const hoje = new Date();
-    if (estadoApp.mesAtual.getFullYear() === hoje.getFullYear()
-        && estadoApp.mesAtual.getMonth() === hoje.getMonth()) return;
-    estadoApp.mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    recarregarDados();
 }
 
 /**
