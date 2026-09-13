@@ -70,7 +70,7 @@ function _parsearFaturaBradesco(texto) {
         if (dNorm === 'saldo anterior') continue;          // não é lançamento
         if (/^total (para|da fatura)/.test(dNorm)) continue;
 
-        const valor = _parsearValorBR(valorFinalRaw);
+        const valor = _parsearValorUniversal(valorFinalRaw);
         if (valor == null) continue;
 
         linhas.push({
@@ -120,7 +120,7 @@ function _parsearFaturaBradescoBoleto(texto) {
         const dNorm = _normalizarTexto(descricao);
         if (/^cart[aã]o \d/.test(dNorm)) continue; // sub-cabeçalho "Cartão 4066 XXXX..." de um 2º cartão na mesma fatura
 
-        let valor = _parsearValorBR(valorRaw);
+        let valor = _parsearValorUniversal(valorRaw);
         if (valor == null) continue;
         if (sinal === '-') valor = -Math.abs(valor);
 
@@ -143,14 +143,37 @@ function _pareceFaturaNubankCSV(texto) {
     return /^date,title,amount/i.test(primeiraLinha);
 }
 
-/** "273.94" / "-17.20" -> 273.94 / -17.2 — o export "date,title,amount" do
- *  Nubank usa ponto como separador decimal (formato americano), diferente
- *  do resto do app (_parsearValorBR, formato brasileiro com vírgula) —
- *  usar o parser errado aqui multiplicava todo valor por ~100. */
-function _parsearValorUS(s) {
-    const limpo = String(s || '').trim().replace(/\s+/g, '');
-    const v = parseFloat(limpo);
-    return Number.isFinite(v) ? v : null;
+/** Parser de valor tolerante a formato — decide sozinho se vírgula ou ponto
+ *  é o separador decimal em vez de assumir um só (ex.: Nubank exporta
+ *  "273.94", formato americano; assumir vírgula decimal ali — como o resto
+ *  do app faz, _parsearValorBR — cortava tudo depois do ponto e perdia os
+ *  centavos: "273.94" virava 273).
+ *  Regra: se os 2 aparecem, o que vem por ÚLTIMO é o decimal (o outro é
+ *  separador de milhar); se só um aparece, é decimal quando tem exatamente
+ *  2 dígitos depois (senão é milhar, ex. "1.234" sem centavos). */
+function _parsearValorUniversal(s) {
+    let str = String(s || '').trim().replace(/\s+/g, '');
+    if (!str) return null;
+    const negParen = /^\(.*\)$/.test(str);
+    str = str.replace(/^[+-]/, '').replace(/[()]/g, '');
+    const neg = negParen || /^-/.test(String(s || '').trim());
+
+    const iComma = str.lastIndexOf(','), iDot = str.lastIndexOf('.');
+    let normalizado;
+    if (iComma > -1 && iDot > -1) {
+        normalizado = iComma > iDot
+            ? str.replace(/\./g, '').replace(',', '.')   // "1.234,56" -> 1234.56
+            : str.replace(/,/g, '');                      // "1,234.56" -> 1234.56
+    } else if (iComma > -1) {
+        normalizado = str.replace(',', '.');
+    } else if (iDot > -1) {
+        normalizado = (str.length - iDot - 1 === 2) ? str : str.replace(/\./g, '');
+    } else {
+        normalizado = str;
+    }
+    const v = parseFloat(normalizado);
+    if (!Number.isFinite(v)) return null;
+    return neg ? -v : v;
 }
 
 function _parsearFaturaNubankCSV(texto) {
@@ -169,7 +192,7 @@ function _parsearFaturaNubankCSV(texto) {
 
         const descricao = String(tituloCru || '').trim();
         const dNorm = _normalizarTexto(descricao);
-        const valor = _parsearValorUS(valorCru);
+        const valor = _parsearValorUniversal(valorCru);
         if (valor == null) continue;
 
         linhas.push({
@@ -202,6 +225,15 @@ function _parsearExtratoMercadoPago(texto) {
     const inicioTabela = texto.search(/DETALHE DOS MOVIMENTOS/i);
     if (inicioTabela >= 0) texto = texto.slice(inicioTabela);
 
+    // Em extratos de várias páginas, cada virada de página repete um rodapé
+    // de ajuda/contato (telefones, CNPJ, endereço) seguido do cabeçalho da
+    // tabela — esse texto solto entre 2 linhas de verdade podia colar com
+    // uma delas e virar um "lançamento" fantasma (data/valor sem sentido,
+    // descrição = pedaço do rodapé). Remove antes de casar as linhas.
+    texto = texto
+        .replace(/Você tem alguma d[uú]vida[\s\S]*?Data Descri[cç][aã]o ID da opera[cç][aã]o Valor Saldo/gi, ' ')
+        .replace(/\d{1,2}\/\d{1,2}\s*Data Descri[cç][aã]o ID da opera[cç][aã]o Valor Saldo/gi, ' ');
+
     const re = /(\d{2})-(\d{2})-(\d{4})\s+(.+?)\s+(\d{10,})\s+R\$\s*(-?[\d.,]+)\s+R\$\s*[\d.,]+/g;
     const linhas = [];
     let m;
@@ -209,7 +241,7 @@ function _parsearExtratoMercadoPago(texto) {
         const [, dia, mes, ano, descricaoRaw, , valorRaw] = m;
         const descricao = descricaoRaw.trim();
         const dNorm = _normalizarTexto(descricao);
-        const valor = _parsearValorBR(valorRaw);
+        const valor = _parsearValorUniversal(valorRaw);
         if (valor == null) continue;
 
         linhas.push({
@@ -256,7 +288,7 @@ function _parsearExtratoMercadoPagoCSV(texto) {
 
         const descricao = String(tipoCru || '').trim();
         const dNorm = _normalizarTexto(descricao);
-        const valor = _parsearValorBR(valorCru);
+        const valor = _parsearValorUniversal(valorCru);
         if (valor == null) continue;
 
         resultado.push({

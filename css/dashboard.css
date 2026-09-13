@@ -89,16 +89,14 @@
     justify-content: flex-end;
 }
 .card-linhas .linha.total .amount {
-    /* 17cqw deixava valores mais longos (ex. "R$ 10.615,35") quase saindo
-       do card, sem folga nenhuma até a borda — reduzido pra sempre sobrar
-       margem de segurança, com truncamento (…) como rede de segurança
-       pra valores realmente extremos. */
+    /* Tamanho-base (cqw) pensado pro caso comum — quando um valor mais
+       longo (ex. "R$ 10.615,35") ainda não coube nisso, JS encolhe esse
+       font-size em cima do que tiver aqui até caber numa linha só (nunca
+       corta com "…" — ver ajustarFonteParaCaber em js/ui.js). */
     font-size: clamp(1.2rem, 12cqw, 2.6rem);
     white-space: nowrap;
     display: block;
     max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .summary-card {
@@ -139,16 +137,13 @@
 }
 
 .summary-card .amount {
-    /* 16cqw deixava valores mais longos (ex. "R$ 10.615,35") quase saindo
-       do card, sem folga nenhuma até a borda — reduzido pra sempre sobrar
-       uma margem de segurança, não só encaixar raspando. */
+    /* Tamanho-base (cqw) — ver comentário em .card-linhas .linha.total
+       .amount acima: JS encolhe em cima disso se ainda não couber. */
     font-size: clamp(1.1rem, 11cqw, 2.3rem);
     font-weight: var(--font-weight-bold);
     margin: 0;
     white-space: nowrap;
     max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
     display: block;
 }
 
@@ -313,7 +308,7 @@
 .mini-lancamento .tab-mais { color: #FFD54A; font-weight: 800; margin-right: .15rem; }
 .mini-proximos {
   grid-column: span 1;
-  padding: .4rem .7rem;
+  padding: .4rem .3rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-xs);
   background: var(--surface);
@@ -322,8 +317,8 @@
   font-size: var(--font-size-sm);
   cursor: pointer;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Nunca corta com "…" — se não couber, JS encolhe (ajustarFonteParaCaber
+     em js/ui.js, chamado no load e no resize). */
 }
 .mini-box {
   min-width: 0;
