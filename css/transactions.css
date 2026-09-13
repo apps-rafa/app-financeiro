@@ -276,6 +276,11 @@
     min-width: 3px;
 }
 .cron-barra-seg:hover { opacity: .8; }
+/* Nos modos que filtram (tudo menos Cronológica): o segmento que NÃO está
+   selecionado fica apagado, indicando que a lista embaixo só mostra o
+   outro status. */
+.cron-barra-seg--apagado { opacity: .25; }
+.cron-barra-seg--apagado:hover { opacity: .4; }
 
 /* Badge de recorrência */
 .recorrencia-badge {

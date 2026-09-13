@@ -186,18 +186,89 @@ function _modoListaSalvo(chave, validos) {
     } catch (_) { return 'cronologica'; }
 }
 
+// Filtro de status (Atual / A receber|pagar) da barra proporcional —
+// independente do modo de visualização, um por tipo (Receitas/Despesas).
+// null = mostra tudo. Só usado pelos modos QUE NÃO SÃO Cronológica (essa já
+// mostra os 2 grupos lado a lado; nos outros, sem "grupo" pra abrir/fechar,
+// clicar na barra filtra a lista pra só aquele status).
+let filtroStatusEntradas = null;
+let filtroStatusSaidas = null;
+const _filtroStatusDe = tipoUI => tipoUI === 'entrada' ? filtroStatusEntradas : filtroStatusSaidas;
+const _setFiltroStatus = (tipoUI, valor) => {
+    if (tipoUI === 'entrada') filtroStatusEntradas = valor; else filtroStatusSaidas = valor;
+};
+
+/** Barra proporcional Atual/Pendente reaproveitada pelos modos "Por
+ *  recorrência/método/categoria" — a de Cronológica é própria (embutida
+ *  em renderListaCronologica, com os 2 grupos abrindo/fechando). Aqui,
+ *  sem grupo pra abrir/fechar, clicar num segmento filtra a lista. */
+function _renderBarraStatusFiltro(transacoes, tipoUI) {
+    const rotuloPendente = tipoUI === 'entrada' ? 'A receber' : 'A pagar';
+    const corAtual = tipoUI === 'entrada' ? 'var(--receita-text)' : 'var(--despesa-text)';
+    const corPendente = 'var(--balanco-text)';
+    const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
+    const totalAtual = transacoes.filter(_transacaoRealizada).reduce((s, t) => s + valorDe(t), 0);
+    const totalPendente = transacoes.filter(t => !_transacaoRealizada(t)).reduce((s, t) => s + valorDe(t), 0);
+    const totalGeral = totalAtual + totalPendente;
+    if (!totalGeral) return '';
+    const pctAtual = Math.round((totalAtual / totalGeral) * 100);
+    const pctPendente = 100 - pctAtual;
+    const filtro = _filtroStatusDe(tipoUI);
+    const apagado = valor => filtro && filtro !== valor ? ' cron-barra-seg--apagado' : '';
+    return `
+        <div class="cron-barra" role="img" aria-label="${pctAtual}% Atual, ${pctPendente}% ${rotuloPendente}">
+          <button type="button" class="cron-barra-seg${apagado('Atual')}" data-status-toggle="Atual"
+                  style="--cor-rec:${corAtual}; flex-grow:${Math.max(pctAtual, totalAtual ? 2 : 0)}"
+                  title="Atual: ${pctAtual}% · ${formatarMoeda(totalAtual)}" ${totalAtual ? '' : 'hidden'}></button>
+          <button type="button" class="cron-barra-seg${apagado(rotuloPendente)}" data-status-toggle="${rotuloPendente}"
+                  style="--cor-rec:${corPendente}; flex-grow:${Math.max(pctPendente, totalPendente ? 2 : 0)}"
+                  title="${rotuloPendente}: ${pctPendente}% · ${formatarMoeda(totalPendente)}" ${totalPendente ? '' : 'hidden'}></button>
+        </div>`;
+}
+
 /** Escolhe a renderização certa pro modo de visualização selecionado — usado
- *  tanto por Receitas quanto por Despesas. */
+ *  tanto por Receitas quanto por Despesas. Nos modos que não são
+ *  Cronológica, prepend uma barra Atual/Pendente cujo clique filtra a
+ *  lista (Cronológica já tem sua própria barra + grupos). */
 function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
-    if (modo === 'metodo') {
-        renderListaPorMetodo(container, transacoes, tipoUI, msgVazia);
-    } else if (modo === 'categoria') {
-        renderListaPorCategoria(container, transacoes, tipoUI, msgVazia);
-    } else if (modo === 'cronologica') {
+    if (!container) return;
+    if (modo === 'cronologica') {
         renderListaCronologica(container, transacoes, tipoUI, msgVazia);
-    } else {
-        renderListaAgrupada(container, transacoes, tipoUI, msgVazia);
+        return;
     }
+    if (!transacoes || !transacoes.length) {
+        container.innerHTML = `<p class="empty-message">${msgVazia}</p>`;
+        container.onclick = null;
+        return;
+    }
+
+    const barraHTML = _renderBarraStatusFiltro(transacoes, tipoUI);
+    const filtro = _filtroStatusDe(tipoUI);
+    const rotuloPendente = tipoUI === 'entrada' ? 'A receber' : 'A pagar';
+    const filtrados = filtro
+        ? transacoes.filter(t => (_transacaoRealizada(t) ? 'Atual' : rotuloPendente) === filtro)
+        : transacoes;
+
+    if (modo === 'metodo') {
+        renderListaPorMetodo(container, filtrados, tipoUI, `Nada em "${filtro}"`);
+    } else if (modo === 'categoria') {
+        renderListaPorCategoria(container, filtrados, tipoUI, `Nada em "${filtro}"`);
+    } else {
+        renderListaAgrupada(container, filtrados, tipoUI, `Nada em "${filtro}"`);
+    }
+
+    container.insertAdjacentHTML('afterbegin', barraHTML);
+    const onClickConteudo = container.onclick;
+    container.onclick = e => {
+        const seg = e.target.closest('[data-status-toggle]');
+        if (seg) {
+            const valor = seg.dataset.statusToggle;
+            _setFiltroStatus(tipoUI, filtro === valor ? null : valor);
+            renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia);
+            return;
+        }
+        if (onClickConteudo) onClickConteudo(e);
+    };
 }
 
 // 'recorrencia' (padrão) | 'categoria' | 'cronologica' — visão da aba Receitas
@@ -301,7 +372,6 @@ function renderListaPorCategoria(container, transacoes, tipoUI, msgVazia) {
     });
 }
 
-/** Lista simples, sem agrupamento — mais recente primeiro. */
 /** Mesma regra usada no card de resumo (calcularResumoMes, data.js) pra
  *  decidir se uma transação já "aconteceu" (Atual) ou ainda está pendente
  *  (A receber / A pagar) — cartão de crédito conta sempre como pendente. */
@@ -344,12 +414,12 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
     const pctPendente = totalGeral ? 100 - pctAtual : 0;
 
     const abertos = _lerAbertosRecGrupo(container);
-    const grupoHTML = (nome, cor, itens, total) => `
-        <details class="rec-grupo" data-nome="${nome}" style="--cor-rec:${cor}" ${abertos[nome] !== false ? 'open' : ''}>
+    const grupoHTML = (nome, cor, itens, total, pct) => `
+        <details class="rec-grupo" data-nome="${nome}" style="--cor-rec:${cor}" ${abertos[nome] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
             <span class="rec-grupo-contagem">${itens.length}</span>
-            <span class="rec-grupo-total">${formatarMoeda(total)}</span>
+            <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${pct}%` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
             ${itens.length ? itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('') : `<p class="empty-message">Nada aqui</p>`}
@@ -365,8 +435,8 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
                   style="--cor-rec:${corPendente}; flex-grow:${Math.max(pctPendente, totalPendente ? 2 : 0)}"
                   title="${rotuloPendente}: ${pctPendente}% · ${formatarMoeda(totalPendente)}" ${totalPendente ? '' : 'hidden'}></button>
         </div>
-        ${grupoHTML('Atual', corAtual, atuais, totalAtual)}
-        ${grupoHTML(rotuloPendente, corPendente, pendentes, totalPendente)}
+        ${grupoHTML('Atual', corAtual, atuais, totalAtual, pctAtual)}
+        ${grupoHTML(rotuloPendente, corPendente, pendentes, totalPendente, pctPendente)}
     `;
     container.onclick = e => {
         const seg = e.target.closest('[data-cron-toggle]');
