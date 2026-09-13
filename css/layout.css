@@ -58,10 +58,12 @@ header.header {
     flex: 0 1 auto;
 }
 .mes-btn {
+    position: relative;
     flex: none;
     background: none;
     border: none;
     padding: .15rem .35rem;
+    padding-bottom: .45rem;
     border-radius: 3px;
     color: var(--text);
     opacity: .45;
@@ -74,22 +76,34 @@ header.header {
 .mes-btn.selecionado { opacity: 1; }
 .mes-btn.hoje { text-decoration: underline; text-underline-offset: 2px; }
 
-/* Ano: à direita dos meses, na mesma linha */
-.ano-nav {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: .3rem;
-    margin-left: .3rem;
-    padding-left: .5rem;
-    border-left: 1px solid var(--border);
+/* Bolinha de indicação (lançamento no mês): preenchida = já aconteceu;
+   só o contorno = a confirmar/futuro. */
+.mes-btn .mes-dot {
+    position: absolute;
+    bottom: .1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: currentColor;
 }
+.mes-btn .mes-dot.contorno {
+    background: transparent;
+    border: 1px solid currentColor;
+    width: 3px;
+    height: 3px;
+}
+
+/* Ano: à direita dos meses, na mesma linha — fixo no vigente, sem setas */
 .ano-atual {
+    flex: none;
     font-size: .68rem;
     font-weight: var(--font-weight-bold);
     color: var(--text-muted);
-    min-width: 2.4rem;
-    text-align: center;
+    margin-left: .3rem;
+    padding-left: .5rem;
+    border-left: 1px solid var(--border);
 }
 
 /* Setas laterais — mesmo desenho e o mesmo glifo (▲) das setinhas de
@@ -115,6 +129,7 @@ header.header {
 }
 .seta-lateral.seta-esq { transform: rotate(-90deg); }
 .seta-lateral.seta-dir { transform: rotate(90deg); }
+.seta-lateral.btn-home { display: inline-flex; align-items: center; justify-content: center; }
 /* Só opacidade no hover — mudar background/color mexia com a nitidez do
    glifo girado e dava a impressão de a seta trocar de direção. */
 .seta-lateral:hover:not(:disabled) { opacity: .6; }

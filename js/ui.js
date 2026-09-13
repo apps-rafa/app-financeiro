@@ -23,16 +23,9 @@ function atualizarUI() {
 }
 
 // Deslocamento (em meses, +/-) da janela em relação ao mês selecionado —
-// só muda pelas setas laterais de meses; navegar não altera a seleção, só o
-// que aparece. Zera sempre que a seleção muda (clique num mês).
+// só muda pelas setas laterais; navegar não altera a seleção, só o que
+// aparece. Zera sempre que a seleção muda (clique num mês, ou "casinha").
 let mesesJanelaOffset = 0;
-
-// Ano usado como referência pro sufixo "/AA" e pro rótulo ao lado dos meses.
-// null = usa o ano do mês selecionado (comportamento padrão). As setas de
-// ano SÓ mudam essa referência — não a seleção nem os meses exibidos: é
-// uma lupa sobre a mesma janela, pra comparar com outro ano sem navegar de
-// verdade. Zera (volta a acompanhar a seleção) sempre que um mês é clicado.
-let anoReferenciaExibicao = null;
 
 // Tamanhos possíveis da janela (sempre ímpar/simétrico: N pra trás, atual, N
 // pra frente), da mais larga pra mais estreita.
@@ -44,11 +37,10 @@ const TAMANHOS_JANELA_MESES = [7, 5, 3, 1];
  * no máximo) em volta do mês SELECIONADO, com setas laterais pra navegar os
  * meses escondidos sem mudar a seleção — a janela só encolhe (7 -> 5 -> 3 ->
  * 1) até caber na largura disponível, e pode atravessar a virada do ano
- * (ex.: NOV DEZ JAN FEV). Cada mês leva o sufixo "/AA" quando seu ano não
- * bate com o "ano de referência" (o mostrado ao lado, que por padrão é o
- * ano do mês selecionado, mas pode ser mudado pelas setas de ano sem
- * navegar de verdade — ver anoReferenciaExibicao). Não depende de dados
- * carregados — seguro de chamar em qualquer resize.
+ * (ex.: NOV DEZ JAN FEV). O ano mostrado ao lado é sempre o vigente (fixo,
+ * sem setas); mês de um ano diferente do vigente leva o sufixo "/AA" — os
+ * meses do ano vigente nunca levam sufixo. Não depende de dados carregados
+ * — seguro de chamar em qualquer resize.
  */
 function atualizarCalendarioNav() {
     const lista = document.getElementById('mesesLista');
@@ -56,15 +48,15 @@ function atualizarCalendarioNav() {
     if (!lista || typeof estadoApp === 'undefined' || !estadoApp.mesAtual) return;
 
     const hoje = new Date();
+    const anoVigente = hoje.getFullYear();
     const absDe = (ano, mes) => ano * 12 + mes;
-    const absHoje = absDe(hoje.getFullYear(), hoje.getMonth());
+    const absHoje = absDe(anoVigente, hoje.getMonth());
     const anoSelecionado = estadoApp.mesAtual.getFullYear();
     const mesSelecionado = estadoApp.mesAtual.getMonth();
     const absSelecionado = absDe(anoSelecionado, mesSelecionado);
     const absCentro = absSelecionado + mesesJanelaOffset;
-    const anoRef = anoReferenciaExibicao != null ? anoReferenciaExibicao : anoSelecionado;
 
-    if (anoLabel) anoLabel.textContent = String(anoRef);
+    if (anoLabel) anoLabel.textContent = String(anoVigente);
 
     const montarBtn = abs => {
         const ano = Math.floor(abs / 12);
@@ -72,8 +64,8 @@ function atualizarCalendarioNav() {
         const selecionado = abs === absSelecionado;
         const ehHoje = abs === absHoje;
         const classes = ['mes-btn', selecionado && 'selecionado', ehHoje && 'hoje'].filter(Boolean).join(' ');
-        const rotulo = MESES_TRI[mes] + (ano === anoRef ? '' : '/' + String(ano).slice(-2));
-        return `<button type="button" class="${classes}" data-ano="${ano}" data-mes="${mes}">${rotulo}</button>`;
+        const rotulo = MESES_TRI[mes] + (ano === anoVigente ? '' : '/' + String(ano).slice(-2));
+        return `<button type="button" class="${classes}" data-ano="${ano}" data-mes="${mes}" data-abs="${abs}">${rotulo}</button>`;
     };
 
     const idxsDaJanela = tamanho => {
@@ -89,9 +81,40 @@ function atualizarCalendarioNav() {
 
     // Mede depois do layout: se estourou, encolhe a janela até caber.
     requestAnimationFrame(() => {
+        let idxsFinal = idxsDaJanela(TAMANHOS_JANELA_MESES[0]);
         for (let i = 1; i < TAMANHOS_JANELA_MESES.length && lista.scrollWidth > lista.clientWidth + 1; i++) {
-            renderJanela(idxsDaJanela(TAMANHOS_JANELA_MESES[i]));
+            idxsFinal = idxsDaJanela(TAMANHOS_JANELA_MESES[i]);
+            renderJanela(idxsFinal);
         }
+        _carregarIndicadoresJanela(idxsFinal);
+    });
+}
+
+/** Busca (assíncrono, não trava o render) se cada mês da janela tem
+ *  lançamento já acontecido (bolinha preenchida) ou a confirmar/futuro
+ *  (só o contorno), e pinta a bolinha certa em cada botão visível. */
+async function _carregarIndicadoresJanela(idxsAbs) {
+    if (!idxsAbs || !idxsAbs.length || typeof carregarIndicadoresMeses !== 'function') return;
+    const anoDe = abs => Math.floor(abs / 12);
+    const mesDe = abs => ((abs % 12) + 12) % 12;
+    const iniISO = `${anoDe(idxsAbs[0])}-${String(mesDe(idxsAbs[0]) + 1).padStart(2, '0')}-01`;
+    const ultimo = idxsAbs[idxsAbs.length - 1];
+    const anoFim = mesDe(ultimo) === 11 ? anoDe(ultimo) + 1 : anoDe(ultimo);
+    const mesFim = (mesDe(ultimo) + 1) % 12;
+    const fimISO = `${anoFim}-${String(mesFim + 1).padStart(2, '0')}-01`;
+
+    const porMes = await carregarIndicadoresMeses(iniISO, fimISO);
+    const lista = document.getElementById('mesesLista');
+    if (!lista) return;
+    idxsAbs.forEach(abs => {
+        const chave = `${anoDe(abs)}-${String(mesDe(abs) + 1).padStart(2, '0')}`;
+        const info = porMes[chave];
+        if (!info) return;
+        const btn = lista.querySelector(`.mes-btn[data-abs="${abs}"]`);
+        if (!btn || btn.querySelector('.mes-dot')) return;
+        const dot = document.createElement('span');
+        dot.className = 'mes-dot' + (info.passado ? '' : ' contorno');
+        btn.appendChild(dot);
     });
 }
 

@@ -47,14 +47,13 @@
 
             <div class="month-bar">
                 <div class="cal-nav">
+                    <button type="button" class="seta-lateral btn-home" id="btnMesAtual" title="Ir para o mês atual">
+                        <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M12 3.2 3 11h2.5v9H10v-6h4v6h4.5v-9H21z"/></svg>
+                    </button>
                     <button type="button" class="seta-lateral seta-esq" id="mesesSetaEsq" title="Meses anteriores">▲</button>
                     <div class="meses-lista" id="mesesLista"></div>
                     <button type="button" class="seta-lateral seta-dir" id="mesesSetaDir" title="Próximos meses">▲</button>
-                    <div class="ano-nav">
-                        <button type="button" class="seta-lateral seta-esq" id="anoAnterior" title="Ano anterior">▲</button>
-                        <span class="ano-atual" id="anoAtualLabel"></span>
-                        <button type="button" class="seta-lateral seta-dir" id="anoProximo" title="Próximo ano">▲</button>
-                    </div>
+                    <span class="ano-atual" id="anoAtualLabel"></span>
                 </div>
                 <button id="btnConfig" class="month-btn month-btn--config" data-tab="menus"
                         aria-pressed="false" title="Configurações"><span class="cfg-ico">⚙️</span> <span class="cfg-label">Configurações</span></button>

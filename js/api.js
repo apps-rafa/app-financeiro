@@ -119,6 +119,39 @@ async function carregarProximas(tipo, mes, ano) {
 }
 
 /**
+ * Bolinha de cada mês no calendário do topo: 'passado' (já aconteceu, pelo
+ * menos 1 lançamento não pendente com data até hoje) ou 'futuro' (só tem
+ * lançamento a confirmar ou com data futura). Agrupa por `competencia`
+ * (mesmo critério usado no resto do app pra "em que mês uma transação
+ * entra"), olhando `data`/`pendente` só pra decidir se já aconteceu.
+ * `iniISO`/`fimISO` (YYYY-MM-01) delimitam a janela de meses visível —
+ * intervalo semiaberto [ini, fim).
+ */
+async function carregarIndicadoresMeses(iniISO, fimISO) {
+    try {
+        const { data, error } = await sb
+            .from('transacoes')
+            .select('competencia, data, pendente')
+            .gte('competencia', iniISO)
+            .lt('competencia', fimISO);
+        if (error) throw error;
+
+        const hoje = hojeISO();
+        const porMes = {};
+        (data || []).forEach(row => {
+            const chave = String(row.competencia).slice(0, 7); // 'YYYY-MM'
+            const jaAconteceu = !row.pendente && String(row.data).slice(0, 10) <= hoje;
+            if (!porMes[chave]) porMes[chave] = { passado: false };
+            if (jaAconteceu) porMes[chave].passado = true;
+        });
+        return porMes;
+    } catch (error) {
+        console.error('Erro ao carregar indicadores do calendário:', error);
+        return {};
+    }
+}
+
+/**
  * Carrega menus ativos (categorias e métodos) para os dropdowns do formulário
  * Mantém o formato { categorias: [...], metodos: [...] }
  */
