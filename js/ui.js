@@ -759,7 +759,7 @@ function onListaTransacaoClick(e) {
                     texto: `Remove <strong>${trans.descricao || trans.categoria || 'este lançamento'}</strong>. Não dá para desfazer.`,
                     acoes: [
                         { label: 'Cancelar' },
-                        { label: 'Excluir', primario: true, perigo: true, onClick: () => excluirTransacao(id) }
+                        { label: 'Excluir', primario: true, perigo: true, onClick: async () => { await excluirTransacao(id); } }
                     ]
                 });
             }
