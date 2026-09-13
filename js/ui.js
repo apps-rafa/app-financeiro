@@ -156,9 +156,9 @@ function atualizarResumo() {
     // Gasto diário = balanço / dias restantes do mês vigente
     const gd = document.getElementById('gastoDiario');
     const gdSub = document.getElementById('gastoDiarioSub');
-    const gastoDiarioValor = (estadoApp.resumo.balanco || 0) / diasRestantesMesVigente();
+    const dias = diasRestantesMesVigente();
+    const gastoDiarioValor = dias > 0 ? (estadoApp.resumo.balanco || 0) / dias : 0;
     if (gd) {
-        const dias = diasRestantesMesVigente();
         gd.textContent = formatarMoeda(gastoDiarioValor);
         if (gdSub) gdSub.textContent = `${dias} dia${dias === 1 ? '' : 's'} restante${dias === 1 ? '' : 's'}`;
     }
@@ -171,11 +171,21 @@ function atualizarResumo() {
     setMini('miniGasto', gastoDiarioValor);
 }
 
-/** Dias restantes do mês corrente, incluindo hoje (mínimo 1) */
+/** Dias restantes do mês EXIBIDO (estadoApp.mesAtual), incluindo hoje.
+ *  Mês atual de verdade: contagem regressiva normal (mínimo 1).
+ *  Mês passado: 0 (acabou, sem gasto diário nem contagem).
+ *  Mês futuro: travado no total de dias do mês, até chegar nele. */
 function diasRestantesMesVigente() {
     const hoje = new Date();
-    const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
-    return Math.max(1, ultimoDia - hoje.getDate() + 1);
+    const mesRef = estadoApp.mesAtual || hoje;
+    const totalDias = new Date(mesRef.getFullYear(), mesRef.getMonth() + 1, 0).getDate();
+
+    if (mesRef.getFullYear() === hoje.getFullYear() && mesRef.getMonth() === hoje.getMonth()) {
+        return Math.max(1, totalDias - hoje.getDate() + 1);
+    }
+    const ehPassado = mesRef.getFullYear() < hoje.getFullYear()
+        || (mesRef.getFullYear() === hoje.getFullYear() && mesRef.getMonth() < hoje.getMonth());
+    return ehPassado ? 0 : totalDias;
 }
 
 /** Lê de localStorage o modo salvo pra essa lista, validando contra as opções atuais. */
