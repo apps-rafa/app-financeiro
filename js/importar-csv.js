@@ -173,7 +173,6 @@ function renderImportCSV() {
 
     if (!st) {
         sec.innerHTML = `
-        <h3>📥 Importar CSV</h3>
         <p class="menu-hint">
             Importa vários lançamentos Pontuais de uma vez a partir de um CSV com as colunas
             <b>Data, Valor, Método, Tag, Descrição</b>. A coluna Data pode ser só o dia (sem mês/ano) —
@@ -205,7 +204,6 @@ function renderImportCSV() {
     </div>`;
 
     sec.innerHTML = `
-    <h3>📥 Importar CSV</h3>
     <div class="import-csv-contexto">
         <label>Mês de competência
             <span class="import-csv-mes-ano">

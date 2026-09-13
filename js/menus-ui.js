@@ -173,9 +173,32 @@ async function carregarAbaMenus() {
           <button type="button" class="modo-btn importar-toggle-btn" data-importar-modo="pdf">PDF</button>
           <button type="button" class="modo-btn importar-toggle-btn" data-importar-modo="backup">Backup</button>
         </div>
-        <div id="secImportarCSV" data-importar-modo="csv"></div>
-        <div id="secConciliarCSV" data-importar-modo="csv"></div>
-        <div id="secConciliarPDF" data-importar-modo="pdf" hidden></div>
+
+        <div data-importar-modo="csv">
+          <h3>📥 Importar</h3>
+          <label class="import-formato-label">Formato
+            <select id="importCsvFormato">
+              <option value="">Selecione...</option>
+              <option value="pessoal">Minha planilha (CSV pessoal)</option>
+              <option value="nubank">Fatura Nubank</option>
+              <option value="mp">Extrato Mercado Pago</option>
+            </select>
+          </label>
+          <div id="importCsvConteudo"></div>
+        </div>
+
+        <div data-importar-modo="pdf" hidden>
+          <h3>📥 Importar</h3>
+          <label class="import-formato-label">Formato
+            <select id="importPdfFormato">
+              <option value="">Selecione...</option>
+              <option value="bradesco">Fatura Bradesco</option>
+              <option value="mp">Extrato Mercado Pago</option>
+            </select>
+          </label>
+          <div id="importPdfConteudo"></div>
+        </div>
+
         <div id="secImportarBackup" data-importar-modo="backup" hidden></div>
       </div>
 
@@ -209,9 +232,7 @@ async function carregarAbaMenus() {
     });
   }
 
-  if (typeof iniciarImportarCSV === 'function') iniciarImportarCSV();
-  if (typeof iniciarConciliarCSV === 'function') iniciarConciliarCSV();
-  if (typeof iniciarConciliarPDF === 'function') iniciarConciliarPDF();
+  if (typeof iniciarImportarUnificado === 'function') iniciarImportarUnificado();
   if (typeof iniciarImportarBackup === 'function') iniciarImportarBackup();
   if (typeof iniciarDados === 'function') iniciarDados();
 
