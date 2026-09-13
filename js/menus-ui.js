@@ -320,18 +320,21 @@ async function onFeriadosClick(e) {
   }
 
   if (btn.dataset.ferDel) {
-    if (!btn.dataset.armed) {
-      btn.dataset.armed = '1';
-      btn.textContent = 'apagar?';
-      btn.classList.add('armed');
-      setTimeout(() => { if (btn.isConnected) { btn.dataset.armed = ''; btn.textContent = 'apagar'; btn.classList.remove('armed'); } }, 3000);
-      return;
-    }
-    try {
-      await apagarFeriado(btn.dataset.ferDel);
-      renderFeriados();
-      if (typeof atualizarUI === 'function') atualizarUI();
-    } catch (_) { mostrarNotificacao('❌ Não foi possível apagar', 'erro'); }
+    const nome = btn.closest('.menu-item')?.querySelector('.item-nome')?.textContent || 'este feriado';
+    mostrarDialogo({
+      titulo: 'Apagar feriado?',
+      texto: `Remove <strong>${nome}</strong>.`,
+      acoes: [
+        { label: 'Cancelar' },
+        { label: 'Apagar', primario: true, perigo: true, onClick: async () => {
+            try {
+              await apagarFeriado(btn.dataset.ferDel);
+              renderFeriados();
+              if (typeof atualizarUI === 'function') atualizarUI();
+            } catch (_) { mostrarNotificacao('❌ Não foi possível apagar', 'erro'); }
+        } }
+      ]
+    });
     return;
   }
 }
@@ -444,7 +447,11 @@ function renderizarItemsMenu(tipo, containerId, itens, grupo) {
 
     // Dinheiro é método fixo: nunca pode ser removido nem editado (não tem
     // campo pra configurar mesmo), mas pode ser desativado como qualquer um.
-    const semRemocao = tipo === 'Método' && (item.metodoKind === 'Dinheiro' || item.nome === 'Dinheiro');
+    // "Reembolso/Estorno" é categoria de receita fixa (liga o campo Método
+    // no formulário — ver atualizarCampoMetodoReceita), então também não
+    // pode ser removida (editar o nome ainda é permitido).
+    const semRemocao = (tipo === 'Método' && (item.metodoKind === 'Dinheiro' || item.nome === 'Dinheiro'))
+        || (tipo === 'Categoria' && item.categoriaTipo === 'entradas' && item.nome === CATEGORIA_REEMBOLSO_ESTORNO);
 
     const swatch = `<button class="cor-swatch" style="background:${corDoItemMenu(item)}"
         data-act="cor" data-tipo="${tipo}" data-id="${item.linha}" data-nome="${item.nome}" title="Cor do chip"></button>`;
@@ -496,7 +503,7 @@ function onMenuListClick(e) {
   if (act === 'cor')         return abrirSeletorCor(btn);
   if (act === 'ativar')      return acaoMenu(() => ativarItemMenuAPI(id));
   if (act === 'desativar')   return acaoMenu(() => desativarItemMenuAPI(id));
-  if (act === 'remover')     return confirmarRemocao(btn, id);
+  if (act === 'remover')     return confirmarRemocao(row, id);
   if (act === 'editar')      return abrirEdicaoInline(row, id, tipo);
   if (act === 'mover-cima')  return moverItemMenu(btn.dataset.grupo, id, -1);
   if (act === 'mover-baixo') return moverItemMenu(btn.dataset.grupo, id, 1);
@@ -604,21 +611,17 @@ async function acaoMenu(fn) {
   if (await fn()) recarregarMenus();
 }
 
-/** Remoção em 2 cliques (sem confirm nativo) */
-function confirmarRemocao(btn, id) {
-  if (btn.dataset.armed) {
-    acaoMenu(() => removerItemMenuAPI(id));
-    return;
-  }
-  const original = btn.textContent;
-  btn.dataset.armed = '1';
-  btn.textContent = 'remover?';
-  btn.classList.add('armed');
-  setTimeout(() => {
-    delete btn.dataset.armed;
-    btn.textContent = original;
-    btn.classList.remove('armed');
-  }, 3000);
+/** Confirmação de remoção via diálogo (sem confirm nativo) */
+function confirmarRemocao(row, id) {
+  const nome = row?.querySelector('.item-nome')?.textContent || 'este item';
+  mostrarDialogo({
+    titulo: 'Remover?',
+    texto: `Remove <strong>${nome}</strong>. Não dá para desfazer.`,
+    acoes: [
+      { label: 'Cancelar' },
+      { label: 'Remover', primario: true, perigo: true, onClick: () => acaoMenu(() => removerItemMenuAPI(id)) }
+    ]
+  });
 }
 
 /** Edição inline: troca a linha por campos + Salvar/Cancelar */

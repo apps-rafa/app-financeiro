@@ -236,6 +236,8 @@ function configurarEventListeners() {
     if (categoriaInput && categoriaInput.tagName === 'INPUT') {
         categoriaInput.addEventListener('input', mostrarSugestoes);
         categoriaInput.addEventListener('blur', ocultarSugestoes);
+    } else if (categoriaInput && typeof atualizarCampoMetodoReceita === 'function') {
+        categoriaInput.addEventListener('change', atualizarCampoMetodoReceita);
     }
     
     // Reavalia labels curtos/longos e campos "sozinhos" quando a largura muda
