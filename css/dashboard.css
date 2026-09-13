@@ -10,6 +10,23 @@
     margin-bottom: var(--spacing-xl);
 }
 
+/* Com espaço de sobra: Receita e Despesa lado a lado numa 3ª coluna só
+   pra Balanço/Gasto diário (empilhados) — as 4 caixas na mesma "linha".
+   Sem espaço, cai pro 2x2 padrão acima. */
+@media (min-width: 769px) {
+    .dashboard {
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        grid-template-areas:
+            "entradas saidas balanco"
+            "entradas saidas gasto";
+    }
+    .summary-card.entradas    { grid-area: entradas; }
+    .summary-card.saidas      { grid-area: saidas; }
+    .summary-card.balanco     { grid-area: balanco; }
+    .summary-card.gasto-diario { grid-area: gasto; }
+}
+
 /* Grade 2x2: Receitas | Despesas ; Balanço | Gasto diário */
 .summary-card.entradas,
 .summary-card.saidas {

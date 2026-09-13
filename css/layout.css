@@ -62,13 +62,14 @@ header.header {
     flex: none;
     background: none;
     border: none;
-    padding: .15rem .35rem;
-    padding-top: .5rem;
-    /* padding-top > padding-bottom (espaço pra bolinha) desloca o texto pra
-       baixo do centro da própria caixa; como a caixa é centralizada com as
-       setas laterais via align-items:center, isso deixava o mês visualmente
-       mais baixo que a seta. Sobe de volta só a diferença dos padding. */
-    margin-top: -5px;
+    /* padding-top igual ao padding-bottom (em vez de maior, só pra sobrar
+       espaço pra bolinha) — um "margin-top" negativo pra subir o texto de
+       volta ao centro funcionava, mas empurrava a bolinha pra fora da
+       caixa, e "overflow-x:hidden" no container (precisa pra medir largura)
+       faz o overflow-y virar "auto" sozinho (regra do spec de overflow) e
+       cortava ela. Com padding simétrico a caixa já nasce centralizada com
+       as setas, sem precisar empurrar nada pra fora dela. */
+    padding: .5rem .35rem;
     border-radius: 3px;
     color: var(--text);
     opacity: .45;
