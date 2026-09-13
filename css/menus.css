@@ -18,20 +18,19 @@
 }
 .subtabs .btn-fechar-form { flex: none; }
 /* Grid em vez de flex-wrap: toda linha tem o mesmo número de colunas, então
-   quebrar nunca sobra 1 botão sozinho esticado numa linha própria — a
-   última linha incompleta some colunas vazias em vez de esticar 1 item. */
+   quebrar nunca sobra 1 botão sozinho esticado numa linha própria. Só 2
+   estados (não usa auto-fit/auto-fill) — um número intermediário de
+   colunas (4 ou 5) sempre deixava algum rótulo mais longo (ex.:
+   "Recorrências") apertado/estourando a caixa: ou cabem os 6 numa linha
+   só, ou quebra pra exatamente 3+3. */
 .subtabs-itens {
   flex: 1 1 auto;
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+  grid-template-columns: repeat(6, 1fr);
   gap: 0.4rem;
 }
-/* Abaixo de ~480px o auto-fill fica instável (o ponto exato em que cabem 2
-   vs. 3 colunas varia pixel a pixel com a largura da tela, então às vezes
-   sobra 1 item sozinho na última linha) — trava em 3 colunas fixas, que é
-   a única divisão sem "viúvo" pros 5 botões atuais (3+2). */
-@media (max-width: 480px) {
+@media (max-width: 700px) {
   .subtabs-itens { grid-template-columns: repeat(3, 1fr); }
 }
 
@@ -703,9 +702,18 @@
 /* ============ Dados (backup / apagar tudo) ============ */
 .dados-acoes {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
   gap: .7rem;
   margin-top: .8rem;
 }
-.dados-acoes .btn-submit { width: auto; padding: .55rem 1.1rem; font-size: .85rem; }
+.dados-acoes .btn-submit,
+.dados-acoes .armed {
+  height: 2.75rem;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 .6rem;
+  font-size: .85rem;
+}
+.dados-acoes .btn-submit { width: auto; flex: 7 1 0; }
+.dados-acoes .armed { flex: 3 1 0; }

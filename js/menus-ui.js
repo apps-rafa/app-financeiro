@@ -174,6 +174,7 @@ async function carregarAbaMenus() {
           <button type="button" class="modo-btn importar-toggle-btn" data-importar-modo="backup">Backup</button>
         </div>
         <div id="secImportarCSV" data-importar-modo="csv"></div>
+        <div id="secConciliarCSV" data-importar-modo="csv"></div>
         <div id="secConciliarPDF" data-importar-modo="pdf" hidden></div>
         <div id="secImportarBackup" data-importar-modo="backup" hidden></div>
       </div>
@@ -209,6 +210,7 @@ async function carregarAbaMenus() {
   }
 
   if (typeof iniciarImportarCSV === 'function') iniciarImportarCSV();
+  if (typeof iniciarConciliarCSV === 'function') iniciarConciliarCSV();
   if (typeof iniciarConciliarPDF === 'function') iniciarConciliarPDF();
   if (typeof iniciarImportarBackup === 'function') iniciarImportarBackup();
   if (typeof iniciarDados === 'function') iniciarDados();

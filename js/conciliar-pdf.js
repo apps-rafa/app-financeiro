@@ -1,23 +1,30 @@
 ﻿/**
- * CONCILIAR PDF
- * Compara a fatura do cartão (Bradesco, Nubank) ou o extrato da conta
- * (Mercado Pago) com os lançamentos já registrados no app, e aponta o que
- * está num lado e não no outro. Só relatório — não grava nada no banco.
- * Formatos suportados: fatura Bradesco em PDF (2 layouts — export do app
- * "Bradesco Cartões" e a fatura/boleto "Fatura Mensal"), fatura Nubank em
- * CSV, e extrato Mercado Pago em PDF ou CSV.
+ * CONCILIAR (CSV e PDF)
+ * Compara a fatura do cartão ou o extrato da conta com os lançamentos já
+ * registrados no app, e aponta o que está num lado e não no outro. Só
+ * relatório — não grava nada no banco.
+ * Duas instâncias independentes, uma por aba de Importar (cada uma só
+ * entende o próprio formato de arquivo, nunca mistura CSV com PDF):
+ *  - Aba PDF: fatura Bradesco (2 layouts — export do app "Bradesco
+ *    Cartões" e a fatura/boleto "Fatura Mensal") e extrato Mercado Pago.
+ *  - Aba CSV: fatura Nubank e extrato Mercado Pago.
  */
 
-let estadoConciliarPDF = null; // { pdfs: [ {..., linhas, transacoes, metodoEscolhido} ] }
+// Duas instâncias independentes, uma por aba (CSV só lê .csv, PDF só lê
+// .pdf) — nunca menciona um formato que não seja o da própria aba.
+const _estadosConciliar = {}; // secId -> { pdfs: [...] }
 
-function iniciarConciliarPDF() {
-    const sec = document.getElementById('secConciliarPDF');
+function iniciarConciliarCSV() { _iniciarConciliar('secConciliarCSV', 'csv'); }
+function iniciarConciliarPDF() { _iniciarConciliar('secConciliarPDF', 'pdf'); }
+
+function _iniciarConciliar(secId, modo) {
+    const sec = document.getElementById(secId);
     if (!sec) return;
-    estadoConciliarPDF = { pdfs: [] };
-    if (typeof pdfjsLib !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    _estadosConciliar[secId] = { pdfs: [] };
+    if (modo === 'pdf' && typeof pdfjsLib !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
-    renderConciliarPDF();
+    renderConciliar(secId, modo);
 }
 
 /* ---------- Extração de texto (pdf.js) ---------- */
@@ -297,9 +304,10 @@ function _conciliar(linhasPDF, transacoesApp) {
 
 /* ---------- Fluxo por arquivo ---------- */
 
-async function onConciliarPdfArquivos(e) {
+async function onConciliarArquivos(e, secId, modo) {
     const files = [...(e.target.files || [])];
     if (!files.length) return;
+    const estado = _estadosConciliar[secId];
 
     for (const file of files) {
         const entrada = {
@@ -312,12 +320,11 @@ async function onConciliarPdfArquivos(e) {
             metodoEscolhido: '',
             resultado: null
         };
-        estadoConciliarPDF.pdfs.push(entrada);
-        renderConciliarPDF();
+        estado.pdfs.push(entrada);
+        renderConciliar(secId, modo);
 
         try {
-            const ehCSV = /\.csv$/i.test(file.name) || file.type === 'text/csv';
-            const texto = ehCSV ? await file.text() : await _extrairTextoPDF(await file.arrayBuffer());
+            const texto = modo === 'csv' ? await file.text() : await _extrairTextoPDF(await file.arrayBuffer());
             const credito = () => {
                 const m = (estadoApp.menus.metodos || []).find(m => m.metodoKind === 'Crédito');
                 return m ? rotuloMetodo(m) : '';
@@ -327,40 +334,42 @@ async function onConciliarPdfArquivos(e) {
                 return m ? rotuloMetodo(m) : '';
             };
 
-            if (!ehCSV && _pareceFaturaBradesco(texto)) {
+            if (modo === 'pdf' && _pareceFaturaBradesco(texto)) {
                 entrada.formato = 'fatura';
                 entrada.linhas = _parsearFaturaBradesco(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
                 entrada.metodoEscolhido = credito();
-            } else if (!ehCSV && _pareceFaturaBradescoBoleto(texto)) {
+            } else if (modo === 'pdf' && _pareceFaturaBradescoBoleto(texto)) {
                 entrada.formato = 'fatura';
                 entrada.linhas = _parsearFaturaBradescoBoleto(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
                 entrada.metodoEscolhido = credito();
-            } else if (!ehCSV && _pareceExtratoMercadoPago(texto)) {
+            } else if (modo === 'pdf' && _pareceExtratoMercadoPago(texto)) {
                 entrada.formato = 'extrato';
                 entrada.linhas = _parsearExtratoMercadoPago(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
                 entrada.metodoEscolhido = pixOuDebito();
-            } else if (ehCSV && _pareceExtratoMercadoPagoCSV(texto)) {
+            } else if (modo === 'csv' && _pareceExtratoMercadoPagoCSV(texto)) {
                 entrada.formato = 'extrato';
                 entrada.linhas = _parsearExtratoMercadoPagoCSV(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
                 entrada.metodoEscolhido = pixOuDebito();
-            } else if (ehCSV && _pareceFaturaNubankCSV(texto)) {
+            } else if (modo === 'csv' && _pareceFaturaNubankCSV(texto)) {
                 entrada.formato = 'fatura';
                 entrada.linhas = _parsearFaturaNubankCSV(texto).map(l => ({ ...l, ignorar: l.ignorarDefault }));
                 entrada.metodoEscolhido = credito();
             } else {
-                throw new Error('Formato não reconhecido — só suportamos fatura Bradesco Cartões (PDF), fatura Nubank (CSV) e extrato Mercado Pago (PDF ou CSV) por enquanto.');
+                throw new Error(modo === 'pdf'
+                    ? 'Formato não reconhecido — só suportamos fatura Bradesco Cartões e extrato Mercado Pago em PDF por enquanto.'
+                    : 'Formato não reconhecido — só suportamos fatura Nubank e extrato Mercado Pago em CSV por enquanto.');
             }
 
-            if (!entrada.linhas.length) throw new Error('Não encontrei nenhum lançamento nesse PDF.');
+            if (!entrada.linhas.length) throw new Error('Não encontrei nenhum lançamento nesse arquivo.');
 
             entrada.status = 'pronto';
             await _recompararPDV(entrada);
         } catch (err) {
-            console.error('Erro ao processar PDF:', err);
+            console.error('Erro ao processar arquivo:', err);
             entrada.status = 'erro';
-            entrada.erro = err.message || 'Erro ao ler o PDF';
+            entrada.erro = err.message || 'Erro ao ler o arquivo';
         }
-        renderConciliarPDF();
+        renderConciliar(secId, modo);
     }
 }
 
@@ -373,42 +382,49 @@ async function _recompararPDV(entrada) {
 
 /* ---------- Render ---------- */
 
-function renderConciliarPDF() {
-    const sec = document.getElementById('secConciliarPDF');
-    if (!sec || !estadoConciliarPDF) return;
+function renderConciliar(secId, modo) {
+    const sec = document.getElementById(secId);
+    const estado = _estadosConciliar[secId];
+    if (!sec || !estado) return;
+
+    const listaId = `${secId}Lista`;
+    const arquivoId = `${secId}Arquivo`;
+    const titulo = modo === 'pdf' ? '🧾 Conciliar PDF' : '🧾 Conciliar CSV';
+    const dica = modo === 'pdf'
+        ? 'Sobe a fatura do cartão Bradesco ou o extrato da conta Mercado Pago em PDF e compara com o que já está lançado no app — só aponta as diferenças, não grava nada automaticamente.'
+        : 'Sobe a fatura do cartão Nubank ou o extrato da conta Mercado Pago em CSV e compara com o que já está lançado no app — só aponta as diferenças, não grava nada automaticamente.';
+    const accept = modo === 'pdf' ? '.pdf,application/pdf' : '.csv,text/csv';
 
     sec.innerHTML = `
-    <h3>🧾 Conciliar PDF</h3>
-    <p class="menu-hint">
-        Sobe a fatura do cartão (Bradesco em PDF, Nubank em CSV) ou o extrato da conta Mercado Pago (PDF ou CSV)
-        e compara com o que já está lançado no app — só aponta as diferenças, não grava nada automaticamente.
-    </p>
+    <h3>${titulo}</h3>
+    <p class="menu-hint">${dica}</p>
     <div class="import-csv-upload">
-        <input type="file" id="conciliarPdfArquivo" accept=".pdf,application/pdf,.csv,text/csv" multiple>
+        <input type="file" id="${arquivoId}" accept="${accept}" multiple>
     </div>
-    <div id="conciliarPdfLista"></div>
+    <div id="${listaId}"></div>
     `;
-    document.getElementById('conciliarPdfArquivo')?.addEventListener('change', onConciliarPdfArquivos);
+    document.getElementById(arquivoId)?.addEventListener('change', e => onConciliarArquivos(e, secId, modo));
 
-    const lista = document.getElementById('conciliarPdfLista');
-    lista.innerHTML = estadoConciliarPDF.pdfs.map(p => _renderPdfEntrada(p)).join('');
+    const lista = document.getElementById(listaId);
+    lista.innerHTML = estado.pdfs.map(p => _renderPdfEntrada(p, modo)).join('');
 
-    estadoConciliarPDF.pdfs.forEach(p => {
+    estado.pdfs.forEach(p => {
         document.getElementById(`conciliarMetodo-${p.id}`)?.addEventListener('change', async e => {
             p.metodoEscolhido = e.target.value;
             await _recompararPDV(p);
-            renderConciliarPDF();
+            renderConciliar(secId, modo);
         });
         (p.linhas || []).forEach((l, i) => {
             document.getElementById(`conciliarIgnorar-${p.id}-${i}`)?.addEventListener('change', e => {
                 l.ignorar = e.target.checked;
-                _recompararPDV(p).then(renderConciliarPDF);
+                _recompararPDV(p).then(() => renderConciliar(secId, modo));
             });
         });
     });
 }
 
-function _renderPdfEntrada(p) {
+function _renderPdfEntrada(p, modo) {
+    const rotuloArquivo = modo === 'pdf' ? 'PDF' : 'CSV';
     if (p.status === 'carregando') {
         return `<div class="conciliar-pdf-card"><b>${p.nomeArquivo}</b> — lendo...</div>`;
     }
@@ -438,19 +454,19 @@ function _renderPdfEntrada(p) {
             </label>
         </div>
         <p class="import-csv-resumo">
-            ${p.linhas.length} linhas no PDF (${totalIgnoradas} ignoradas) —
+            ${p.linhas.length} linhas no ${rotuloArquivo} (${totalIgnoradas} ignoradas) —
             <span class="ok">${bateram} bateram</span> ·
-            <span class="alerta">${res.noPdfNaoNoApp.length} no PDF mas não no app</span> ·
-            <span class="alerta">${res.noAppNaoNoPdf.length} no app mas não no PDF</span>
+            <span class="alerta">${res.noPdfNaoNoApp.length} no ${rotuloArquivo} mas não no app</span> ·
+            <span class="alerta">${res.noAppNaoNoPdf.length} no app mas não no ${rotuloArquivo}</span>
         </p>
 
-        <div class="import-csv-grupo-titulo">⚠️ No PDF mas não lançado no app (${res.noPdfNaoNoApp.length})</div>
+        <div class="import-csv-grupo-titulo">⚠️ No ${rotuloArquivo} mas não lançado no app (${res.noPdfNaoNoApp.length})</div>
         ${_renderTabelaLinhasPDF(p, res.noPdfNaoNoApp)}
 
-        <div class="import-csv-grupo-titulo">⚠️ Lançado no app mas não no PDF (${res.noAppNaoNoPdf.length})</div>
+        <div class="import-csv-grupo-titulo">⚠️ Lançado no app mas não no ${rotuloArquivo} (${res.noAppNaoNoPdf.length})</div>
         ${_renderTabelaTransacoesApp(res.noAppNaoNoPdf)}
 
-        <div class="import-csv-grupo-titulo">Todas as linhas do PDF (marque pra ignorar da comparação)</div>
+        <div class="import-csv-grupo-titulo">Todas as linhas do ${rotuloArquivo} (marque pra ignorar da comparação)</div>
         ${_renderTabelaTodasLinhas(p)}
     </div>`;
 }
