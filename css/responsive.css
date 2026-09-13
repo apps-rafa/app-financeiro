@@ -43,11 +43,6 @@
     /* Barra do mês: mais estreita p/ caber a engrenagem à direita */
     .month-bar { gap: var(--spacing-sm); }
 
-    /* Formulário */
-    .form-transacao {
-        padding: var(--spacing-lg);
-    }
-
     .form-row {
         grid-template-columns: 1fr;
     }
@@ -147,12 +142,6 @@
 
     .tab-content {
         min-height: 200px;
-    }
-
-    /* Formulário */
-    .form-transacao {
-        padding: var(--spacing-md);
-        border-radius: var(--radius-sm);
     }
 
     .form-group input,

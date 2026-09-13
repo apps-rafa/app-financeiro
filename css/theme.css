@@ -29,7 +29,6 @@ footer.footer {
 
 /* ---------- Superfícies ---------- */
 .summary-card,
-.form-transacao,
 .transacoes-container,
 .proximas-container,
 .analise-container,
@@ -58,6 +57,10 @@ footer.footer {
 .summary-card.entradas { background-color: color-mix(in srgb, var(--receita-text) 18%, var(--receita-bg)); color: var(--receita-text); border-color: var(--receita-border); }
 .summary-card.saidas   { background-color: color-mix(in srgb, var(--despesa-text) 18%, var(--despesa-bg)); color: var(--despesa-text); border-color: var(--despesa-border); }
 .summary-card.balanco  { background-color: var(--balanco-bg); color: var(--balanco-text); border-color: var(--balanco-border); }
+/* Selecionado (aba aberta): já parte de um fundo colorido no escuro, então
+   o contorno é o que marca a seleção. */
+.summary-card.entradas.active { border-color: var(--receita-text); outline: 2px solid var(--receita-text); outline-offset: -2px; }
+.summary-card.saidas.active   { border-color: var(--despesa-text); outline: 2px solid var(--despesa-text); outline-offset: -2px; }
 
 /* Fundo da aba de conteúdo segue o padrão (Próximas fica branco, como os chips) */
 #entradas.tab-content.active { background: var(--receita-bg); }

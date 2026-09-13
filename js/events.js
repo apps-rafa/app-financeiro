@@ -134,6 +134,11 @@ function configurarEventListeners() {
         }
     });
 
+    // Botão "×" ao lado dos filtros de Receitas/Despesas/Próximas: só fecha.
+    document.querySelectorAll('.btn-fechar-aba').forEach(btn => {
+        btn.addEventListener('click', () => fecharAbas());
+    });
+
     // Campo Data: máscara dd/mm/aaaa + recalcular competência
     const dataInput = document.querySelector(SELECTORS.data);
     if (dataInput) {
@@ -315,7 +320,7 @@ function mudarTipoTransacao(tipo) {
 /** Desativa todas as abas (nenhum conteúdo aberto) */
 function fecharAbas() {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-btn, #btnConfig').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('[data-tab], #btnConfig').forEach(b => b.classList.remove('active'));
     document.getElementById('btnConfig')?.setAttribute('aria-pressed', 'false');
 }
 
