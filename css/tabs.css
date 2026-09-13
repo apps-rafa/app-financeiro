@@ -3,10 +3,11 @@
  * Navegação por abas (Entradas, Saídas, Próximas, Adicionar)
  */
 
-/* Grade fixa: "+ Lançamento" ocupa a linha; Receitas | Despesas | Próximas dividem */
+/* "+ Lançamento" (75%) e "Próximos" (25%) lado a lado — Despesas/Receitas
+   saíram daqui, os cards do dashboard já abrem a aba correspondente. */
 .tabs {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 3fr 1fr;
     gap: var(--spacing-sm);
     margin-bottom: var(--spacing-md);
 }
@@ -37,10 +38,6 @@
     outline-offset: -1px;
 }
 
-.tabs [data-tab="adicionar"] { order: -1; grid-column: 1 / -1; }
-.tabs [data-tab="saidas"]   { order: 1; }
-.tabs [data-tab="entradas"] { order: 2; }
-.tabs [data-tab="proximas"] { order: 3; }
 
 /* Conteúdo das abas */
 .tab-content {

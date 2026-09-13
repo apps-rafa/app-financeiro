@@ -3,28 +3,34 @@
  * Cards de entradas, saídas e balanço
  */
 
+/* Padrão: Receita e Despesa lado a lado numa 3ª coluna só pra Balanço/Gasto
+   diário (empilhados) — as 4 caixas na mesma "linha". Só aperta pro 2x2
+   (abaixo) quando o espaço realmente não dá — a maioria das larguras já
+   cabe as 3 colunas sem espremer os cards. Posição por linha/coluna
+   numérica (não por grid-template-areas nomeada): trocar a contagem de
+   colunas por media query com áreas nomeadas cria colunas/linhas
+   implícitas extras pra "acomodar" nomes órfãos de uma resolução que não
+   existem na outra, bagunçando a grade inteira. */
 .dashboard {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: var(--spacing-md);
     margin-bottom: var(--spacing-xl);
 }
+.summary-card.entradas     { grid-column: 1; grid-row: 1 / span 2; }
+.summary-card.saidas       { grid-column: 2; grid-row: 1 / span 2; }
+.summary-card.balanco      { grid-column: 3; grid-row: 1; }
+.summary-card.gasto-diario { grid-column: 3; grid-row: 2; }
 
-/* Com espaço de sobra: Receita e Despesa lado a lado numa 3ª coluna só
-   pra Balanço/Gasto diário (empilhados) — as 4 caixas na mesma "linha".
-   Sem espaço, cai pro 2x2 padrão acima. */
-@media (min-width: 769px) {
+/* Espaço realmente apertado (mobile estreito): volta pro 2x2 empilhado. */
+@media (max-width: 480px) {
     .dashboard {
-        grid-template-columns: 1fr 1fr 1fr;
-        grid-template-rows: 1fr 1fr;
-        grid-template-areas:
-            "entradas saidas balanco"
-            "entradas saidas gasto";
+        grid-template-columns: 1fr 1fr;
     }
-    .summary-card.entradas    { grid-area: entradas; }
-    .summary-card.saidas      { grid-area: saidas; }
-    .summary-card.balanco     { grid-area: balanco; }
-    .summary-card.gasto-diario { grid-area: gasto; }
+    .summary-card.entradas     { grid-column: 1; grid-row: 1; }
+    .summary-card.saidas       { grid-column: 2; grid-row: 1; }
+    .summary-card.balanco      { grid-column: 1; grid-row: 2; }
+    .summary-card.gasto-diario { grid-column: 2; grid-row: 2; }
 }
 
 /* Grade 2x2: Receitas | Despesas ; Balanço | Gasto diário */
@@ -48,7 +54,7 @@
     grid-column: 1;
     text-align: right;
     white-space: nowrap;
-    font-size: var(--font-size-sm);
+    font-size: clamp(0.8rem, 8cqw, 1.3rem);
     font-weight: var(--font-weight-bold);
 }
 .card-linhas .linha i {
@@ -58,7 +64,7 @@
     font-style: italic;
     opacity: 0.7;
     text-align: left;
-    font-size: clamp(0.5rem, 2.4vw, 0.66rem);
+    font-size: clamp(0.6rem, 4.5cqw, 0.85rem);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -71,7 +77,7 @@
     margin: 0.2rem 0 0.05rem;
 }
 .card-linhas .linha.total .amount {
-    font-size: 1.4rem;
+    font-size: clamp(1.3rem, 13cqw, 2.2rem);
 }
 
 .summary-card {
@@ -83,6 +89,10 @@
     transition: all var(--transition-normal);
     position: relative;
     overflow: hidden;
+    /* Fontes de dentro (ver .card-linhas) escalam pela LARGURA DO CARD
+       (cqw), não da tela — cresce até preencher o espaço de sobra e
+       encolhe conforme o card aperta, em vez de deixar espaço vazio. */
+    container-type: inline-size;
 }
 
 .summary-card::before {
@@ -108,7 +118,7 @@
 }
 
 .summary-card .amount {
-    font-size: 1.8rem;
+    font-size: clamp(1.1rem, 11cqw, 1.8rem);
     font-weight: var(--font-weight-bold);
     margin: 0;
 }
@@ -198,17 +208,9 @@
     animation: pulse 1s ease-in-out;
 }
 
-/* Breakpoints */
-@media (max-width: 768px) {
-    .dashboard {
-        grid-template-columns: 1fr;
-    }
-
-    .summary-card .amount {
-        font-size: 1.5rem;
-    }
-}
-
+/* Breakpoints: tamanho de fonte de .amount já escala sozinho por cqw (ver
+   regra acima) — só o padding/rótulo do card precisam de ajuste manual
+   quando o espaço aperta de verdade. */
 @media (max-width: 480px) {
     .summary-card {
         padding: var(--spacing-md);
@@ -216,10 +218,6 @@
 
     .summary-card h3 {
         font-size: 0.8rem;
-    }
-
-    .summary-card .amount {
-        font-size: 1.2rem;
     }
 }
 

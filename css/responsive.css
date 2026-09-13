@@ -34,11 +34,6 @@
     /* Main */
     :root { --pad-main: var(--spacing-lg); }
 
-    /* Dashboard: Balanço e Gasto diário continuam dividindo a linha */
-    .dashboard {
-        grid-template-columns: 1fr 1fr;
-    }
-
     /* Abas: fontes/padding menores no mobile (layout já é grid por padrão) */
     .tabs .tab-btn {
         padding: 0.45rem 0.25rem;
@@ -298,10 +293,6 @@
 
     :root {
         --pad-main: 2.5rem;
-    }
-
-    .dashboard {
-        grid-template-columns: 1fr 1fr;
     }
 
     .form-row {

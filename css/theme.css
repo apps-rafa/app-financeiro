@@ -120,34 +120,10 @@ input.campo-travado,
 .tab-btn:hover { color: var(--text); }
 .tab-content { color: var(--text); }
 
-/* Receitas / Despesas nas cores dos cards do dashboard */
-.tab-btn[data-tab="entradas"] {
-    color: var(--receita-text);
-    background: var(--receita-bg);
-    border-color: var(--receita-border);
-}
-.tab-btn[data-tab="saidas"] {
-    color: var(--despesa-text);
-    background: var(--despesa-bg);
-    border-color: var(--despesa-border);
-}
-/* Selecionado: preenchido mais forte + outline na mesma cor */
-.tab-btn[data-tab="entradas"].active {
-    background: color-mix(in srgb, var(--receita-text) 18%, var(--receita-bg));
-    color: var(--receita-text);
-    border-color: var(--receita-text);
-    outline-color: var(--receita-text);
-}
-.tab-btn[data-tab="saidas"].active {
-    background: color-mix(in srgb, var(--despesa-text) 18%, var(--despesa-bg));
-    color: var(--despesa-text);
-    border-color: var(--despesa-text);
-    outline-color: var(--despesa-text);
-}
-
-/* "+ Lançamento": mesmo padrão de Despesas/Receitas embaixo (cor própria
-   sempre visível, preenchimento fraco em repouso, mais forte quando
-   selecionado + contorno/peso maiores) — só troca a cor pela do primary. */
+/* "+ Lançamento": mesmo padrão de Despesas/Receitas nos cards do dashboard
+   (cor própria sempre visível, preenchimento fraco em repouso, mais forte
+   quando selecionado + contorno/peso maiores) — só troca a cor pela do
+   primary. */
 .tab-btn[data-tab="adicionar"] {
     color: color-mix(in srgb, var(--primary) 85%, var(--text));
     background: color-mix(in srgb, var(--primary) 16%, var(--surface));
