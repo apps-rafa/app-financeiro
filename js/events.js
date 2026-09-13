@@ -321,6 +321,7 @@ function fecharAbas() {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('[data-tab], #btnConfig').forEach(b => b.classList.remove('active'));
     document.getElementById('btnConfig')?.setAttribute('aria-pressed', 'false');
+    if (typeof resetarModosListaParaCronologica === 'function') resetarModosListaParaCronologica();
 }
 
 function mudarAba(novaAba) {
@@ -346,8 +347,17 @@ function mudarAba(novaAba) {
     document.querySelector(`[data-tab="${novaAba}"]`)?.classList.add('active');
     document.getElementById('btnConfig')?.setAttribute('aria-pressed', String(novaAba === 'menus'));
 
+    // Receita/Despesa/Próximas sempre abrem no filtro Cronológica, nunca no
+    // modo em que a aba ficou da última vez.
+    if (['entradas', 'saidas', 'proximas'].includes(novaAba) && typeof resetarModosListaParaCronologica === 'function') {
+        resetarModosListaParaCronologica();
+    }
+
     // Ações específicas
-    if (novaAba === 'saidas') {
+    if (novaAba === 'entradas') {
+        if (typeof atualizarEntradasLista === 'function') atualizarEntradasLista();
+    } else if (novaAba === 'saidas') {
+        if (typeof atualizarSaidasLista === 'function') atualizarSaidasLista();
         // Renderizar gráfico após pequeno delay
         setTimeout(atualizarGrafico, 100);
     } else if (novaAba === 'proximas') {
