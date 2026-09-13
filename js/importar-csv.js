@@ -186,10 +186,59 @@ function _recalcularLinhas() {
 }
 
 function _linhaPronta(l) {
+    if (l.duplicataExata) return false;               // já existe idêntica — ignorada sem perguntar
+    if (l.duplicataSuspeita && l.pularDuplicata) return false; // parecida — usuário decide (marcado por padrão)
     // Competência é sempre gravada na transação (mesmo com data completa,
     // que não depende dela pra calcular o dia) — sem competência, nada fica pronto.
     return !!l.dataISO && !!estadoImportCSV?.competenciaISO
         && !!l.metodoResolvido && !!l.categoriaResolvida && l.valor > 0;
+}
+
+/* ---------- Detecção de duplicatas contra o que já está no app ---------- */
+
+/** Busca no Supabase as transações que caem na janela de datas do arquivo
+ *  (guardada em cache pra não refazer a query a cada troca de método/categoria
+ *  — só refeita quando a data das linhas muda de verdade, ver _recomputarImportCSV). */
+async function _buscarExistentesParaDuplicata(linhas) {
+    const datas = linhas.map(l => l.dataISO).filter(Boolean).sort();
+    if (!datas.length) return [];
+    const { data, error } = await sb.from('transacoes').select('tipo,data,valor,metodo,categoria,descricao')
+        .gte('data', datas[0]).lte('data', datas[datas.length - 1]);
+    if (error) { console.error('Erro ao checar duplicatas:', error); return []; }
+    return data || [];
+}
+
+/** Marca cada linha como duplicata EXATA (mesmo dia, valor, forma de
+ *  pagamento e descrição — ignorada sem perguntar) ou SUSPEITA (mesmo dia,
+ *  valor e forma de pagamento, descrição diferente — usuário decide via
+ *  checkbox, marcado por padrão pra pular). Categoria fica de fora do
+ *  critério de propósito: receita (tipo 'entradas') nunca vem com categoria
+ *  pré-resolvida (não dá pra advinhar — ver _recalcularLinhas), então
+ *  exigir categoria bateria só por acaso. Não mexe em `pularDuplicata` se a
+ *  linha já tinha uma escolha manual, pra não perder o que o usuário já
+ *  decidiu ao reavaliar. */
+function _aplicarStatusDuplicata(linhas, existentes) {
+    linhas.forEach(l => {
+        l.duplicataExata = false;
+        l.duplicataSuspeita = false;
+        if (!l.dataISO) return;
+
+        const metodoL = l.metodoResolvido || '';
+        const descL = _normalizarChave(l.descricao);
+
+        const mesmoDiaValorMetodo = existentes.filter(t => t.tipo === l.tipo && t.data === l.dataISO
+            && Math.abs(parseFloat(t.valor) - l.valor) < 0.005
+            && (t.metodo || '') === metodoL);
+
+        if (mesmoDiaValorMetodo.some(t => _normalizarChave(t.descricao) === descL)) {
+            l.duplicataExata = true;
+            return;
+        }
+        if (mesmoDiaValorMetodo.length) {
+            l.duplicataSuspeita = true;
+            if (l.pularDuplicata === undefined) l.pularDuplicata = true;
+        }
+    });
 }
 
 /* ---------- Render ---------- */
@@ -217,9 +266,12 @@ function renderImportCSV() {
     }
 
     const linhasComIdx = st.linhas.map((l, i) => [l, i]);
-    const paraRevisar = linhasComIdx.filter(([l]) => !_linhaPronta(l));
-    const prontasLinhas = linhasComIdx.filter(([l]) => _linhaPronta(l));
-    const prontas = prontasLinhas.length;
+    const exatas = linhasComIdx.filter(([l]) => l.duplicataExata);
+    const suspeitas = linhasComIdx.filter(([l]) => l.duplicataSuspeita);
+    const normais = linhasComIdx.filter(([l]) => !l.duplicataExata && !l.duplicataSuspeita);
+    const paraRevisar = normais.filter(([l]) => !_linhaPronta(l));
+    const prontasLinhas = normais.filter(([l]) => _linhaPronta(l));
+    const prontas = st.linhas.filter(_linhaPronta).length;
     const revisar = paraRevisar.length;
 
     const tabela = (titulo, grupo) => !grupo.length ? '' : `
@@ -232,6 +284,21 @@ function renderImportCSV() {
             <tbody>${grupo.map(([l, i]) => _renderLinhaImportCSV(l, i)).join('')}</tbody>
         </table>
     </div>`;
+
+    const tabelaSuspeitas = !suspeitas.length ? '' : `
+    <div class="import-csv-grupo-titulo">🔁 Possíveis duplicatas — já existe algo parecido no app (${suspeitas.length})</div>
+    <p class="import-csv-desc">Mesmo tipo, data e valor de algo já lançado, mas com método/categoria/descrição diferente. Marcadas pra pular por padrão — desmarque se for mesmo um lançamento novo.</p>
+    <div class="import-csv-tabela-wrap">
+        <table class="import-csv-tabela">
+            <thead><tr>
+                <th>Pular?</th><th>Data</th><th>Valor</th><th>Tipo</th><th>Método</th><th>Categoria</th><th>Descrição</th>
+            </tr></thead>
+            <tbody>${suspeitas.map(([l, i]) => _renderLinhaImportCSV(l, i, true)).join('')}</tbody>
+        </table>
+    </div>`;
+
+    const infoExatas = !exatas.length ? '' : `
+    <p class="import-csv-desc">🔁 ${exatas.length} linha${exatas.length === 1 ? '' : 's'} idêntica${exatas.length === 1 ? '' : 's'} a algo já lançado (mesmo tipo, data, valor, método e descrição) — ignorada${exatas.length === 1 ? '' : 's'} automaticamente, sem entrar na importação.</p>`;
 
     const faltaCompetencia = !st.competenciaISO;
     const faltamData = paraRevisar.some(([l]) => !l.dataISO);
@@ -266,8 +333,12 @@ function renderImportCSV() {
     <p class="import-csv-resumo">
         <b>${st.linhas.length}</b> linhas no arquivo — <span class="ok">${prontas} prontas</span>
         ${revisar ? ` · <span class="alerta">${revisar} para revisar</span>` : ''}
+        ${exatas.length ? ` · <span class="alerta">${exatas.length} duplicada${exatas.length === 1 ? '' : 's'}</span>` : ''}
+        ${suspeitas.length ? ` · <span class="alerta">${suspeitas.length} possível${suspeitas.length === 1 ? '' : 'is'} duplicata${suspeitas.length === 1 ? '' : 's'}</span>` : ''}
     </p>
+    ${infoExatas}
     ${tabela('⚠️ Para revisar', paraRevisar)}
+    ${tabelaSuspeitas}
     ${tabela('✓ Prontas', prontasLinhas)}
     <div class="import-csv-acoes">
         <button type="button" class="btn-submit" id="importCsvConfirmar" ${revisar ? 'disabled' : ''}>
@@ -286,8 +357,7 @@ function renderImportCSV() {
         st.competenciaAno = Number.isInteger(ano) ? ano : null;
         st.competenciaISO = (st.competenciaMes >= 1 && st.competenciaMes <= 12 && st.competenciaAno)
             ? `${st.competenciaAno}-${String(st.competenciaMes).padStart(2, '0')}-01` : null;
-        _recalcularLinhasForcandoData();
-        renderImportCSV();
+        _recomputarImportCSV({ forcarData: true, refazerDuplicatas: true });
     };
     const soDigitos = e => { e.target.value = e.target.value.replace(/\D/g, ''); };
     document.getElementById('importCsvCompetenciaMes')?.addEventListener('input', soDigitos);
@@ -297,8 +367,7 @@ function renderImportCSV() {
     document.getElementById('importCsvCorte')?.addEventListener('change', e => {
         const v = parseInt(e.target.value, 10);
         st.corte = Number.isInteger(v) ? v : null;
-        _recalcularLinhasForcandoData();
-        renderImportCSV();
+        _recomputarImportCSV({ forcarData: true, refazerDuplicatas: true });
     });
     document.getElementById('importCsvTrocarArquivo')?.addEventListener('click', () => {
         estadoImportCSV = null;
@@ -318,6 +387,7 @@ function renderImportCSV() {
         sel.addEventListener('change', e => {
             const i = parseInt(e.target.dataset.importMetodo, 10);
             st.linhas[i].metodoResolvido = e.target.value || null;
+            _aplicarStatusDuplicata(st.linhas, st._existentes || []);
             _renderImportCSVPreservandoScroll();
         });
     });
@@ -326,9 +396,34 @@ function renderImportCSV() {
             const i = parseInt(e.target.dataset.importCategoria, 10);
             const v = e.target.value;
             st.linhas[i].categoriaResolvida = v === '__nova__' ? { criar: true, nome: st.linhas[i].categoriaCSV } : (v || null);
+            _aplicarStatusDuplicata(st.linhas, st._existentes || []);
             _renderImportCSVPreservandoScroll();
         });
     });
+    sec.querySelectorAll('[data-import-pular-dup]').forEach(chk => {
+        chk.addEventListener('change', e => {
+            const i = parseInt(e.target.dataset.importPularDup, 10);
+            st.linhas[i].pularDuplicata = e.target.checked;
+            _renderImportCSVPreservandoScroll();
+        });
+    });
+}
+
+/** Recalcula data/tipo/valor (e método/categoria na 1ª vez) e, quando a
+ *  janela de datas pode ter mudado (arquivo novo, competência ou corte
+ *  editados), busca de novo no Supabase o que já existe pra checar
+ *  duplicata — senão só reaplica o status usando o cache já buscado. */
+async function _recomputarImportCSV({ forcarData = false, refazerDuplicatas = false } = {}) {
+    const st = estadoImportCSV;
+    if (!st) return;
+    if (forcarData) _recalcularLinhasForcandoData(); else _recalcularLinhas();
+    renderImportCSV();
+
+    if (refazerDuplicatas || !st._existentes) {
+        st._existentes = await _buscarExistentesParaDuplicata(st.linhas);
+    }
+    _aplicarStatusDuplicata(st.linhas, st._existentes);
+    renderImportCSV();
 }
 
 function _renderImportCSVPreservandoScroll() {
@@ -353,7 +448,7 @@ function _rotuloCategoriaResolvida(l) {
     return typeof l.categoriaResolvida === 'object' ? `__nova__` : l.categoriaResolvida;
 }
 
-function _renderLinhaImportCSV(l, i) {
+function _renderLinhaImportCSV(l, i, comCheckboxPular = false) {
     const pronta = _linhaPronta(l);
     const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
     const categorias = l.tipo === 'entradas'
@@ -364,6 +459,7 @@ function _renderLinhaImportCSV(l, i) {
 
     return `
     <tr class="${pronta ? '' : 'import-csv-linha-revisar'}">
+        ${comCheckboxPular ? `<td><input type="checkbox" data-import-pular-dup="${i}" ${l.pularDuplicata ? 'checked' : ''}></td>` : ''}
         <td>${l.dataISO ? l.dataISO.split('-').reverse().join('/') : '?'}</td>
         <td>${formatarMoeda(l.valor)}</td>
         <td><span class="chip-tipo chip-tipo--${l.tipo}">${l.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
@@ -407,8 +503,7 @@ function onImportCsvArquivoEscolhido(e) {
             competenciaISO: null,
             corte: null
         };
-        _recalcularLinhas();
-        renderImportCSV();
+        _recomputarImportCSV({ refazerDuplicatas: true });
     };
     reader.readAsText(file, 'utf-8');
 }
