@@ -11,9 +11,8 @@ function configurarEventListeners() {
     
     // Navegação de calendário: tira de meses (clique seleciona de verdade;
     // setas laterais só passeiam a janela, sem mudar a seleção — dá pra
-    // atravessar a virada do ano) + "ano ao lado", que é só uma lupa sobre
-    // a mesma janela (não navega, não muda a seleção — só troca o ano de
-    // referência usado pro sufixo "/AA").
+    // atravessar a virada do ano) + "casinha" (volta pro mês vigente). O ano
+    // ao lado é fixo no vigente, sem interação.
     const mesesLista = document.getElementById('mesesLista');
     if (mesesLista) mesesLista.addEventListener('click', e => {
         const btn = e.target.closest('.mes-btn');
@@ -22,7 +21,6 @@ function configurarEventListeners() {
         const mes = parseInt(btn.dataset.mes, 10);
         if (Number.isNaN(ano) || Number.isNaN(mes)) return;
         mesesJanelaOffset = 0;
-        anoReferenciaExibicao = null;
         estadoApp.mesAtual = new Date(ano, mes, 1);
         recarregarDados();
     });
@@ -36,17 +34,12 @@ function configurarEventListeners() {
         mesesJanelaOffset += 1;
         atualizarCalendarioNav();
     });
-    const anoAnterior = document.getElementById('anoAnterior');
-    if (anoAnterior) anoAnterior.addEventListener('click', () => {
-        const base = anoReferenciaExibicao != null ? anoReferenciaExibicao : estadoApp.mesAtual.getFullYear();
-        anoReferenciaExibicao = base - 1;
-        atualizarCalendarioNav();
-    });
-    const anoProximo = document.getElementById('anoProximo');
-    if (anoProximo) anoProximo.addEventListener('click', () => {
-        const base = anoReferenciaExibicao != null ? anoReferenciaExibicao : estadoApp.mesAtual.getFullYear();
-        anoReferenciaExibicao = base + 1;
-        atualizarCalendarioNav();
+    const btnMesAtual = document.getElementById('btnMesAtual');
+    if (btnMesAtual) btnMesAtual.addEventListener('click', () => {
+        const hoje = new Date();
+        mesesJanelaOffset = 0;
+        estadoApp.mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        recarregarDados();
     });
     window.addEventListener('resize', debounce(() => {
         if (typeof atualizarCalendarioNav === 'function') atualizarCalendarioNav();
@@ -250,7 +243,6 @@ function sincronizarMesComFormulario(mes) {
     if (estadoApp.mesAtual.getMonth() + 1 === mes) return;
     estadoApp.mesAtual = new Date(estadoApp.mesAtual.getFullYear(), mes - 1, 1);
     mesesJanelaOffset = 0;
-    anoReferenciaExibicao = null;
     if (typeof recarregarDados === 'function') recarregarDados();
 }
 
