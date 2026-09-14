@@ -267,7 +267,7 @@ function renderImportCSV() {
         sec.innerHTML = `
         <p class="menu-hint">
             Importa vários lançamentos Pontuais de uma vez a partir de um CSV com as colunas
-            <b>Data, Valor, Método, Tag, Descrição</b>. A coluna Data aceita data completa
+            <b>Data, Valor, Forma de pgto., Tag, Descrição</b>. A coluna Data aceita data completa
             (dd/mm/aaaa) ou só o dia (sem mês/ano) — o dia sozinho é útil pra colar o ciclo de
             fatura de um cartão, mas exige preencher certo o "Dia de corte" pra rolar pro mês
             anterior quando precisar; data completa não tem essa pegadinha.
@@ -328,7 +328,7 @@ function renderImportCSV() {
     const motivos = [];
     if (faltaCompetencia) motivos.push('informe o mês de competência acima');
     else if (faltamData) motivos.push('data');
-    if (faltamMetodoOuCategoria) motivos.push('método/categoria');
+    if (faltamMetodoOuCategoria) motivos.push('forma de pgto./categoria');
     const msgBloqueio = motivos.length ? `Resolva ${motivos.join(' e ')} das linhas destacadas pra liberar a importação.` : '';
 
     sec.innerHTML = `
