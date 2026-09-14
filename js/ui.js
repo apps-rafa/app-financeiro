@@ -292,14 +292,30 @@ function _renderBarraGrupos(grupos, tipoUI, modo) {
     return `<div class="cron-barra" role="img">${segs}</div>`;
 }
 
+/** IDs de transação que o usuário já confirmou "não é duplicata" — persiste
+ *  no localStorage (por navegador/dispositivo) pra não voltar a incomodar
+ *  com o mesmo lançamento depois de resolvido. */
+function _duplicatasAprovadasSet() {
+    try { return new Set(JSON.parse(localStorage.getItem('duplicatasAprovadas') || '[]')); }
+    catch (_) { return new Set(); }
+}
+function _aprovarDuplicata(id) {
+    const s = _duplicatasAprovadasSet();
+    s.add(id);
+    try { localStorage.setItem('duplicatasAprovadas', JSON.stringify([...s])); } catch (_) {}
+}
+
 /** Duplicata suspeita: mesmo valor, método e descrição (normalizada)
  *  aparecendo mais de uma vez no mês exibido — mesmo se a data for
  *  diferente (foi assim que os bugs de importação/reimportação desta
  *  sessão geraram duplicata real: a competência batia — por isso as duas
- *  apareciam juntas no mesmo mês — só a data é que ficava errada). */
+ *  apareciam juntas no mesmo mês — só a data é que ficava errada). Ignora
+ *  transações já aprovadas ("não é duplicata mesmo"). */
 function _detectarDuplicatas(transacoes) {
+    const aprovadas = _duplicatasAprovadasSet();
     const mapa = new Map();
     (transacoes || []).forEach(t => {
+        if (aprovadas.has(t.id)) return;
         const chave = [t.valor, t.metodo || '', _normalizarChave(t.descricao || '')].join('|');
         if (!mapa.has(chave)) mapa.set(chave, []);
         mapa.get(chave).push(t);
@@ -307,19 +323,21 @@ function _detectarDuplicatas(transacoes) {
     return [...mapa.values()].filter(g => g.length >= 2).flat().sort(_porDataDesc);
 }
 
-/** Grupo "Duplicatas" fixo no topo da lista, em qualquer modo de
- *  visualização (não é uma dimensão de análise como método/categoria —
- *  é sobre consistência dos dados, então não faz sentido esconder num
- *  modo só). Some sozinho conforme o usuário for resolvendo (editando,
- *  apagando ou confirmando que não é duplicata) — não precisa "arquivar".
- *  Grupo vazio nunca abre (nem é clicável: não é um <details>, é uma
- *  linha estática). */
+/** Grupo "Verificação de duplicatas" fixo no topo da lista, em qualquer
+ *  modo de visualização (não é uma dimensão de análise como método/
+ *  categoria — é sobre consistência dos dados, então não faz sentido
+ *  esconder num modo só). Cada item tem um botão "✓" — se for mesmo outro
+ *  lançamento (ex.: sessões de terapia em dias diferentes, 2 compras
+ *  parecidas em dias seguidos), aprovar tira ele da lista pra sempre. Some
+ *  sozinho conforme o usuário for resolvendo (editando, apagando ou
+ *  aprovando) — não precisa "arquivar". Grupo vazio nunca abre (nem é
+ *  clicável: não é um <details>, é uma linha estática). */
 function _renderGrupoDuplicatas(transacoes, tipoUI, aberto) {
     const duplicatas = _detectarDuplicatas(transacoes);
     if (!duplicatas.length) {
         return `<div class="rec-grupo rec-grupo--vazio">
-            <span class="rec-grupo-nome">🔁 Duplicatas</span>
-            <span class="rec-grupo-contagem">0</span>
+            <span class="rec-grupo-nome">🔁 Verificação de duplicatas</span>
+            <span class="rec-grupo-contagem">Sem duplicatas</span>
         </div>`;
     }
     const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
@@ -327,12 +345,12 @@ function _renderGrupoDuplicatas(transacoes, tipoUI, aberto) {
     return `
     <details class="rec-grupo" data-nome="__duplicatas__" style="--cor-rec:var(--despesa-text)" ${aberto ? 'open' : ''}>
       <summary>
-        <span class="rec-grupo-nome">🔁 Duplicatas</span>
+        <span class="rec-grupo-nome">🔁 Verificação de duplicatas</span>
         <span class="rec-grupo-contagem">${duplicatas.length}</span>
         <span class="rec-grupo-total">${formatarMoeda(total)}</span>
       </summary>
       <div class="rec-grupo-itens">
-        ${duplicatas.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
+        ${duplicatas.map(t => gerarHTMLTransacao(t, tipoUI, { comAprovarDuplicata: true })).join('')}
       </div>
     </details>`;
 }
@@ -741,6 +759,9 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
         if (trans.pendente) {
             acoes += `<button class="btn-ok" data-act="confirmar-trans" data-id="${trans.id}" title="Confirmar este mês">OK</button>`;
         }
+        if (opts.comAprovarDuplicata) {
+            acoes += `<button class="btn-icon btn-success" data-act="aprovar-duplicata" data-id="${trans.id}" title="Não é duplicata — não avisar de novo sobre este lançamento">✓</button>`;
+        }
         if (!ehParcela || ehOriginal) {
             acoes += `<button class="btn-icon" data-act="editar-trans" data-id="${trans.id}" title="Editar">✏️</button>`;
         }
@@ -820,6 +841,10 @@ function onListaTransacaoClick(e) {
                     ]
                 });
             }
+            break;
+        case 'aprovar-duplicata':
+            _aprovarDuplicata(id);
+            atualizarUI();
             break;
     }
 }
