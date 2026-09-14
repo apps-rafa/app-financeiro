@@ -290,6 +290,10 @@ function renderImportCSV() {
     const sec = document.getElementById('secImportarCSV');
     if (!sec) return;
     const st = estadoImportCSV;
+    // Lido ANTES de qualquer sec.innerHTML = ... aqui embaixo — senão acha
+    // sempre 0 grupos e reabre tudo do padrão a cada re-render (mesmo bug
+    // já corrigido em conciliar-pdf.js).
+    const abertos = _lerAbertosConciliar(sec);
 
     if (!st) {
         sec.innerHTML = `
@@ -328,8 +332,9 @@ function renderImportCSV() {
     const prontas = st.linhas.filter(_linhaPronta).length;
     const revisar = normais.filter(([l]) => !l.ignorarManual && !_linhaPronta(l)).length;
 
-    const tabela = (titulo, grupo, comCheckboxIgnorar = false) => !grupo.length ? '' : `
-    <div class="import-csv-grupo-titulo">${titulo} (${grupo.length})</div>
+    const tabela = (id, titulo, grupo, comCheckboxIgnorar = false) => !grupo.length ? '' : _grupoColapsavelConciliar({
+        id, abertos, padraoAberto: grupo.length > 0, titulo: `${titulo} (${grupo.length})`,
+        corpo: `
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">
             <thead><tr>
@@ -338,10 +343,13 @@ function renderImportCSV() {
             </tr></thead>
             <tbody>${grupo.map(([l, i]) => _renderLinhaImportCSV(l, i, false, comCheckboxIgnorar)).join('')}</tbody>
         </table>
-    </div>`;
+    </div>`
+    });
 
-    const tabelaSuspeitas = !suspeitas.length ? '' : `
-    <div class="import-csv-grupo-titulo">🔁 Possíveis duplicatas — já existe algo parecido no app (${suspeitas.length})</div>
+    const tabelaSuspeitas = !suspeitas.length ? '' : _grupoColapsavelConciliar({
+        id: 'importcsv:suspeitas', abertos, padraoAberto: suspeitas.length > 0,
+        titulo: `🔁 Possíveis duplicatas — já existe algo parecido no app (${suspeitas.length})`,
+        corpo: `
     <p class="import-csv-nota">Mesmo tipo, data e valor de algo já lançado, mas com forma de pagamento/categoria/descrição diferente. Marcadas pra pular por padrão — desmarque se for mesmo um lançamento novo.</p>
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">
@@ -350,10 +358,29 @@ function renderImportCSV() {
             </tr></thead>
             <tbody>${suspeitas.map(([l, i]) => _renderLinhaImportCSV(l, i, true)).join('')}</tbody>
         </table>
-    </div>`;
+    </div>`
+    });
 
-    const infoExatas = !exatas.length ? '' : `
-    <p class="import-csv-nota">🔁 ${exatas.length} linha${exatas.length === 1 ? '' : 's'} idêntica${exatas.length === 1 ? '' : 's'} a algo já lançado (mesmo tipo, data, valor, método e descrição) — ignorada${exatas.length === 1 ? '' : 's'} automaticamente, sem entrar na importação.</p>`;
+    const infoExatas = !exatas.length ? '' : _grupoColapsavelConciliar({
+        id: 'importcsv:exatas', abertos, padraoAberto: false,
+        titulo: `🔁 Duplicadas — já lançadas, ignoradas automaticamente (${exatas.length})`,
+        corpo: `
+    <p class="import-csv-nota">Mesmo tipo, data, valor, forma de pgto. e descrição de algo já lançado — não entram na importação.</p>
+    <div class="import-csv-tabela-wrap">
+        <table class="import-csv-tabela">
+            <thead><tr><th>Data</th><th>Valor</th><th>Tipo</th><th>Forma de pgto.</th><th>Categoria</th><th>Descrição</th></tr></thead>
+            <tbody>${exatas.map(([l]) => `
+                <tr>
+                    <td>${l.dataISO ? l.dataISO.split('-').reverse().join('/') : '?'}</td>
+                    <td>${formatarMoeda(l.valor)}</td>
+                    <td><span class="chip-tipo chip-tipo--${l.tipo}">${l.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
+                    <td>${l.metodoResolvido || l.metodoCSV || ''}</td>
+                    <td>${_rotuloCategoriaResolvida(l) || l.categoriaCSV || ''}</td>
+                    <td class="import-csv-desc" title="${l.descricao}">${l.descricao}</td>
+                </tr>`).join('')}</tbody>
+        </table>
+    </div>`
+    });
 
     const faltaCompetencia = !st.competenciaISO;
     const faltamData = paraRevisarOuIgnorada.some(([l]) => !l.ignorarManual && !l.dataISO);
@@ -392,9 +419,9 @@ function renderImportCSV() {
         ${suspeitas.length ? ` · <span class="alerta">${suspeitas.length} possível${suspeitas.length === 1 ? '' : 'is'} duplicata${suspeitas.length === 1 ? '' : 's'}</span>` : ''}
     </p>
     ${infoExatas}
-    ${tabela('⚠️ Para revisar', paraRevisarOuIgnorada, true)}
+    ${tabela('importcsv:revisar', '⚠️ Para revisar', paraRevisarOuIgnorada, true)}
     ${tabelaSuspeitas}
-    ${tabela('✓ Prontas', prontasLinhas)}
+    ${tabela('importcsv:prontas', '✓ Prontas', prontasLinhas)}
     <div class="import-csv-acoes">
         <button type="button" class="btn-submit" id="importCsvConfirmar" ${revisar ? 'disabled' : ''}>
             Importar ${prontas} lançamento${prontas === 1 ? '' : 's'}
