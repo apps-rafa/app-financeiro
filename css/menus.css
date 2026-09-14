@@ -251,7 +251,12 @@
    Receita/Despesa lado a lado já ficam espremidas demais nessa largura,
    então empilham (1 por linha, 100% da largura) junto. */
 @media (max-width: 700px) {
-  .menu-section--cols { flex-direction: column; }
+  /* align-items:flex-start (regra de cima, pro layout lado a lado — não
+     estica a ALTURA das colunas) passa a valer pra LARGURA quando a
+     direção vira column (eixo cruzado gira de vertical pra horizontal) —
+     sem "stretch" aqui, "Receita"/"Despesa" encolhiam pro tamanho do
+     conteúdo em vez de ocupar 100% da largura. */
+  .menu-section--cols { flex-direction: column; align-items: stretch; }
 }
 
 .menu-list {
