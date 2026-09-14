@@ -111,6 +111,29 @@ function _parsearDataCompleta(s) {
 
 /* ---------- Parse do arquivo escolhido -> linhas estruturadas ---------- */
 
+/** Tenta reconhecer as colunas Data/Valor/Método/Tag/Descrição pelo NOME do
+ *  cabeçalho (tolerante: sem acento/caixa, aceita sinônimos comuns) — sem
+ *  isso, um CSV de outra fonte com as colunas em outra ordem (ou com
+ *  colunas extras no meio, tipo export de banco) tinha os valores lidos
+ *  pela POSIÇÃO fixa 0-4 errada, o que zerava "valor" pra toda linha e
+ *  descartava o arquivo inteiro silenciosamente (0 linhas válidas). Só usa
+ *  o mapeamento se achar pelo menos Data e Valor — senão cai pro
+ *  posicional de sempre (compatível com arquivo sem cabeçalho reconhecível). */
+function _detectarColunasImportCSV(headerRow) {
+    if (!headerRow) return null;
+    const idx = {};
+    headerRow.forEach((h, i) => {
+        const n = _normalizarChave(h);
+        if (!n) return;
+        if (idx.data == null && n === 'data') idx.data = i;
+        else if (idx.valor == null && n === 'valor') idx.valor = i;
+        else if (idx.metodo == null && /(metodo|formadepgto|formadepagamento|formapgto)/.test(n)) idx.metodo = i;
+        else if (idx.categoria == null && /(tag|categoria)/.test(n)) idx.categoria = i;
+        else if (idx.descricao == null && /(descricao|desc|historico|memo)/.test(n)) idx.descricao = i;
+    });
+    return (idx.data != null && idx.valor != null) ? idx : null;
+}
+
 function _parsearArquivoImport(texto) {
     const linhasCSV = _parsearCSV(texto);
     if (!linhasCSV.length) return [];
@@ -119,9 +142,14 @@ function _parsearArquivoImport(texto) {
     let inicio = 0;
     if (linhasCSV[0] && isNaN(parseInt(linhasCSV[0][0], 10)) && !_parsearDataCompleta(linhasCSV[0][0])) inicio = 1;
 
+    const colunas = inicio === 1 ? _detectarColunasImportCSV(linhasCSV[0]) : null;
+
     const linhas = [];
     for (let i = inicio; i < linhasCSV.length; i++) {
-        const [dataCru, valorCru, metodoCru, tagCru, descCru] = linhasCSV[i];
+        const linha = linhasCSV[i];
+        const [dataCru, valorCru, metodoCru, tagCru, descCru] = colunas
+            ? [linha[colunas.data], linha[colunas.valor], linha[colunas.metodo], linha[colunas.categoria], linha[colunas.descricao]]
+            : linha;
         const dataCompletaISO = _parsearDataCompleta(dataCru);
         const dia = dataCompletaISO ? null : parseInt(String(dataCru || '').trim(), 10);
         const valor = _parsearValorBR(valorCru);

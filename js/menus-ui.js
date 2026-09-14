@@ -52,12 +52,11 @@ async function carregarAbaMenus() {
           <button class="subtab" data-sub="cat">🏷️ <span class="subtab-texto">Categorias</span></button>
           <button class="subtab" data-sub="met">💳
             <span class="subtab-texto met-full">Formas de pagamento</span>
-            <span class="subtab-texto met-media">Formas de pgto.</span>
             <span class="subtab-texto met-curto">Pgtos.</span>
           </button>
           <button class="subtab" data-sub="rec">🔁
-            <span class="subtab-texto rec-full">Tipos de recorrência</span>
-            <span class="subtab-texto rec-media">Recorrências</span>
+            <span class="subtab-texto rec-full">Frequência</span>
+            <span class="subtab-texto rec-curto">Freq.</span>
           </button>
           <button class="subtab" data-sub="fer">📅 <span class="subtab-texto">Feriados</span></button>
           <button class="subtab" data-sub="importar">📥 <span class="subtab-texto">Importar</span></button>

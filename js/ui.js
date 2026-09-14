@@ -903,7 +903,7 @@ function _dimensaoSubmodo(dim, ehDespesa) {
                 chaveDe: t => (typeof rotuloRecorrencia === 'function'
                     ? rotuloRecorrencia(t.tipoRecorrencia || 'Pontual', ehDespesa)
                     : (t.tipoRecorrencia || 'Pontual')),
-                semChave: 'Pontual', emoji: '🔁', label: 'Recorrência'
+                semChave: 'Pontual', emoji: '🔁', label: 'Frequência'
             };
         default:
             return null;

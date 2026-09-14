@@ -34,21 +34,20 @@
   .subtabs-itens { grid-template-columns: repeat(3, 1fr); }
 }
 
-/* Rótulos longos ("Formas de pagamento", "Tipos de recorrência") encolhem
-   em níveis conforme o espaço aperta, em vez de quebrar em 2 linhas feio
-   ou truncar. Num aperto extremo, TODO subtab (não só esses 2) vira só o
-   emoji — ver regra .subtab-texto mais abaixo. */
+/* Rótulos longos ("Formas de pagamento", "Frequência") encolhem em níveis
+   conforme o espaço aperta, em vez de quebrar em 2 linhas feio ou truncar.
+   O ponto de troca é o MESMO em que ".subtabs-itens" vira 3 colunas
+   (700px, ver acima) — é exatamente aí que "Formas de pgto." deixa de
+   caber numa coluna só e quebrava linha; vai direto pro "Pgtos." em vez
+   de passar por um meio-termo que ainda não cabe. Num aperto extremo,
+   TODO subtab (não só esses 2) vira só o emoji — ver .subtab-texto abaixo. */
 .subtab .met-media, .subtab .met-curto { display: none; }
-.subtab .rec-media { display: none; }
-@media (max-width: 640px) {
+.subtab .rec-curto { display: none; }
+@media (max-width: 700px) {
   .subtab .met-full { display: none; }
-  .subtab .met-media { display: inline; }
-  .subtab .rec-full { display: none; }
-  .subtab .rec-media { display: inline; }
-}
-@media (max-width: 400px) {
-  .subtab .met-media { display: none; }
   .subtab .met-curto { display: inline; }
+  .subtab .rec-full { display: none; }
+  .subtab .rec-curto { display: inline; }
 }
 @media (max-width: 340px) {
   .subtab .subtab-texto { display: none; }
@@ -156,9 +155,9 @@
   flex: none;
 }
 .btn-icon.btn-mini-seta {
-  min-width: 13px;
-  width: 13px;
-  height: 13px;
+  min-width: 14px;
+  width: 14px;
+  height: 14px;
   padding: 0;
   font-size: 7px;
   line-height: 1;
@@ -223,6 +222,21 @@
   padding: .35rem;
   max-height: 320px;
 }
+/* Ações de cada item (cor / editar / ativar-desativar / remover): mesmo
+   tamanho pros 4, em qualquer lista (Categorias em 2 colunas, Métodos,
+   Recorrências, mobile...) — antes cada contexto tinha o seu próprio
+   número (32px aqui, 26px no mobile, 1.35rem nas 2 colunas...) e ficava
+   irregular ao alternar de lista. */
+.item-actions .btn-icon,
+.item-actions .cor-swatch,
+.item-actions button {
+  width: 1.35rem;
+  height: 1.35rem;
+  min-width: 0;
+  padding: 0;
+  font-size: .72rem;
+}
+
 /* Ícones/ações menores e mais juntos quando em 2 colunas */
 .menu-section--cols .menu-item {
   padding: .25rem .35rem;
@@ -231,18 +245,7 @@
 .menu-section--cols .item-nome { font-size: .76rem; }
 .menu-section--cols .item-descricao { font-size: 10.5px; }
 .menu-section--cols .item-actions { gap: 1px; }
-.menu-section--cols .item-actions .btn-icon,
-.menu-section--cols .item-actions .cor-swatch,
-.menu-section--cols .item-actions button {
-  width: 1.35rem;
-  height: 1.35rem;
-  min-width: 0;
-  padding: 0;
-  font-size: .72rem;
-}
-.menu-section--cols .item-actions .cor-swatch { width: 1rem; height: 1rem; }
 .menu-section--cols .item-status { display: none; }
-.menu-section--cols .btn-mini-seta { width: 15px; min-width: 15px; height: 12px; font-size: 8px; }
 
 @media (max-width: 460px) {
   .menu-section--cols { flex-direction: column; }
@@ -461,13 +464,13 @@
   .menu-item .item-info { flex: 1 1 auto; min-width: 0; }
   .menu-item .item-status { display: none; }        /* dim + borda já indicam ativo/inativo */
   .menu-item .item-actions { margin-left: auto; flex: 0 0 auto; gap: 2px; }
-  .menu-item .btn-icon {
-    min-width: 26px;
-    width: 26px;
-    height: 26px;
-    font-size: 13px;
-    padding: 0;
-  }
+  /* Tamanho dos ícones de ação já vem de ".item-actions .btn-icon" (regra
+     única, mesmo valor em qualquer largura) — não precisa de um número à
+     parte aqui; tinha um antes (26px) que brigava com o tamanho das
+     setinhas de reordenar (14px, .btn-icon.btn-mini-seta), pela mesma
+     especificidade (".menu-item .btn-icon" bate nas duas), e como vinha
+     depois no arquivo, ganhava — deixando as setas do tamanho errado
+     bem quando a tela era estreita (a maioria das vezes). */
 }
 
 /* Configuração — dicas e edição inline */

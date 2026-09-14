@@ -216,21 +216,22 @@ header.header {
     line-height: 1;
     vertical-align: -0.12em;
 }
-/* 3 níveis: "Configurações" -> "Config." -> só a engrenagem. A partir de
-   481px o botão fica preso nos 150px da coluna (regra acima) — "Configurações"
-   nunca cabe aí, então nessa faixa já entra direto em "Config.". Abaixo de
-   481px o botão não tem largura travada (o dashboard virou 2x2), aí o texto
-   cheio ainda cabe até apertar de vez em 400px. */
-.month-btn--config .cfg-label-curto { display: none; }
-@media (min-width: 481px) {
-    .month-btn--config .cfg-label-full { display: none; }
-    .month-btn--config .cfg-label-curto { display: inline; }
+/* 3 níveis: "Configurações" -> "Config." -> só a engrenagem. Prioridade é
+   do calendário (a barra de mês é o que importa nessa linha) — por padrão
+   já entra em "Config." (curto); só usa o texto cheio "Configurações" numa
+   tela bem larga, onde claramente sobra espaço mesmo com o calendário
+   confortável. */
+.month-btn--config .cfg-label-full { display: none; }
+.month-btn--config .cfg-label-curto { display: inline; }
+@media (min-width: 700px) {
+    .month-btn--config .cfg-label-full { display: inline; }
+    .month-btn--config .cfg-label-curto { display: none; }
 }
 @media (max-width: 460px) {
     .month-bar .month-btn--config { font-size: 0.55rem; gap: 0.2rem; }
 }
 @media (max-width: 400px) {
-    /* "Config."/"Configurações" somem, fica só a engrenagem */
+    /* "Config." some, fica só a engrenagem */
     .month-btn--config .cfg-label-full,
     .month-btn--config .cfg-label-curto { display: none; }
     .month-bar .month-btn--config { gap: 0; padding: 0.3rem 0.5rem; }
@@ -285,6 +286,11 @@ header.header {
 @media (max-width: 560px) {
     .header-content h1 .app-titulo-media { display: none; }
     .header-content h1 .app-titulo-curto { display: inline; }
+}
+/* Último nível: só o emoji, sem texto nenhum — o e-mail logado tem
+   prioridade sobre o nome do app quando o espaço aperta de vez. */
+@media (max-width: 380px) {
+    .header-content h1 .app-titulo-curto { display: none; }
 }
 
 .header-info {
