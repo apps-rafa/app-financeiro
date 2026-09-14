@@ -44,19 +44,6 @@
     .summary-card.gasto-diario { grid-column: 2; grid-row: 2; }
 }
 
-/* Mobile bem estreito: nem o 2x2 cabe confortável mais — Receita e Despesa
-   (os 2 cards com mais linha de conteúdo: atual/a receber/total) passam a
-   ocupar 1 coluna cada, 100% da largura, um embaixo do outro. */
-@media (max-width: 400px) {
-    .dashboard {
-        grid-template-columns: 1fr;
-    }
-    .summary-card.entradas     { grid-column: 1; grid-row: 1; }
-    .summary-card.saidas       { grid-column: 1; grid-row: 2; }
-    .summary-card.balanco      { grid-column: 1; grid-row: 3; }
-    .summary-card.gasto-diario { grid-column: 1; grid-row: 4; }
-}
-
 /* Grade 2x2: Receitas | Despesas ; Balanço | Gasto diário */
 .summary-card.entradas,
 .summary-card.saidas {

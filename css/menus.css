@@ -247,7 +247,10 @@
 .menu-section--cols .item-actions { gap: 1px; }
 .menu-section--cols .item-status { display: none; }
 
-@media (max-width: 460px) {
+/* Mesmo ponto em que as sub-abas viram 3 colunas (700px, ver acima) —
+   Receita/Despesa lado a lado já ficam espremidas demais nessa largura,
+   então empilham (1 por linha, 100% da largura) junto. */
+@media (max-width: 700px) {
   .menu-section--cols { flex-direction: column; }
 }
 

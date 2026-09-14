@@ -97,23 +97,49 @@ function configurarMiniResumo() {
         if (typeof mudarAba === 'function') mudarAba('proximas');
     });
 
+    // Limite em scrollY (não em getBoundingClientRect ao vivo) — mostrar o
+    // mini engorda a barra fixa (".topo" fica mais alta), o que empurra
+    // TODO o conteúdo de baixo (inclusive o próprio "alvo") pra baixo; se a
+    // decisão de mostrar/esconder reagir a essa medida ao vivo, o mini
+    // pisca sem parar bem no limite (mostra -> empurra o card pra baixo ->
+    // "não passou mais" -> esconde -> volta pro lugar -> "passou nte" ->
+    // mostra de novo...). Em vez disso, mede a distância só enquanto o
+    // mini está ESCONDIDO (estado "neutro", sem essa auto-interferência) e
+    // reusa esse número até esconder de novo; some histerese (não é o
+    // mesmo scrollY pra mostrar e pra esconder) pra folgar a borda.
     let raf = 0;
+    let limiteMini = null;
+    let limiteLinha2 = null;
+    const HISTERESE = 16;
+
     const avaliar = () => {
         raf = 0;
-        const fundoBarra = ref.getBoundingClientRect().bottom;
-        // Mostra quando o fundo do card "Gasto diário" já passou acima da barra do mês
-        const passou = alvo.getBoundingClientRect().bottom <= fundoBarra;
-        if (mini.hidden === passou) mini.hidden = !passou;
+        if (mini.hidden) {
+            const fundoBarra = ref.getBoundingClientRect().bottom;
+            limiteMini = window.scrollY + (alvo.getBoundingClientRect().bottom - fundoBarra);
+            if (btnLanc) limiteLinha2 = window.scrollY + (btnLanc.getBoundingClientRect().bottom - fundoBarra);
+        }
+        if (limiteMini != null) {
+            const mostrar = window.scrollY >= limiteMini + HISTERESE;
+            const esconder = window.scrollY <= limiteMini - HISTERESE;
+            if (mostrar && mini.hidden) mini.hidden = false;
+            else if (esconder && !mini.hidden) mini.hidden = true;
+        }
         // 2ª linha: aparece quando o botão "+ Lançamento" também sai de vista
-        if (btnLanc && linha2) {
-            const passouLanc = btnLanc.getBoundingClientRect().bottom <= fundoBarra;
-            if (linha2.hidden === passouLanc) linha2.hidden = !passouLanc;
+        if (btnLanc && linha2 && limiteLinha2 != null) {
+            const mostrarLinha2 = window.scrollY >= limiteLinha2 + HISTERESE;
+            const esconderLinha2 = window.scrollY <= limiteLinha2 - HISTERESE;
+            if (mostrarLinha2 && linha2.hidden) linha2.hidden = false;
+            else if (esconderLinha2 && !linha2.hidden) linha2.hidden = true;
         }
     };
     const agendar = () => { if (!raf) raf = requestAnimationFrame(avaliar); };
+    // Resize pode mudar onde os cards caem na página — força uma remedição
+    // (só acontece de fato enquanto o mini está escondido, ver acima).
+    const agendarComRemedicao = () => { mini.hidden = true; linha2 && (linha2.hidden = true); agendar(); };
 
     window.addEventListener('scroll', agendar, { passive: true });
-    window.addEventListener('resize', agendar);
+    window.addEventListener('resize', agendarComRemedicao);
     avaliar();
 }
 
