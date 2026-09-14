@@ -90,7 +90,7 @@ async function carregarAbaMenus() {
         <p class="menu-hint">Use as setinhas ▲▼ pra reordenar do jeito que você quiser — é essa ordem que aparece no dropdown do lançamento.</p>
         <div class="menu-acoes-linha">
           <button type="button" class="h3-add h3-az" onclick="ordenarAlfabetico('metodos')" title="Ordenar de A a Z">A→Z</button>
-          <button type="button" class="h3-add" onclick="abrirNovoMetodo()" title="Novo método">+</button>
+          <button type="button" class="h3-add" onclick="abrirNovoMetodo()" title="Nova forma de pagamento">+</button>
         </div>
         <div class="menu-list" id="metodosList"></div>
       </div>

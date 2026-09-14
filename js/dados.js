@@ -16,7 +16,7 @@ function renderDados() {
     if (!sec) return;
     sec.innerHTML = `
     <p class="menu-hint">
-        Baixe uma cópia de tudo que você já lançou (lançamentos, categorias, métodos, recorrências) num arquivo
+        Baixe uma cópia de tudo que você já lançou (lançamentos, categorias, formas de pagamento, recorrências) num arquivo
         de backup — dá pra restaurar depois em Importar &gt; Backup. Ou apague tudo e comece do zero.
     </p>
     <div class="dados-acoes">
@@ -70,7 +70,7 @@ async function baixarBackup() {
 function confirmarApagarTudoDados() {
     mostrarDialogo({
         titulo: 'Apagar tudo?',
-        texto: 'Remove <strong>todos os seus lançamentos e itens de configuração</strong> (categorias, métodos, recorrências, feriados). Não dá para desfazer — baixe um backup antes se quiser guardar seus dados.',
+        texto: 'Remove <strong>todos os seus lançamentos e itens de configuração</strong> (categorias, formas de pagamento, recorrências, feriados). Não dá para desfazer — baixe um backup antes se quiser guardar seus dados.',
         acoes: [
             { label: 'Cancelar' },
             { label: 'Apagar tudo', primario: true, perigo: true, onClick: async () => {
