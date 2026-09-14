@@ -677,7 +677,19 @@
   font-weight: 700;
   color: var(--text-muted);
   margin: .8rem 0 .35rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
 }
+.import-csv-grupo-titulo::-webkit-details-marker { display: none; }
+.import-csv-grupo-titulo::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: .3rem;
+  font-size: .8em;
+  transition: transform .15s ease;
+}
+.import-csv-grupo[open] > .import-csv-grupo-titulo::before { transform: rotate(90deg); }
 .import-csv-tabela-wrap {
   max-height: 420px;
   overflow: auto;

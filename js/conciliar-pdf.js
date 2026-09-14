@@ -487,6 +487,13 @@ function renderConciliar(secId, modo) {
     const estado = _estadosConciliar[secId];
     if (!sec || !estado) return;
 
+    // Lê o estado aberto/fechado ANTES de mexer no innerHTML — sec.innerHTML
+    // (embaixo) recria a "listaId" do zero (mesmo id, elemento novo vazio);
+    // ler depois disso sempre achava 0 <details>, perdendo o que o usuário
+    // tinha aberto/fechado a cada re-render (trocar forma de pgto., marcar
+    // "ignorar"...).
+    const abertos = _lerAbertosConciliar(document.getElementById(`${secId}Lista`));
+
     const listaId = `${secId}Lista`;
     const arquivoId = `${secId}Arquivo`;
     const dica = `Sobe ${_rotuloFormatoRestrito(estado.formatoRestrito, modo)} — compara com o que já está lançado
@@ -503,7 +510,7 @@ function renderConciliar(secId, modo) {
     document.getElementById(arquivoId)?.addEventListener('change', e => onConciliarArquivos(e, secId, modo));
 
     const lista = document.getElementById(listaId);
-    lista.innerHTML = estado.pdfs.map(p => _renderPdfEntrada(p, modo)).join('');
+    lista.innerHTML = estado.pdfs.map(p => _renderPdfEntrada(p, modo, abertos)).join('');
 
     estado.pdfs.forEach(p => {
         document.getElementById(`conciliarMetodo-${p.id}`)?.addEventListener('change', async e => {
@@ -520,7 +527,19 @@ function renderConciliar(secId, modo) {
     });
 }
 
-function _renderPdfEntrada(p, modo) {
+/** Estado aberto/fechado de cada grupo colapsável (por linha reportada +
+ *  entrada) — preservado entre re-renders (marcar "ignorar", trocar a
+ *  forma de pgto. etc. refaz o HTML inteiro). Chave ausente = ainda não
+ *  visto, cai no padrão de cada grupo (ver _renderPdfEntrada). */
+function _lerAbertosConciliar(container) {
+    const abertos = {};
+    container?.querySelectorAll('details[data-grupo-id]').forEach(d => {
+        abertos[d.dataset.grupoId] = d.open;
+    });
+    return abertos;
+}
+
+function _renderPdfEntrada(p, modo, abertos = {}) {
     const rotuloArquivo = modo === 'pdf' ? 'PDF' : 'CSV';
     if (p.status === 'carregando') {
         return `<div class="conciliar-pdf-card"><b>${p.nomeArquivo}</b> — lendo...</div>`;
@@ -557,15 +576,40 @@ function _renderPdfEntrada(p, modo) {
             <span class="alerta">${res.noAppNaoNoPdf.length} no app mas não no ${rotuloArquivo}</span>
         </p>
 
-        <div class="import-csv-grupo-titulo">⚠️ No ${rotuloArquivo} mas não lançado no app (${res.noPdfNaoNoApp.length})</div>
-        ${_renderTabelaLinhasPDF(p, res.noPdfNaoNoApp)}
+        ${_grupoColapsavelConciliar({
+            id: `${p.id}:pdf`, abertos,
+            padraoAberto: res.noPdfNaoNoApp.length > 0,
+            titulo: `⚠️ No ${rotuloArquivo} mas não lançado no app (${res.noPdfNaoNoApp.length})`,
+            corpo: _renderTabelaLinhasPDF(p, res.noPdfNaoNoApp)
+        })}
 
-        <div class="import-csv-grupo-titulo">⚠️ Lançado no app mas não no ${rotuloArquivo} (${res.noAppNaoNoPdf.length})</div>
-        ${_renderTabelaTransacoesApp(res.noAppNaoNoPdf)}
+        ${_grupoColapsavelConciliar({
+            id: `${p.id}:app`, abertos,
+            padraoAberto: res.noAppNaoNoPdf.length > 0,
+            titulo: `⚠️ Lançado no app mas não no ${rotuloArquivo} (${res.noAppNaoNoPdf.length})`,
+            corpo: _renderTabelaTransacoesApp(res.noAppNaoNoPdf)
+        })}
 
-        <div class="import-csv-grupo-titulo">Todas as linhas do ${rotuloArquivo} (marque pra ignorar da comparação)</div>
-        ${_renderTabelaTodasLinhas(p)}
+        ${_grupoColapsavelConciliar({
+            id: `${p.id}:todas`, abertos,
+            padraoAberto: false,
+            titulo: `Todas as linhas do ${rotuloArquivo} (marque pra ignorar da comparação)`,
+            corpo: _renderTabelaTodasLinhas(p)
+        })}
     </div>`;
+}
+
+/** Grupo colapsável (⚠️ ...) reutilizado pelas 3 seções do relatório de
+ *  conciliação — aberto/fechado por padrão conforme `padraoAberto`
+ *  (só usado na 1ª vez que o grupo aparece; depois disso o estado
+ *  manual do usuário, lido de `abertos`, sempre vence). */
+function _grupoColapsavelConciliar({ id, abertos, padraoAberto, titulo, corpo }) {
+    const aberto = abertos[id] !== undefined ? abertos[id] : padraoAberto;
+    return `
+        <details class="import-csv-grupo" data-grupo-id="${id}" ${aberto ? 'open' : ''}>
+          <summary class="import-csv-grupo-titulo">${titulo}</summary>
+          ${corpo}
+        </details>`;
 }
 
 function _renderTabelaLinhasPDF(p, linhas) {
