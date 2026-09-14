@@ -312,13 +312,21 @@ function renderImportCSV() {
     const exatas = linhasComIdx.filter(([l]) => l.duplicataExata);
     const suspeitas = linhasComIdx.filter(([l]) => l.duplicataSuspeita);
     const normais = linhasComIdx.filter(([l]) => !l.duplicataExata && !l.duplicataSuspeita);
+    // Qual tabela a linha caiu (revisar x pronta) usa o status CONGELADO
+    // (_eraPronta, setado 1x em _recomputarImportCSV) — resolver método/
+    // categoria numa linha "para revisar" não muda mais ela de tabela, só
+    // tira o destaque vermelho (_renderLinhaImportCSV usa o status AO VIVO
+    // pra isso). "revisar" (trava o botão "Importar") também é sempre ao
+    // vivo — precisa cair conforme o usuário resolve, mesmo que a linha
+    // continue visualmente na tabela de revisão.
+    const eraPronta = l => l._eraPronta !== undefined ? l._eraPronta : _linhaPronta(l);
     // Ignorada manualmente conta como resolvida (não bloqueia a importação,
     // não entra em "para revisar"), mas nunca é "pronta" — fica na mesma
     // tabela de revisão, só com a caixinha já marcada.
-    const paraRevisarOuIgnorada = normais.filter(([l]) => l.ignorarManual || !_linhaPronta(l));
-    const prontasLinhas = normais.filter(([l]) => !l.ignorarManual && _linhaPronta(l));
+    const paraRevisarOuIgnorada = normais.filter(([l]) => l.ignorarManual || !eraPronta(l));
+    const prontasLinhas = normais.filter(([l]) => !l.ignorarManual && eraPronta(l));
     const prontas = st.linhas.filter(_linhaPronta).length;
-    const revisar = paraRevisarOuIgnorada.filter(([l]) => !l.ignorarManual).length;
+    const revisar = normais.filter(([l]) => !l.ignorarManual && !_linhaPronta(l)).length;
 
     const tabela = (titulo, grupo, comCheckboxIgnorar = false) => !grupo.length ? '' : `
     <div class="import-csv-grupo-titulo">${titulo} (${grupo.length})</div>
@@ -477,6 +485,14 @@ async function _recomputarImportCSV({ forcarData = false, refazerDuplicatas = fa
         st._existentes = await _buscarExistentesParaDuplicata(st.linhas);
     }
     _aplicarStatusDuplicata(st.linhas, st._existentes);
+    // Congela em qual tabela (Para revisar / Prontas) cada linha cai, na
+    // 1ª vez que o status já está completo (com duplicata verificada) —
+    // ajustar método/categoria depois disso só tira o destaque vermelho
+    // (ver _linhaPronta em _renderLinhaImportCSV), não muda mais a linha
+    // de tabela. Sem isso, resolver uma linha na hora fazia ela "pular"
+    // de "Para revisar" pra "Prontas" no meio da revisão, confundindo
+    // sobre o que já foi mexido.
+    st.linhas.forEach(l => { if (l._eraPronta === undefined) l._eraPronta = _linhaPronta(l); });
     renderImportCSV();
 }
 
