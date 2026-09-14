@@ -12,7 +12,11 @@
 
 /* HTML e Body */
 html, body {
-    height: 100%;
+    /* min-height (não height fixo): "height:100%" travava body na altura
+       exata da viewport — se o conteúdo (.container) precisasse ser mais
+       alto, o fundo (gradiente/tema) não acompanhava, sobrando uma faixa
+       sem cor (preta, o "canvas" padrão do navegador) embaixo no celular. */
+    min-height: 100%;
     font-family: var(--font-family);
     font-size: var(--font-size-base);
     font-weight: var(--font-weight-normal);

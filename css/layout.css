@@ -8,6 +8,13 @@
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    /* 100vh no celular mede contra a MENOR altura possível de viewport (com
+       a barra de endereço/toolbar do navegador visível); ela costuma
+       recolher ao rolar, sobrando uma faixa preta (fundo da página, fora
+       do .container) embaixo do rodapé. 100dvh acompanha a altura REAL
+       — navegadores sem suporte ignoram a linha e ficam só com o 100vh
+       de cima. */
+    min-height: 100dvh;
     /* Mais estreito que antes (1024px): em telas largas sobrava espaço
        vazio nos cards de Balanço/Gasto diário, que só têm um número e
        um rótulo curtos — largura menor deixa esses boxes mais cheios. */
