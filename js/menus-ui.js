@@ -17,8 +17,7 @@ const RECORRENCIAS_INFO = [
 ];
 
 let menusAtual = null; // cache dos itens carregados (para edição inline)
-let subConfigAtiva = 'cat'; // sub-aba selecionada na Configuração
-let subConfigAnterior = null; // para o comportamento de toggle
+let subConfigAtiva = null; // sub-aba selecionada na Configuração — nenhuma por padrão (toggle)
 
 /** Recarrega a aba de configuração e, em seguida, os dropdowns do formulário */
 async function recarregarMenus() {
@@ -50,7 +49,7 @@ async function carregarAbaMenus() {
 
       <div class="subtabs" role="tablist">
         <div class="subtabs-itens">
-          <button class="subtab active" data-sub="cat">🏷️ <span class="subtab-texto">Categorias</span></button>
+          <button class="subtab" data-sub="cat">🏷️ <span class="subtab-texto">Categorias</span></button>
           <button class="subtab" data-sub="met">💳
             <span class="subtab-texto met-full">Formas de pagamento</span>
             <span class="subtab-texto met-media">Formas de pgto.</span>
@@ -67,7 +66,7 @@ async function carregarAbaMenus() {
         <button type="button" class="btn-fechar-form btn-fechar-aba" title="Fechar" aria-label="Fechar">&times;</button>
       </div>
 
-      <div class="menu-section menu-section--cols" data-sub="cat">
+      <div class="menu-section menu-section--cols" data-sub="cat" hidden>
         <details class="cat-coluna" data-cat-tipo="entradas" ${estadoAberto.entradas ? 'open' : ''}>
           <summary class="cat-coluna-topo">
             <span class="cat-subgrupo-titulo"><svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg> Receita</span>
@@ -209,7 +208,7 @@ async function carregarAbaMenus() {
   `;
 
   configurarSubtabsConfig();
-  mostrarSubConfig(subConfigAtiva);
+  _aplicarSubConfig(subConfigAtiva);
 
   renderizarItemsMenu('Categoria', 'categoriasDespesaList', menus.categoriasDespesa, 'categoriasDespesa');
   renderizarItemsMenu('Categoria', 'categoriasReceitaList', menus.categoriasReceita, 'categoriasReceita');
@@ -382,8 +381,11 @@ function abrirNovoFeriado() {
   }
 }
 
-function mostrarSubConfig(sub) {
-  if (sub !== subConfigAtiva) subConfigAnterior = subConfigAtiva;
+/** Aplica no DOM qual sub-aba está ativa (ou nenhuma, sub=null) — sem
+ *  decidir toggle, só reflete o estado. Usada tanto pelo clique quanto por
+ *  um re-render (recarregarMenus refaz o innerHTML inteiro), onde só
+ *  precisa reaplicar o que já estava, sem fechar o que o usuário abriu. */
+function _aplicarSubConfig(sub) {
   subConfigAtiva = sub;
   document.querySelectorAll('.menus-gerenciamento .subtab').forEach(b =>
     b.classList.toggle('active', b.dataset.sub === sub));
@@ -392,13 +394,19 @@ function mostrarSubConfig(sub) {
   });
 }
 
-/** Sub-abas da Configuração: Categorias / Métodos / Recorrências */
+/** Toggle: clicar na sub-aba já aberta fecha tudo (sub = null); clicar
+ *  numa diferente troca. */
+function mostrarSubConfig(sub) {
+  _aplicarSubConfig(sub === subConfigAtiva ? null : sub);
+}
+
+/** Sub-abas da Configuração: Categorias / Métodos / Recorrências / ... */
 function configurarSubtabsConfig() {
   const barra = document.querySelector('.menus-gerenciamento .subtabs');
   if (!barra) return;
   barra.addEventListener('click', e => {
     const btn = e.target.closest('.subtab');
-    if (btn && btn.dataset.sub !== subConfigAtiva) mostrarSubConfig(btn.dataset.sub);
+    if (btn) mostrarSubConfig(btn.dataset.sub);
   });
 }
 
