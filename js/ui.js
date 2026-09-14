@@ -428,14 +428,54 @@ function resetarModosListaParaCronologica() {
         localStorage.setItem('modoListaSaidas', 'cronologica');
         localStorage.setItem('modoListaProximas', 'cronologica');
     } catch (_) {}
+
+    // Busca também some — um termo de outra vez que a aba esteve aberta
+    // (ou de outro mês) escondendo lançamentos sem nenhum aviso é mais
+    // confuso do que útil.
+    buscaEntradas = '';
+    buscaSaidas = '';
+    const buscaEntradasEl = document.getElementById('buscaEntradas');
+    if (buscaEntradasEl) buscaEntradasEl.value = '';
+    const buscaSaidasEl = document.getElementById('buscaSaidas');
+    if (buscaSaidasEl) buscaSaidasEl.value = '';
+}
+
+/** Busca em tempo real por descrição/categoria/forma de pagamento — filtra
+ *  ANTES de passar pro modo de visualização escolhido, então funciona
+ *  igual em qualquer modo (Cronológica/Recorrência/Forma de pgto./
+ *  Categoria) sem precisar mexer em cada um deles. */
+let buscaEntradas = '';
+let buscaSaidas = '';
+
+const _REGEX_DIACRITICOS = new RegExp('[' + String.fromCharCode(0x0300) + '-' + String.fromCharCode(0x036f) + ']', 'g');
+function _normalizarBusca(s) {
+    return String(s || '').normalize('NFD').replace(_REGEX_DIACRITICOS, '').toLowerCase();
+}
+
+function _filtrarPorBusca(transacoes, termo) {
+    const t = _normalizarBusca(termo).trim();
+    if (!t) return transacoes;
+    return (transacoes || []).filter(tr => [tr.descricao, tr.categoria, tr.metodo, tr.formaPagamento]
+        .some(campo => _normalizarBusca(campo).includes(t)));
+}
+
+function definirBuscaEntradas(termo) {
+    buscaEntradas = termo;
+    atualizarEntradasLista();
+}
+
+function definirBuscaSaidas(termo) {
+    buscaSaidas = termo;
+    atualizarSaidasLista();
 }
 
 function atualizarEntradasLista() {
     document.querySelectorAll('#modoEntradas .modo-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.modo === modoListaEntradas));
     document.getElementById('modoEntradas')?.classList.toggle('vazio', !estadoApp.transacoes.entradas.length);
-    renderListaPorModo(document.querySelector(SELECTORS.entradasLista),
-        estadoApp.transacoes.entradas, 'entrada', modoListaEntradas, 'Nenhuma receita neste mês');
+    const filtradas = _filtrarPorBusca(estadoApp.transacoes.entradas, buscaEntradas);
+    const msgVazia = buscaEntradas.trim() ? `Nada encontrado pra "${buscaEntradas.trim()}"` : 'Nenhuma receita neste mês';
+    renderListaPorModo(document.querySelector(SELECTORS.entradasLista), filtradas, 'entrada', modoListaEntradas, msgVazia);
 }
 
 // 'recorrencia' (padrão) | 'metodo' | 'categoria' | 'cronologica' — visão da aba Despesas
@@ -452,8 +492,9 @@ function atualizarSaidasLista() {
     document.querySelectorAll('#modoSaidas .modo-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.modo === modoListaSaidas));
     document.getElementById('modoSaidas')?.classList.toggle('vazio', !estadoApp.transacoes.saidas.length);
-    renderListaPorModo(document.querySelector(SELECTORS.saidasLista),
-        estadoApp.transacoes.saidas, 'saida', modoListaSaidas, 'Nenhuma despesa neste mês');
+    const filtradas = _filtrarPorBusca(estadoApp.transacoes.saidas, buscaSaidas);
+    const msgVazia = buscaSaidas.trim() ? `Nada encontrado pra "${buscaSaidas.trim()}"` : 'Nenhuma despesa neste mês';
+    renderListaPorModo(document.querySelector(SELECTORS.saidasLista), filtradas, 'saida', modoListaSaidas, msgVazia);
 }
 
 /** Agrupa e renderiza `transacoes` por `chaveDe(t)`, ordenado por total (maior primeiro).
@@ -625,6 +666,44 @@ function _lerAbertosRecGrupo(container) {
     return abertos;
 }
 
+// Dentro de um grupo de recorrência, o usuário pode escolher ver os itens
+// organizados por Categoria/Forma de pgto. em vez de Cronológica (padrão).
+// "tipoUI:tipoRec" -> 'cronologica' | 'categoria' | 'metodo'. Só "Pontual"
+// tem essa opção por enquanto — testando aqui antes de espalhar pros
+// outros tipos de recorrência.
+const _subModoGrupo = {};
+const GRUPOS_COM_SUBMODO = new Set(['Pontual']);
+function _subModoGrupoDe(tipoUI, tipoRec) {
+    return _subModoGrupo[`${tipoUI}:${tipoRec}`] || 'cronologica';
+}
+function _setSubModoGrupo(tipoUI, tipoRec, modo) {
+    _subModoGrupo[`${tipoUI}:${tipoRec}`] = modo;
+}
+
+/** Reorganiza os itens de UM grupo de recorrência por categoria/forma de
+ *  pagamento (maior total primeiro) em vez de cronológico — cartõezinhos
+ *  simples, sem outro nível de abrir/fechar (já tem o do grupo de fora). */
+function _renderItensSubagrupados(itens, tipoUI, chaveDe, semChave) {
+    const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
+    const mapa = new Map();
+    itens.forEach(t => {
+        const k = chaveDe(t) || semChave;
+        if (!mapa.has(k)) mapa.set(k, []);
+        mapa.get(k).push(t);
+    });
+    const grupos = [...mapa.entries()]
+        .map(([nome, its]) => [nome, its.sort(_porDataDesc), its.reduce((s, t) => s + valorDe(t), 0)])
+        .sort((a, b) => b[2] - a[2]);
+    return grupos.map(([nome, its, total]) => `
+        <div class="subgrupo">
+          <div class="subgrupo-cab">
+            <span class="subgrupo-nome">${nome}</span>
+            <span class="subgrupo-total">${formatarMoeda(total)}</span>
+          </div>
+          ${its.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
+        </div>`).join('');
+}
+
 /**
  * Renderiza a lista de um tipo em subgrupos recolhíveis por tipo de recorrência.
  * Cada subgrupo mostra o total; começa recolhido (como as categorias na Config).
@@ -664,6 +743,21 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
         const c = cores[tipoRec] || corPadraoChip(tipoRec);
         const total = totalGrupo(itens);
         const pct = totalGeral ? (total / totalGeral) * 100 : 0;
+
+        const comSubmodo = GRUPOS_COM_SUBMODO.has(tipoRec);
+        const subModo = comSubmodo ? _subModoGrupoDe(tipoUI, tipoRec) : 'cronologica';
+        const corpoItens = subModo === 'categoria'
+            ? _renderItensSubagrupados(itens, tipoUI, t => t.categoria, 'Sem categoria')
+            : subModo === 'metodo'
+            ? _renderItensSubagrupados(itens, tipoUI, t => t.metodo, 'Sem forma de pagamento')
+            : itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('');
+        const submenuHTML = !comSubmodo ? '' : `
+            <div class="subgrupo-organizador" data-grupo-rec="${tipoRec.replace(/"/g, '&quot;')}">
+              <button type="button" class="subgrupo-modo-btn${subModo === 'cronologica' ? ' active' : ''}" data-submodo="cronologica">Cronológica</button>
+              <button type="button" class="subgrupo-modo-btn${subModo === 'categoria' ? ' active' : ''}" data-submodo="categoria">Categoria</button>
+              <button type="button" class="subgrupo-modo-btn${subModo === 'metodo' ? ' active' : ''}" data-submodo="metodo">Forma de pgto.</button>
+            </div>`;
+
         return `
         <details class="rec-grupo" data-nome="${tipoRec.replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[tipoRec] ? 'open' : ''}>
           <summary>
@@ -672,12 +766,22 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
             <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
-            ${itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
+            ${submenuHTML}
+            ${corpoItens}
           </div>
         </details>`;
     }).join('');
 
-    container.onclick = onListaTransacaoClick;
+    container.onclick = e => {
+        const subBtn = e.target.closest('[data-submodo]');
+        if (subBtn) {
+            const tipoRec = subBtn.closest('[data-grupo-rec]').dataset.grupoRec;
+            _setSubModoGrupo(tipoUI, tipoRec, subBtn.dataset.submodo);
+            renderListaAgrupada(container, transacoes, tipoUI, msgVazia);
+            return;
+        }
+        onListaTransacaoClick(e);
+    };
 }
 
 // Cache das "próximas" (usado ao renderizar a aba Próximas)
