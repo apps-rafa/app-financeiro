@@ -1451,6 +1451,33 @@ function _renderBotoesModoProximas() {
     ).join('');
 }
 
+/** Clique dentro da lista de "Próximas" — cobre o organizador inline das
+ *  faturas de cartão (data-submodo/data-submodo-icone, únicos que têm
+ *  submodo aqui) antes de cair no handler padrão (editar/excluir/OK). */
+function _onCliqueProximas(e) {
+    const subBtn = e.target.closest('[data-submodo]');
+    if (subBtn) {
+        e.preventDefault();
+        const grupoChave = subBtn.closest('[data-grupo-chave]').dataset.grupoChave;
+        const atual = _subModoGrupoDe('saida', 'metodo', grupoChave);
+        const novo = subBtn.dataset.submodo === atual ? 'cronologica' : subBtn.dataset.submodo;
+        _setSubModoGrupo('saida', 'metodo', grupoChave, novo);
+        const det = subBtn.closest('details.fatura-item');
+        if (det) det.open = true;
+        atualizarProximasTransacoes();
+        return;
+    }
+    const subIcone = e.target.closest('[data-submodo-icone]');
+    if (subIcone) {
+        e.preventDefault();
+        const grupoChave = subIcone.closest('[data-grupo-chave]').dataset.grupoChave;
+        _setSubModoGrupo('saida', 'metodo', grupoChave, 'cronologica');
+        atualizarProximasTransacoes();
+        return;
+    }
+    onListaTransacaoClick(e);
+}
+
 const _porDataAsc = (a, b) => new Date(a.data) - new Date(b.data);
 
 /**
@@ -1493,9 +1520,12 @@ async function atualizarProximasTransacoes() {
 
         document.getElementById('modoProximas')?.classList.toggle('vazio', proximas.length === 0);
         if (proximas.length === 0) {
+            // "Nada programado" só faz sentido se realmente não tem nada — com
+            // fatura(s) de cartão pra mostrar, a tela não está vazia.
             container.innerHTML = faturasHTML
-                + `<p class="empty-message">Nada programado para ${obterMesAnoFormatado(mRef)}</p>`;
-            container.onclick = null;
+                || `<p class="empty-message">Nada programado para ${obterMesAnoFormatado(mRef)}</p>`;
+            container.onclick = faturasHTML ? _onCliqueProximas : null;
+            container.querySelectorAll('.faturas-cartao .subgrupo-organizador').forEach(_ajustarLabelsFiltro);
             _proximasCtx = [];
             return;
         }
@@ -1528,7 +1558,8 @@ async function atualizarProximasTransacoes() {
             : _proximasCtx.map(c => gerarHTMLTransacao(c.trans, c.tipoUI, c.opts)).join('');
 
         container.innerHTML = faturasHTML + corpoHTML;
-        container.onclick = onListaTransacaoClick;
+        container.onclick = _onCliqueProximas;
+        container.querySelectorAll('.faturas-cartao .subgrupo-organizador').forEach(_ajustarLabelsFiltro);
     } catch (error) {
         console.error('Erro ao atualizar próximas transações:', error);
         container.innerHTML = '<p class="empty-message">Erro ao carregar próximas transações</p>';
@@ -1619,6 +1650,11 @@ function renderFaturasCartao(container) {
 
     const abertos = {};
     container?.querySelectorAll('details.fatura-item[data-nome]').forEach(d => { abertos[d.dataset.nome] = d.open; });
+    const abertosSub = _lerAbertosSubgrupo(container);
+    // Pseudo-tipoUI fixo pro estado do sub-filtro: a fatura mistura despesas
+    // (a maioria) com estornos/reembolsos (poucos), então não há um único
+    // tipoUI "certo" — usa 'saida' (é uma tela de cartão de crédito).
+    const TIPO_UI_FATURA = 'saida';
 
     const linhas = cartoes.map(m => {
         const rot = (typeof rotuloMetodo === 'function') ? rotuloMetodo(m) : m.nome;
@@ -1633,14 +1669,50 @@ function renderFaturasCartao(container) {
         const diaV = Math.min(parseInt(m.diaVencimento, 10) || 1, ultimoDia);
         const venc = `${String(diaV).padStart(2, '0')}/${String(mes.getMonth() + 1).padStart(2, '0')}`;
         const cor = coresMet[rot] || (typeof corPadraoChip === 'function' ? corPadraoChip(rot) : 'var(--primary)');
-        const itensHTML = [...despesas, ...estornos].sort(_porDataDesc)
-            .map(t => gerarHTMLTransacao(t, t.tipo === 'entradas' ? 'entrada' : 'saida', { comRecorrenciaChip: true }))
-            .join('');
+        const todos = [...despesas, ...estornos].sort(_porDataDesc);
+        const tipoUiDe = t => t.tipo === 'entradas' ? 'entrada' : 'saida';
+
+        // Mesmo organizador inline dos outros grupos (Categoria/Recorrência —
+        // "Forma de pgto." fica de fora porque a fatura JÁ é agrupada por
+        // cartão/método). Cada item pode ser despesa ou receita (estorno),
+        // então o corpo é montado na mão aqui (não dá pra usar
+        // _corpoGrupoComSubmodo/gerarHTMLTransacao com 1 tipoUI só pra tudo).
+        const subAtual = _subModoGrupoDe(TIPO_UI_FATURA, 'metodo', rot);
+        let itensHTML;
+        if (subAtual === 'cronologica') {
+            itensHTML = todos.map(t => gerarHTMLTransacao(t, tipoUiDe(t), { comRecorrenciaChip: true })).join('');
+        } else {
+            const cfg = _dimensaoSubmodo(subAtual, true);
+            const mapa = new Map();
+            todos.forEach(t => {
+                const k = cfg.chaveDe(t) || cfg.semChave;
+                if (!mapa.has(k)) mapa.set(k, []);
+                mapa.get(k).push(t);
+            });
+            const gruposSub = [...mapa.entries()]
+                .map(([nome, its]) => [nome, its, its.reduce((s, t) => s + valorDe(t), 0)])
+                .sort((a, b) => b[2] - a[2]);
+            itensHTML = gruposSub.map(([nome, its, totalSub]) => {
+                const pctSub = total ? (totalSub / total) * 100 : 0;
+                return `
+                <details class="subgrupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" ${abertosSub[nome] ? 'open' : ''}>
+                  <summary class="subgrupo-cab">
+                    <span class="subgrupo-nome">${nome}</span>
+                    <span class="subgrupo-contagem">${its.length}</span>
+                    <span class="subgrupo-total">${formatarMoeda(totalSub)}${total ? ` · ${formatarPct(pctSub)}%` : ''}</span>
+                  </summary>
+                  ${its.map(t => gerarHTMLTransacao(t, tipoUiDe(t), { comRecorrenciaChip: true })).join('')}
+                </details>`;
+            }).join('');
+        }
+        const organizadorHTML = _renderOrganizadorInline(TIPO_UI_FATURA, 'metodo', rot, true);
+
         return `
         <details class="fatura-item" data-nome="${rot.replace(/"/g, '&quot;')}" style="--cor-cartao:${cor}" ${abertos[rot] ? 'open' : ''}>
           <summary>
             <span class="fatura-nome">${rot}</span>
-            <span class="fatura-venc">vence ${venc}</span>
+            ${organizadorHTML}
+            <span class="fatura-venc">vcto. ${venc}</span>
             <span class="fatura-total">${formatarMoeda(total)}</span>
           </summary>
           <div class="fatura-itens">${itensHTML}</div>
