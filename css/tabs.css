@@ -32,7 +32,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     color: var(--text-muted);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-base);
     font-weight: var(--font-weight-medium);
     cursor: pointer;
     transition: background var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
