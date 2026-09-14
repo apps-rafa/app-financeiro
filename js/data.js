@@ -207,9 +207,9 @@ const RECORRENCIA_ROTULO = {
     // 'Último dia útil do mês anterior' permanece igual
 };
 
-/** Nome exibido de um tipo de recorrência (Mensal -> "Contas" em despesa) */
+/** Nome exibido de um tipo de recorrência (Mensal -> "Contas/Mensal" em despesa) */
 function rotuloRecorrencia(tipo, ehDespesa) {
-    if (tipo === 'Mensal' && ehDespesa) return 'Contas';
+    if (tipo === 'Mensal' && ehDespesa) return 'Contas/Mensal';
     return RECORRENCIA_ROTULO[tipo] || tipo;
 }
 

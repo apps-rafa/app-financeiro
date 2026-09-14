@@ -2231,6 +2231,14 @@ function atualizarCampoCredito() {
  * selecionada.
  */
 function atualizarCampoMetodoReceita() {
+    // Só se aplica à Receita — é ela que esconde o bloco Método por padrão
+    // (mostrando de volta só pra "Reembolso/Estorno"). Despesa SEMPRE
+    // mostra o campo; como o listener de "categoria muda" chama esta
+    // função sem saber qual tipo está ativo, sem essa guarda trocar de
+    // categoria numa Despesa escondia (e limpava) a Forma de pgto. sozinho.
+    const ehReceita = document.querySelector(SELECTORS.tipoTransacao)?.value === 'entradas';
+    if (!ehReceita) return;
+
     const categoriaAtual = document.querySelector(SELECTORS.categoria)?.value;
     const comMetodo = categoriaAtual === CATEGORIA_REEMBOLSO_ESTORNO;
 
