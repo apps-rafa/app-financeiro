@@ -60,14 +60,14 @@
   background: var(--surface);
   color: var(--text-muted);
   font-weight: 600;
-  font-size: 0.75rem;
+  font-size: 0.66rem;
   cursor: pointer;
   white-space: normal;
   line-height: 1.15;
   text-align: center;
 }
 @media (max-width: 480px) {
-  .subtabs .subtab { font-size: 0.68rem; padding: 0.4rem 0.3rem; }
+  .subtabs .subtab { font-size: 0.6rem; padding: 0.4rem 0.3rem; }
 }
 .subtabs .subtab.active {
   background: var(--primary);
