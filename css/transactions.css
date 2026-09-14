@@ -13,7 +13,7 @@
    lançamentos daquele cartão dentro; fechado por padrão (mesmo padrão
    visual/interativo do .rec-grupo). */
 .faturas-cartao { display: flex; flex-direction: column; gap: .4rem; margin-bottom: var(--spacing-md); }
-.faturas-titulo { font-size: .8rem; font-weight: 700; color: var(--text-muted); margin: 0 0 .1rem; text-transform: uppercase; letter-spacing: .03em; }
+.faturas-titulo { font-size: .8rem; font-weight: 700; color: var(--text-muted); margin: 0 0 .1rem; }
 .fatura-item {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -25,7 +25,7 @@
     list-style: none;
     cursor: pointer;
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: .5rem;
     padding: .5rem .7rem;
 }
