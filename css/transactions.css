@@ -403,6 +403,15 @@
 .subgrupo:not([open]) > .subgrupo-cab { border-bottom: 1px dashed var(--border); }
 .subgrupo[open] > .subgrupo-cab { border-bottom: 1px dashed var(--border); margin-bottom: .3rem; }
 .subgrupo-nome { flex: 1; text-align: left; }
+.subgrupo-contagem {
+    flex: none;
+    font-size: .68rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: var(--surface-2);
+    border-radius: 999px;
+    padding: .05rem .4rem;
+}
 .subgrupo-total { flex: none; font-variant-numeric: tabular-nums; }
 
 /* Barra única (Cronológica): 2 segmentos proporcionais ao total de cada

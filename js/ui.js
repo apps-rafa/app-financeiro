@@ -446,10 +446,10 @@ function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
             const subBtn = e.target.closest('[data-submodo]');
             if (subBtn) {
                 e.preventDefault(); // está dentro do <summary> — sem isso, o clique também abre/fecha o <details>
-                const tipoRec = subBtn.closest('[data-grupo-rec]').dataset.grupoRec;
-                const atual = _subModoGrupoDe(tipoUI, tipoRec);
+                const grupoChave = subBtn.closest('[data-grupo-chave]').dataset.grupoChave;
+                const atual = _subModoGrupoDe(tipoUI, modo, grupoChave);
                 const novo = subBtn.dataset.submodo === atual ? 'cronologica' : subBtn.dataset.submodo;
-                _setSubModoGrupo(tipoUI, tipoRec, novo);
+                _setSubModoGrupo(tipoUI, modo, grupoChave, novo);
                 // Clicar no filtro já abre o grupo — não faz sentido escolher
                 // "por categoria" e continuar vendo o grupo fechado.
                 const det = subBtn.closest('details.rec-grupo');
@@ -460,8 +460,8 @@ function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
             const subIcone = e.target.closest('[data-submodo-icone]');
             if (subIcone) {
                 e.preventDefault();
-                const tipoRec = subIcone.closest('[data-grupo-rec]').dataset.grupoRec;
-                _setSubModoGrupo(tipoUI, tipoRec, 'cronologica');
+                const grupoChave = subIcone.closest('[data-grupo-chave]').dataset.grupoChave;
+                _setSubModoGrupo(tipoUI, modo, grupoChave, 'cronologica');
                 renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia);
                 return;
             }
@@ -669,14 +669,16 @@ function _posicionarCampoBusca(container, tipoUI) {
 }
 
 /** Agrupa e renderiza `transacoes` por `chaveDe(t)`, ordenado por total (maior primeiro).
- *  Usado por "Por método" e "Por categoria" — mesmo formato de card recolhível. */
-function _renderListaAgrupadaPorTotal(container, transacoes, tipoUI, msgVazia, { chaveDe, semChave, cores, gerarOpts }) {
+ *  Usado por "Por método" e "Por categoria" — mesmo formato de card recolhível,
+ *  com o mesmo organizador inline (outras 2 dimensões) que "Por recorrência" tem. */
+function _renderListaAgrupadaPorTotal(container, transacoes, tipoUI, msgVazia, { chaveDe, semChave, cores, gerarOpts, modo }) {
     if (!container) return;
     if (!transacoes || !transacoes.length) {
         container.innerHTML = `<p class="empty-message">${msgVazia}</p>`;
         container.onclick = null;
         return;
     }
+    const ehDespesa = tipoUI === 'saida';
     const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
 
     const mapa = new Map();
@@ -691,23 +693,28 @@ function _renderListaAgrupadaPorTotal(container, transacoes, tipoUI, msgVazia, {
 
     const totalGeral = grupos.reduce((s, g) => s + g[2], 0);
     const abertos = _lerAbertosRecGrupo(container);
+    const abertosSub = _lerAbertosSubgrupo(container);
 
     container.innerHTML = grupos.map(([nome, itens, total]) => {
         const c = cores[nome] || corPadraoChip(nome);
         const pct = totalGeral ? (total / totalGeral) * 100 : 0;
+        const corpoItens = _corpoGrupoComSubmodo(itens, tipoUI, modo, nome, ehDespesa, abertosSub, gerarOpts);
+        const submenuHTML = _renderOrganizadorInline(tipoUI, modo, nome, ehDespesa);
         return `
         <details class="rec-grupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[nome] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
+            ${submenuHTML}
             <span class="rec-grupo-contagem">${itens.length}</span>
             <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
-            ${itens.map(t => gerarHTMLTransacao(t, tipoUI, gerarOpts)).join('')}
+            ${corpoItens}
           </div>
         </details>`;
     }).join('');
 
+    container.querySelectorAll('.subgrupo-organizador').forEach(_ajustarLabelsFiltro);
     container.onclick = onListaTransacaoClick;
 }
 
@@ -716,9 +723,10 @@ function renderListaPorMetodo(container, transacoes, tipoUI, msgVazia) {
     const cores = (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.metodo) || {};
     _renderListaAgrupadaPorTotal(container, transacoes, tipoUI, msgVazia, {
         chaveDe: t => t.metodo,
-        semChave: 'Sem método',
+        semChave: 'Sem forma de pagamento',
         cores,
-        gerarOpts: { comRecorrenciaChip: true }
+        gerarOpts: { comRecorrenciaChip: true },
+        modo: 'metodo'
     });
 }
 
@@ -729,7 +737,8 @@ function renderListaPorCategoria(container, transacoes, tipoUI, msgVazia) {
         chaveDe: t => t.categoria,
         semChave: 'Sem categoria',
         cores,
-        gerarOpts: { semCategoriaChip: true }
+        gerarOpts: { semCategoriaChip: true },
+        modo: 'categoria'
     });
 }
 
@@ -848,42 +857,108 @@ function _lerAbertosSubgrupo(container) {
     return abertos;
 }
 
-// Dentro de um grupo de recorrência, o usuário pode escolher ver os itens
-// organizados por Categoria/Forma de pgto. em vez de Cronológica (padrão).
-// "tipoUI:tipoRec" -> 'cronologica' | 'categoria' | 'metodo'. Só "Pontual"
-// tem essa opção por enquanto — testando aqui antes de espalhar pros
-// outros tipos de recorrência.
+// Dentro de QUALQUER grupo (de Recorrência, Forma de pgto. ou Categoria —
+// não existe em Cronológica: lá os grupos são "Atual"/"A pagar"/"A
+// receber", não fazem sentido reorganizar), o usuário pode escolher ver os
+// itens organizados pelas OUTRAS 2 dimensões em vez de cronológico
+// (padrão). Estado por "tipoUI:modo:chaveDoGrupo" -> 'cronologica' (nenhum
+// filtro ligado) | 'categoria' | 'metodo' | 'recorrencia'.
 const _subModoGrupo = {};
-const GRUPOS_COM_SUBMODO = new Set(['Pontual']);
-function _subModoGrupoDe(tipoUI, tipoRec) {
-    return _subModoGrupo[`${tipoUI}:${tipoRec}`] || 'cronologica';
+function _subModoGrupoDe(tipoUI, modo, grupoChave) {
+    return _subModoGrupo[`${tipoUI}:${modo}:${grupoChave}`] || 'cronologica';
 }
-function _setSubModoGrupo(tipoUI, tipoRec, modo) {
-    _subModoGrupo[`${tipoUI}:${tipoRec}`] = modo;
+function _setSubModoGrupo(tipoUI, modo, grupoChave, valor) {
+    _subModoGrupo[`${tipoUI}:${modo}:${grupoChave}`] = valor;
 }
 
-/** Reorganiza os itens de UM grupo de recorrência por categoria/forma de
- *  pagamento (maior total primeiro) em vez de cronológico — cartõezinhos
- *  simples, sem outro nível de abrir/fechar (já tem o do grupo de fora). */
-function _renderItensSubagrupados(itens, tipoUI, chaveDe, semChave, abertos) {
+// Quais dimensões aparecem como opção de submodo, conforme o modo (top)
+// escolhido — sempre as OUTRAS 2, nunca a mesma dimensão que já agrupa a
+// tela toda. Ordem = ordem dos botões.
+const _SUBMODOS_POR_MODO = {
+    recorrencia: ['categoria', 'metodo'],
+    metodo: ['categoria', 'recorrencia'],
+    categoria: ['metodo', 'recorrencia']
+};
+
+/** Config (chave/rótulo/emoji) de cada dimensão usável como submodo.
+ *  "recorrencia" depende de ehDespesa pro rótulo (Contas/Cartão/...
+ *  variam entre despesa e receita), por isso é uma função. */
+function _dimensaoSubmodo(dim, ehDespesa) {
+    switch (dim) {
+        case 'categoria':
+            return { chaveDe: t => t.categoria, semChave: 'Sem categoria', emoji: '🏷️', label: 'Categoria' };
+        case 'metodo':
+            return { chaveDe: t => t.metodo, semChave: 'Sem forma de pagamento', emoji: '💳', label: 'Forma de pgto.' };
+        case 'recorrencia':
+            return {
+                chaveDe: t => (typeof rotuloRecorrencia === 'function'
+                    ? rotuloRecorrencia(t.tipoRecorrencia || 'Pontual', ehDespesa)
+                    : (t.tipoRecorrencia || 'Pontual')),
+                semChave: 'Pontual', emoji: '🔁', label: 'Recorrência'
+            };
+        default:
+            return null;
+    }
+}
+
+/** Reorganiza os itens de UM grupo pela dimensão escolhida (maior total
+ *  primeiro) em vez de cronológico — cartõezinhos colapsáveis, fechados por
+ *  padrão, com contagem e % (igual ao grupo de fora). */
+function _renderItensSubagrupados(itens, tipoUI, dimCfg, abertos) {
     const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
     const mapa = new Map();
     itens.forEach(t => {
-        const k = chaveDe(t) || semChave;
+        const k = dimCfg.chaveDe(t) || dimCfg.semChave;
         if (!mapa.has(k)) mapa.set(k, []);
         mapa.get(k).push(t);
     });
+    const totalGeral = itens.reduce((s, t) => s + valorDe(t), 0);
     const grupos = [...mapa.entries()]
         .map(([nome, its]) => [nome, its.sort(_porDataDesc), its.reduce((s, t) => s + valorDe(t), 0)])
         .sort((a, b) => b[2] - a[2]);
-    return grupos.map(([nome, its, total]) => `
+    return grupos.map(([nome, its, total]) => {
+        const pct = totalGeral ? (total / totalGeral) * 100 : 0;
+        return `
         <details class="subgrupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" ${abertos && abertos[nome] ? 'open' : ''}>
           <summary class="subgrupo-cab">
             <span class="subgrupo-nome">${nome}</span>
-            <span class="subgrupo-total">${formatarMoeda(total)}</span>
+            <span class="subgrupo-contagem">${its.length}</span>
+            <span class="subgrupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
           </summary>
           ${its.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
-        </details>`).join('');
+        </details>`;
+    }).join('');
+}
+
+/** HTML do organizador inline (ícone de funil + botões das outras 2
+ *  dimensões) pra colocar ao lado do nome de um grupo, dentro do próprio
+ *  <summary> — reutilizado pelos 3 modos que agrupam (Recorrência, Forma de
+ *  pgto., Categoria). Cronológica não chama isso (não tem grupos "de
+ *  dimensão", tem "Atual"/"A pagar"/"A receber"). */
+function _renderOrganizadorInline(tipoUI, modo, grupoChave, ehDespesa) {
+    const opcoes = _SUBMODOS_POR_MODO[modo];
+    if (!opcoes) return '';
+    const subAtual = _subModoGrupoDe(tipoUI, modo, grupoChave);
+    const botoes = opcoes.map(dim => {
+        const cfg = _dimensaoSubmodo(dim, ehDespesa);
+        const full = `${cfg.emoji} ${cfg.label}`;
+        return `<button type="button" class="subgrupo-modo-btn${subAtual === dim ? ' active' : ''}" data-submodo="${dim}" data-full="${full}" data-emoji="${cfg.emoji}">${full}</button>`;
+    }).join('');
+    return `
+        <span class="subgrupo-organizador" data-grupo-chave="${String(grupoChave).replace(/"/g, '&quot;')}">
+          <button type="button" class="subgrupo-modo-icone${subAtual !== 'cronologica' ? ' ativo' : ''}" data-submodo-icone="1" title="Tirar filtro"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M3 4h18v2.5l-7 8V19l-4 2v-6.5l-7-8V4z"/></svg></button>
+          ${botoes}
+        </span>`;
+}
+
+/** Corpo (itens) de UM grupo, já considerando se ele tem um submodo
+ *  escolhido (reorganiza por outra dimensão) ou não (cronológico, padrão). */
+function _corpoGrupoComSubmodo(itens, tipoUI, modo, grupoChave, ehDespesa, abertosSub, gerarOpts) {
+    const subAtual = _subModoGrupoDe(tipoUI, modo, grupoChave);
+    if (subAtual === 'cronologica' || !_SUBMODOS_POR_MODO[modo]) {
+        return itens.map(t => gerarHTMLTransacao(t, tipoUI, gerarOpts)).join('');
+    }
+    return _renderItensSubagrupados(itens, tipoUI, _dimensaoSubmodo(subAtual, ehDespesa), abertosSub);
 }
 
 /**
@@ -927,22 +1002,11 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
         const total = totalGrupo(itens);
         const pct = totalGeral ? (total / totalGeral) * 100 : 0;
 
-        const comSubmodo = GRUPOS_COM_SUBMODO.has(tipoRec);
-        const subModo = comSubmodo ? _subModoGrupoDe(tipoUI, tipoRec) : 'cronologica';
-        const corpoItens = subModo === 'categoria'
-            ? _renderItensSubagrupados(itens, tipoUI, t => t.categoria, 'Sem categoria', abertosSub)
-            : subModo === 'metodo'
-            ? _renderItensSubagrupados(itens, tipoUI, t => t.metodo, 'Sem forma de pagamento', abertosSub)
-            : itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('');
+        const corpoItens = _corpoGrupoComSubmodo(itens, tipoUI, 'recorrencia', tipoRec, ehDespesa, abertosSub);
         // Ao lado do nome do grupo (não embaixo) — mesma lógica de toggle do
         // filtro principal: ícone de funil desliga, sem opção "Cronológica"
         // própria (é só o estado "nenhum submodo ligado").
-        const submenuHTML = !comSubmodo ? '' : `
-            <span class="subgrupo-organizador" data-grupo-rec="${tipoRec.replace(/"/g, '&quot;')}">
-              <button type="button" class="subgrupo-modo-icone${subModo !== 'cronologica' ? ' ativo' : ''}" data-submodo-icone="1" title="Tirar filtro"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M3 4h18v2.5l-7 8V19l-4 2v-6.5l-7-8V4z"/></svg></button>
-              <button type="button" class="subgrupo-modo-btn${subModo === 'categoria' ? ' active' : ''}" data-submodo="categoria" data-full="🏷️ Categoria" data-emoji="🏷️">🏷️ Categoria</button>
-              <button type="button" class="subgrupo-modo-btn${subModo === 'metodo' ? ' active' : ''}" data-submodo="metodo" data-full="💳 Forma de pgto." data-emoji="💳">💳 Forma de pgto.</button>
-            </span>`;
+        const submenuHTML = _renderOrganizadorInline(tipoUI, 'recorrencia', tipoRec, ehDespesa);
 
         return `
         <details class="rec-grupo" data-nome="${tipoRec.replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[tipoRec] ? 'open' : ''}>
