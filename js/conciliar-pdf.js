@@ -383,7 +383,10 @@ async function onConciliarArquivos(e, secId, modo) {
             formato: null,
             linhas: [],
             metodoEscolhido: '',
-            resultado: null
+            resultado: null,
+            // Itens montados no popup "+" de cada linha, acumulados aqui até
+            // o usuário mandar tudo de uma vez (ver _grupoLancamentosFormatados).
+            formatados: []
         };
         estado.pdfs.push(entrada);
         renderConciliar(secId, modo);
@@ -584,6 +587,13 @@ function _renderPdfEntrada(p, modo, abertos = {}, secId = '') {
         })}
 
         ${_grupoColapsavelConciliar({
+            id: `${p.id}:formatados`, abertos,
+            padraoAberto: p.formatados.length > 0,
+            titulo: `📋 Lançamentos formatados (${p.formatados.length})`,
+            corpo: _renderTabelaFormatados(p, secId, modo)
+        })}
+
+        ${_grupoColapsavelConciliar({
             id: `${p.id}:app`, abertos,
             padraoAberto: res.noAppNaoNoPdf.length > 0,
             titulo: `⚠️ Lançado no app mas não no ${rotuloArquivo} (${res.noAppNaoNoPdf.length})`,
@@ -620,10 +630,15 @@ function _renderTabelaLinhasPDF(p, linhas, secId, modo) {
             <thead><tr><th></th><th>Data</th><th>Valor</th><th>Tipo</th><th>Descrição</th></tr></thead>
             <tbody>${linhas.map(l => {
                 const idx = p.linhas.indexOf(l);
+                const jaFormatado = p.formatados.some(f => f.origemIdx === idx);
+                const botao = jaFormatado
+                    ? `<button type="button" class="btn-mini-add btn-mini-add--ok" title="Já formatado — clique pra editar"
+                            onclick="_abrirLancarConciliar('${secId}','${modo}','${p.id}',${idx})">✓</button>`
+                    : `<button type="button" class="btn-mini-add" title="Formatar esse item pra lançar"
+                            onclick="_abrirLancarConciliar('${secId}','${modo}','${p.id}',${idx})">+</button>`;
                 return `
                 <tr>
-                    <td><button type="button" class="btn-mini-add" title="Lançar esse item no app"
-                            onclick="_abrirLancarConciliar('${secId}','${modo}','${p.id}',${idx})">+</button></td>
+                    <td>${botao}</td>
                     <td>${l.dataISO.split('-').reverse().join('/')}</td>
                     <td>${formatarMoeda(l.valor)}</td>
                     <td><span class="chip-tipo chip-tipo--${l.tipo}">${l.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
@@ -634,17 +649,21 @@ function _renderTabelaLinhasPDF(p, linhas, secId, modo) {
     </div>`;
 }
 
-/** "+" de uma linha "no CSV/PDF mas não lançado no app": popup pequeno
- *  (Categoria + Frequência + Descrição editável — Data/Valor/Forma de
- *  pgto./Tipo já vêm do arquivo, só mostrados como contexto) que cria o
- *  lançamento direto, sem sair da tela de conciliação — trocar de aba
- *  pra usar o formulário grande perderia o arquivo já carregado (a aba
- *  de Configuração é remontada do zero sempre que reabre). */
+/** "+" (ou "✓" se já formatado) de uma linha "no CSV/PDF mas não lançado
+ *  no app": popup com TODOS os campos que o tipo de recorrência escolhido
+ *  precisa (igual ao formulário grande — dia de vencimento, parcelas, dia
+ *  da semana...), mas sem sair da tela de conciliação (trocar pra aba
+ *  "+ Lançamento" perderia o arquivo já carregado, já que a aba de
+ *  Configuração é remontada do zero sempre que reabre).
+ *  O botão NÃO lança na hora — só monta o registro e acumula em
+ *  `p.formatados` (grupo "📋 Lançamentos formatados"), pra o usuário
+ *  revisar tudo antes de mandar de uma vez (ver _importarFormatados). */
 function _abrirLancarConciliar(secId, modo, pId, idx) {
     const estado = _estadosConciliar[secId];
     const p = estado?.pdfs.find(x => x.id === pId);
     const l = p?.linhas[idx];
     if (!l) return;
+    const existente = p.formatados.find(f => f.origemIdx === idx);
 
     const metodoObj = (estadoApp.menus.metodos || []).find(m => rotuloMetodo(m) === p.metodoEscolhido);
     const diaFechamento = (metodoObj && metodoObj.metodoKind === 'Crédito') ? metodoObj.diaFechamento : null;
@@ -654,12 +673,25 @@ function _abrirLancarConciliar(secId, modo, pId, idx) {
     const categorias = l.tipo === 'entradas'
         ? (estadoApp.menus.categoriasReceita || [])
         : (estadoApp.menus.categoriasDespesa || []);
-    const sugestao = typeof _resolverCategoria === 'function' ? _resolverCategoria(p.formato === 'fatura' ? l.descricao : l.descricao, l.tipo) : null;
+    const sugestao = existente ? existente.dados.categoria
+        : (typeof _resolverCategoria === 'function' ? _resolverCategoria(l.descricao, l.tipo) : null);
     const diaPadrao = parseInt(l.dataISO.slice(8, 10), 10);
     const esc = s => String(s || '').replace(/"/g, '&quot;');
 
+    // Mesmas opções de frequência do formulário grande — despesa não usa os
+    // tipos de "dia útil fixo" (só receita); ver preencherDropdownRecorrencias.
+    const tiposFreq = (typeof ORDEM_RECORRENCIA !== 'undefined' ? ORDEM_RECORRENCIA : ['Pontual', 'Mensal', 'Parcelada', 'Semanal'])
+        .filter(t => l.tipo !== 'saidas' || typeof RECORRENCIA_DIA_UTIL === 'undefined' || !RECORRENCIA_DIA_UTIL.includes(t));
+    const rotuloFreq = t => (typeof RECORRENCIA_ROTULO !== 'undefined' && RECORRENCIA_ROTULO[t]) || t;
+    const freqPadrao = existente ? existente.dados.tipoRecorrencia : 'Pontual';
+    const diaRecPadrao = existente ? existente.dados.diaRecorrencia : diaPadrao;
+    const parcelasPadrao = existente ? existente.dados.parcelas : 2;
+    const diaSemanaPadrao = existente && existente.dados.diaSemana !== '' ? existente.dados.diaSemana : '';
+    const semanasPadrao = new Set(existente ? existente.dados.semanas : []);
+    const pagarVctoPadrao = existente ? !!existente.dados.pagarNoVencimento : false;
+
     const ov = mostrarDialogo({
-        titulo: 'Lançar no app',
+        titulo: existente ? 'Editar lançamento formatado' : 'Formatar lançamento',
         corpoHTML: `
             <p class="import-csv-desc">
                 ${l.dataISO.split('-').reverse().join('/')} · ${formatarMoeda(l.valor)} ·
@@ -667,7 +699,7 @@ function _abrirLancarConciliar(secId, modo, pId, idx) {
             </p>
             <div class="form-group">
                 <label for="lcDescricao">Descrição</label>
-                <input type="text" id="lcDescricao" value="${esc(l.descricao)}">
+                <input type="text" id="lcDescricao" value="${esc(existente ? existente.dados.descricao : l.descricao)}">
             </div>
             <div class="form-group">
                 <label for="lcCategoria">Categoria</label>
@@ -679,49 +711,169 @@ function _abrirLancarConciliar(secId, modo, pId, idx) {
             <div class="form-group">
                 <label for="lcFrequencia">Frequência</label>
                 <select id="lcFrequencia">
-                    <option value="Pontual">Pontual</option>
-                    <option value="Mensal">Mensal</option>
+                    ${tiposFreq.map(t => `<option value="${t}" ${t === freqPadrao ? 'selected' : ''}>${rotuloFreq(t)}</option>`).join('')}
                 </select>
             </div>
-            <div class="form-group" id="lcDiaVencimentoWrap" hidden>
-                <label for="lcDiaVencimento">Dia de vencimento</label>
-                <input type="number" id="lcDiaVencimento" min="1" max="31" value="${diaPadrao}">
+            <div id="lcMensalParceladaWrap" hidden style="display:flex;gap:.5rem">
+                <div class="form-group" style="flex:1">
+                    <label for="lcDiaVencimento">Dia de vencimento</label>
+                    <input type="number" id="lcDiaVencimento" min="1" max="31" value="${diaRecPadrao}">
+                </div>
+                <div class="form-group" id="lcParcelasWrap" hidden style="flex:1">
+                    <label for="lcParcelas">Parcelas</label>
+                    <input type="number" id="lcParcelas" min="2" value="${parcelasPadrao}">
+                </div>
+            </div>
+            <label id="lcPagarVctoWrap" hidden style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;margin:.3rem 0">
+                <input type="checkbox" id="lcPagarVcto" ${pagarVctoPadrao ? 'checked' : ''}> Pagar no vencimento
+            </label>
+            <div class="form-group" id="lcDiaSemanaWrap" hidden>
+                <label for="lcDiaSemana">Dia da semana (opcional)</label>
+                <select id="lcDiaSemana">
+                    <option value="">Sem dia fixo</option>
+                    ${['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+                        .map((d, i) => `<option value="${i}" ${String(i) === String(diaSemanaPadrao) ? 'selected' : ''}>${d}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group" id="lcSemanasWrap" hidden>
+                <label>Semanas do mês</label>
+                <div class="semanas-chips">
+                    ${[1, 2, 3, 4, 5].map(n => `<span class="chip lcSemanaChip${semanasPadrao.has(n) ? ' on' : ''}" data-semana="${n}">${n}ª</span>`).join('')}
+                </div>
             </div>
         `,
         acoes: [
             { label: 'Cancelar' },
+            ...(existente ? [{
+                label: 'Remover', perigo: true,
+                onClick: () => {
+                    p.formatados = p.formatados.filter(f => f.origemIdx !== idx);
+                    renderConciliar(secId, modo);
+                }
+            }] : []),
             {
-                label: 'Lançar', primario: true,
-                onClick: async () => {
+                label: existente ? 'Salvar' : 'Adicionar', primario: true,
+                onClick: () => {
                     const categoria = document.getElementById('lcCategoria').value;
                     if (!categoria) { mostrarNotificacao('Escolha uma categoria', 'erro'); return true; }
                     const frequencia = document.getElementById('lcFrequencia').value;
                     const descricao = document.getElementById('lcDescricao').value.trim();
-                    const diaRecorrencia = frequencia === 'Mensal' ? (document.getElementById('lcDiaVencimento').value || '') : '';
-                    try {
-                        await adicionarTransacaoAPI({
-                            tipo: l.tipo, data: l.dataISO, valor: l.valor, metodo: p.metodoEscolhido,
-                            categoria, descricao, formaPagamento: 'À vista',
-                            tipoRecorrencia: frequencia, diaRecorrencia, diaSemana: '', semanas: [],
-                            competencia
-                        });
-                        mostrarNotificacao('✓ Lançamento criado', 'sucesso');
-                        await _recompararPDV(p);
-                        renderConciliar(secId, modo);
-                        if (typeof recarregarDados === 'function') await recarregarDados();
-                        if (typeof atualizarUI === 'function') atualizarUI();
-                    } catch (err) {
-                        console.error('Erro ao lançar da conciliação:', err);
-                        mostrarNotificacao('Erro ao lançar', 'erro');
-                        return true;
+                    const comDia = frequencia === 'Mensal' || frequencia === 'Parcelada';
+                    const diaRecorrencia = comDia ? (document.getElementById('lcDiaVencimento').value || '') : '';
+                    if (comDia && !(parseInt(diaRecorrencia, 10) >= 1 && parseInt(diaRecorrencia, 10) <= 31)) {
+                        mostrarNotificacao('Informe o dia de vencimento (1 a 31)', 'erro'); return true;
                     }
+                    const parcelas = frequencia === 'Parcelada' ? (document.getElementById('lcParcelas').value || '') : '';
+                    if (frequencia === 'Parcelada' && !(parseInt(parcelas, 10) >= 1)) {
+                        mostrarNotificacao('Informe em quantas parcelas', 'erro'); return true;
+                    }
+                    const ehSemanal = frequencia === 'Semanal';
+                    const diaSemana = ehSemanal ? document.getElementById('lcDiaSemana').value : '';
+                    const semanas = ehSemanal
+                        ? [...ov.querySelectorAll('.lcSemanaChip.on')].map(c => parseInt(c.dataset.semana, 10))
+                        : [];
+                    if (ehSemanal && diaSemana !== '' && !semanas.length) {
+                        mostrarNotificacao('Marque pelo menos uma semana', 'erro'); return true;
+                    }
+                    const pagarNoVencimento = comDia && l.tipo === 'saidas' && document.getElementById('lcPagarVcto').checked;
+
+                    const dados = {
+                        tipo: l.tipo, data: l.dataISO, valor: l.valor, metodo: p.metodoEscolhido,
+                        categoria, descricao, formaPagamento: frequencia === 'Parcelada' ? 'Parcelada' : 'À vista',
+                        tipoRecorrencia: frequencia, diaRecorrencia, parcelas, diaSemana, semanas,
+                        pagarNoVencimento, competencia
+                    };
+                    if (existente) {
+                        existente.dados = dados;
+                    } else {
+                        p.formatados.push({ origemIdx: idx, dados });
+                    }
+                    renderConciliar(secId, modo);
                 }
             }
         ]
     });
-    ov.querySelector('#lcFrequencia').addEventListener('change', e => {
-        ov.querySelector('#lcDiaVencimentoWrap').hidden = e.target.value !== 'Mensal';
+
+    const $ = sel => ov.querySelector(sel);
+    const aplicarVisibilidade = () => {
+        const freq = $('#lcFrequencia').value;
+        const comDia = freq === 'Mensal' || freq === 'Parcelada';
+        const ehSemanal = freq === 'Semanal';
+        $('#lcMensalParceladaWrap').hidden = !comDia;
+        $('#lcParcelasWrap').hidden = freq !== 'Parcelada';
+        $('#lcPagarVctoWrap').hidden = !comDia || l.tipo !== 'saidas';
+        $('#lcDiaSemanaWrap').hidden = !ehSemanal;
+        $('#lcSemanasWrap').hidden = !ehSemanal;
+    };
+    $('#lcFrequencia').addEventListener('change', aplicarVisibilidade);
+    aplicarVisibilidade();
+    ov.querySelectorAll('.lcSemanaChip').forEach(chip => {
+        chip.addEventListener('click', () => chip.classList.toggle('on'));
     });
+}
+
+function _renderTabelaFormatados(p, secId, modo) {
+    const prontos = p.formatados.length;
+    const linhas = p.formatados.length ? `
+    <div class="import-csv-tabela-wrap">
+        <table class="import-csv-tabela">
+            <thead><tr><th></th><th>Data</th><th>Valor</th><th>Tipo</th><th>Categoria</th><th>Frequência</th><th>Descrição</th></tr></thead>
+            <tbody>${p.formatados.map(f => `
+                <tr>
+                    <td><button type="button" class="btn-icon btn-danger" title="Remover"
+                            onclick="_removerFormatado('${secId}','${modo}','${p.id}',${f.origemIdx})">🗑️</button></td>
+                    <td>${f.dados.data.split('-').reverse().join('/')}</td>
+                    <td>${formatarMoeda(f.dados.valor)}</td>
+                    <td><span class="chip-tipo chip-tipo--${f.dados.tipo}">${f.dados.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
+                    <td>${f.dados.categoria}</td>
+                    <td>${f.dados.tipoRecorrencia}</td>
+                    <td class="import-csv-desc" title="${f.dados.descricao}">${f.dados.descricao}</td>
+                </tr>`).join('')}</tbody>
+        </table>
+    </div>` : `<p class="import-csv-desc">Use o "+" nas linhas de cima pra formatar e acumular aqui.</p>`;
+
+    return `
+    ${linhas}
+    <div class="import-csv-acoes">
+        <button type="button" class="btn-submit" ${prontos ? '' : 'disabled'}
+                onclick="_importarFormatados('${secId}','${modo}','${p.id}')">
+            Importar ${prontos} lançamento${prontos === 1 ? '' : 's'}
+        </button>
+    </div>`;
+}
+
+function _removerFormatado(secId, modo, pId, origemIdx) {
+    const p = _estadosConciliar[secId]?.pdfs.find(x => x.id === pId);
+    if (!p) return;
+    p.formatados = p.formatados.filter(f => f.origemIdx !== origemIdx);
+    renderConciliar(secId, modo);
+}
+
+/** Manda de uma vez todos os itens acumulados em "Lançamentos formatados"
+ *  — mesma API que o resto do app usa (adicionarTransacaoAPI), um de cada
+ *  vez. No final recalcula a comparação (os que deram certo somem de "não
+ *  lançado no app") e limpa a lista formatada. */
+async function _importarFormatados(secId, modo, pId) {
+    const p = _estadosConciliar[secId]?.pdfs.find(x => x.id === pId);
+    if (!p || !p.formatados.length) return;
+
+    let ok = 0, falhas = 0;
+    for (const f of p.formatados) {
+        try {
+            await adicionarTransacaoAPI(f.dados);
+            ok++;
+        } catch (err) {
+            console.error('Erro ao importar lançamento formatado:', f, err);
+            falhas++;
+        }
+    }
+    p.formatados = [];
+    await _recompararPDV(p);
+    renderConciliar(secId, modo);
+    if (typeof recarregarDados === 'function') await recarregarDados();
+    if (typeof atualizarUI === 'function') atualizarUI();
+    mostrarNotificacao(falhas ? `${ok} lançados, ${falhas} falharam` : `✓ ${ok} lançamento${ok === 1 ? '' : 's'} criado${ok === 1 ? '' : 's'}`,
+        falhas ? 'erro' : 'sucesso');
 }
 
 function _renderTabelaTransacoesApp(transacoes) {

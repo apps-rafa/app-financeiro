@@ -171,6 +171,9 @@ input.campo-travado,
     border-color: var(--border-strong);
 }
 .btn-mini-add:hover { background-color: var(--surface-3); }
+/* Linha já formatada (acumulada em "Lançamentos formatados") — mesmo
+   botão, cor de "confirmado" em vez do roxo de "adicionar". */
+.btn-mini-add--ok { color: var(--receita-text); border-color: var(--receita-text); }
 
 .btn-cancelar {
     background: transparent;
