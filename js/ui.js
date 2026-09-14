@@ -315,12 +315,14 @@ function _detectarDuplicatas(transacoes) {
     const aprovadas = _duplicatasAprovadasSet();
     const mapa = new Map();
     (transacoes || []).forEach(t => {
-        if (aprovadas.has(t.id)) return;
         const chave = [t.valor, t.metodo || '', _normalizarChave(t.descricao || '')].join('|');
         if (!mapa.has(chave)) mapa.set(chave, []);
         mapa.get(chave).push(t);
     });
-    return [...mapa.values()].filter(g => g.length >= 2).flat().sort(_porDataDesc);
+    // O par precisa ter >=2 membros ANTES de tirar os aprovados — aprovar 1
+    // dos 2 não pode fazer o outro (ainda não aprovado) sumir também.
+    return [...mapa.values()].filter(g => g.length >= 2)
+        .flatMap(g => g.filter(t => !aprovadas.has(t.id))).sort(_porDataDesc);
 }
 
 /** Grupo "Verificação de duplicatas" fixo no topo da lista, em qualquer
@@ -336,8 +338,7 @@ function _renderGrupoDuplicatas(transacoes, tipoUI, aberto) {
     const duplicatas = _detectarDuplicatas(transacoes);
     if (!duplicatas.length) {
         return `<div class="rec-grupo rec-grupo--vazio">
-            <span class="rec-grupo-nome">🔁 Verificação de duplicatas</span>
-            <span class="rec-grupo-contagem">Sem duplicatas</span>
+            <span class="rec-grupo-nome">🎉 Sem duplicatas</span>
         </div>`;
     }
     const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
@@ -364,6 +365,7 @@ function _renderGrupoDuplicatas(transacoes, tipoUI, aberto) {
  *  antes de tudo isso, independente do modo escolhido. */
 function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
     if (!container) return;
+    _destacarCampoBusca(tipoUI);
     const abertoDuplicatas = container.querySelector('details.rec-grupo[data-nome="__duplicatas__"]')?.open;
 
     if (modo === 'cronologica') {
@@ -397,6 +399,13 @@ function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
                 renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia);
                 return;
             }
+            const subBtn = e.target.closest('[data-submodo]');
+            if (subBtn) {
+                const tipoRec = subBtn.closest('[data-grupo-rec]').dataset.grupoRec;
+                _setSubModoGrupo(tipoUI, tipoRec, subBtn.dataset.submodo);
+                renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia);
+                return;
+            }
             if (onClickConteudo) onClickConteudo(e);
         };
     }
@@ -404,6 +413,7 @@ function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
     if (transacoes && transacoes.length) {
         container.insertAdjacentHTML('afterbegin', _renderGrupoDuplicatas(transacoes, tipoUI, abertoDuplicatas));
     }
+    _posicionarCampoBusca(container, tipoUI);
 }
 
 // 'recorrencia' (padrão) | 'categoria' | 'cronologica' — visão da aba Receitas
@@ -473,9 +483,13 @@ function atualizarEntradasLista() {
     document.querySelectorAll('#modoEntradas .modo-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.modo === modoListaEntradas));
     document.getElementById('modoEntradas')?.classList.toggle('vazio', !estadoApp.transacoes.entradas.length);
-    const filtradas = _filtrarPorBusca(estadoApp.transacoes.entradas, buscaEntradas);
-    const msgVazia = buscaEntradas.trim() ? `Nada encontrado pra "${buscaEntradas.trim()}"` : 'Nenhuma receita neste mês';
-    renderListaPorModo(document.querySelector(SELECTORS.entradasLista), filtradas, 'entrada', modoListaEntradas, msgVazia);
+    const container = document.querySelector(SELECTORS.entradasLista);
+    const termo = buscaEntradas.trim();
+    if (termo) {
+        _renderListaBusca(container, estadoApp.transacoes.entradas, 'entrada', termo);
+    } else {
+        renderListaPorModo(container, estadoApp.transacoes.entradas, 'entrada', modoListaEntradas, 'Nenhuma receita neste mês');
+    }
 }
 
 // 'recorrencia' (padrão) | 'metodo' | 'categoria' | 'cronologica' — visão da aba Despesas
@@ -492,9 +506,81 @@ function atualizarSaidasLista() {
     document.querySelectorAll('#modoSaidas .modo-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.modo === modoListaSaidas));
     document.getElementById('modoSaidas')?.classList.toggle('vazio', !estadoApp.transacoes.saidas.length);
-    const filtradas = _filtrarPorBusca(estadoApp.transacoes.saidas, buscaSaidas);
-    const msgVazia = buscaSaidas.trim() ? `Nada encontrado pra "${buscaSaidas.trim()}"` : 'Nenhuma despesa neste mês';
-    renderListaPorModo(document.querySelector(SELECTORS.saidasLista), filtradas, 'saida', modoListaSaidas, msgVazia);
+    const container = document.querySelector(SELECTORS.saidasLista);
+    const termo = buscaSaidas.trim();
+    if (termo) {
+        _renderListaBusca(container, estadoApp.transacoes.saidas, 'saida', termo);
+    } else {
+        renderListaPorModo(container, estadoApp.transacoes.saidas, 'saida', modoListaSaidas, 'Nenhuma despesa neste mês');
+    }
+}
+
+/** Quando há termo de busca: some com tudo (Duplicatas, grupos de
+ *  Recorrência/Método/Categoria/Cronológica) e mostra só 1 grupo "Resultado
+ *  da busca" com os achados dentro — assim funciona igual em qualquer modo
+ *  de visualização escolhido, sem espalhar lógica de busca nos outros
+ *  renderizadores. */
+function _renderListaBusca(container, transacoes, tipoUI, termo) {
+    if (!container) return;
+    _destacarCampoBusca(tipoUI);
+    const abertos = _lerAbertosRecGrupo(container);
+    const encontrados = _filtrarPorBusca(transacoes, termo).sort(_porDataDesc);
+
+    if (!encontrados.length) {
+        container.innerHTML = `
+        <div class="rec-grupo rec-grupo--vazio">
+            <span class="rec-grupo-nome">🔎 Nada encontrado pra "${termo}"</span>
+        </div>`;
+        container.onclick = null;
+        _posicionarCampoBusca(container, tipoUI);
+        return;
+    }
+
+    const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
+    const total = encontrados.reduce((s, t) => s + valorDe(t), 0);
+    // Aberto por padrão (é o único grupo, e o usuário buscou justamente pra
+    // ver o resultado) — só fecha se o usuário mesmo fechar manualmente.
+    const aberto = abertos.__busca__ !== false;
+    container.innerHTML = `
+    <details class="rec-grupo" data-nome="__busca__" style="--cor-rec:var(--primary)" ${aberto ? 'open' : ''}>
+      <summary>
+        <span class="rec-grupo-nome">🔎 Resultado da busca</span>
+        <span class="rec-grupo-contagem">${encontrados.length}</span>
+        <span class="rec-grupo-total">${formatarMoeda(total)}</span>
+      </summary>
+      <div class="rec-grupo-itens">
+        ${encontrados.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
+      </div>
+    </details>`;
+    container.onclick = onListaTransacaoClick;
+    _posicionarCampoBusca(container, tipoUI);
+}
+
+/** Move o campo de busca (nó persistente, nunca recriado — pra não perder
+ *  foco/cursor a cada tecla digitada) pra logo abaixo do gráfico/barra
+ *  proporcional do modo atual. Sem gráfico (lista vazia, ou já em modo de
+ *  busca — que não mostra gráfico), fica no topo do container. */
+/** Tira o campo de busca de dentro do container ANTES de qualquer
+ *  `container.innerHTML = ...` — sem isso, um 2º render em cima do 1º
+ *  (ex.: trocar de submodo logo depois de abrir a aba) apagaria o nó do
+ *  campo de vez, já que ele tinha ficado como filho do container no render
+ *  anterior. Move pro <body> (ainda "conectado" ao documento, então
+ *  document.getElementById continua achando) só até o render terminar. */
+function _destacarCampoBusca(tipoUI) {
+    const wrapper = document.getElementById(tipoUI === 'entrada' ? 'buscaEntradas' : 'buscaSaidas')?.closest('.busca-lista-linha');
+    if (wrapper) document.body.appendChild(wrapper);
+}
+
+function _posicionarCampoBusca(container, tipoUI) {
+    if (!container) return;
+    const wrapper = document.getElementById(tipoUI === 'entrada' ? 'buscaEntradas' : 'buscaSaidas')?.closest('.busca-lista-linha');
+    if (!wrapper) return;
+    const grafico = container.querySelector('.cron-barra');
+    if (grafico) {
+        grafico.insertAdjacentElement('afterend', wrapper);
+    } else {
+        container.insertAdjacentElement('afterbegin', wrapper);
+    }
 }
 
 /** Agrupa e renderiza `transacoes` por `chaveDe(t)`, ordenado por total (maior primeiro).
@@ -666,6 +752,17 @@ function _lerAbertosRecGrupo(container) {
     return abertos;
 }
 
+/** Mesma ideia de _lerAbertosRecGrupo, mas pros subgrupos (Categoria/Forma
+ *  de pgto. dentro de "Pontual") — fechados por padrão, mas preservando o
+ *  que o usuário já abriu manualmente ao trocar de submodo ou re-renderizar. */
+function _lerAbertosSubgrupo(container) {
+    const abertos = {};
+    container?.querySelectorAll('details.subgrupo[data-nome]').forEach(d => {
+        abertos[d.dataset.nome] = d.open;
+    });
+    return abertos;
+}
+
 // Dentro de um grupo de recorrência, o usuário pode escolher ver os itens
 // organizados por Categoria/Forma de pgto. em vez de Cronológica (padrão).
 // "tipoUI:tipoRec" -> 'cronologica' | 'categoria' | 'metodo'. Só "Pontual"
@@ -683,7 +780,7 @@ function _setSubModoGrupo(tipoUI, tipoRec, modo) {
 /** Reorganiza os itens de UM grupo de recorrência por categoria/forma de
  *  pagamento (maior total primeiro) em vez de cronológico — cartõezinhos
  *  simples, sem outro nível de abrir/fechar (já tem o do grupo de fora). */
-function _renderItensSubagrupados(itens, tipoUI, chaveDe, semChave) {
+function _renderItensSubagrupados(itens, tipoUI, chaveDe, semChave, abertos) {
     const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
     const mapa = new Map();
     itens.forEach(t => {
@@ -695,13 +792,13 @@ function _renderItensSubagrupados(itens, tipoUI, chaveDe, semChave) {
         .map(([nome, its]) => [nome, its.sort(_porDataDesc), its.reduce((s, t) => s + valorDe(t), 0)])
         .sort((a, b) => b[2] - a[2]);
     return grupos.map(([nome, its, total]) => `
-        <div class="subgrupo">
-          <div class="subgrupo-cab">
+        <details class="subgrupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" ${abertos && abertos[nome] ? 'open' : ''}>
+          <summary class="subgrupo-cab">
             <span class="subgrupo-nome">${nome}</span>
             <span class="subgrupo-total">${formatarMoeda(total)}</span>
-          </div>
+          </summary>
           ${its.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
-        </div>`).join('');
+        </details>`).join('');
 }
 
 /**
@@ -737,6 +834,7 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
 
     const totalGeral = grupos.reduce((s, [, itens]) => s + totalGrupo(itens), 0);
     const abertos = _lerAbertosRecGrupo(container);
+    const abertosSub = _lerAbertosSubgrupo(container);
 
     container.innerHTML = grupos.map(([tipoRec, itens]) => {
         const rotulo = (typeof rotuloRecorrencia === 'function') ? rotuloRecorrencia(tipoRec, ehDespesa) : tipoRec;
@@ -747,9 +845,9 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
         const comSubmodo = GRUPOS_COM_SUBMODO.has(tipoRec);
         const subModo = comSubmodo ? _subModoGrupoDe(tipoUI, tipoRec) : 'cronologica';
         const corpoItens = subModo === 'categoria'
-            ? _renderItensSubagrupados(itens, tipoUI, t => t.categoria, 'Sem categoria')
+            ? _renderItensSubagrupados(itens, tipoUI, t => t.categoria, 'Sem categoria', abertosSub)
             : subModo === 'metodo'
-            ? _renderItensSubagrupados(itens, tipoUI, t => t.metodo, 'Sem forma de pagamento')
+            ? _renderItensSubagrupados(itens, tipoUI, t => t.metodo, 'Sem forma de pagamento', abertosSub)
             : itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('');
         const submenuHTML = !comSubmodo ? '' : `
             <div class="subgrupo-organizador" data-grupo-rec="${tipoRec.replace(/"/g, '&quot;')}">
@@ -772,16 +870,7 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
         </details>`;
     }).join('');
 
-    container.onclick = e => {
-        const subBtn = e.target.closest('[data-submodo]');
-        if (subBtn) {
-            const tipoRec = subBtn.closest('[data-grupo-rec]').dataset.grupoRec;
-            _setSubModoGrupo(tipoUI, tipoRec, subBtn.dataset.submodo);
-            renderListaAgrupada(container, transacoes, tipoUI, msgVazia);
-            return;
-        }
-        onListaTransacaoClick(e);
-    };
+    container.onclick = onListaTransacaoClick;
 }
 
 // Cache das "próximas" (usado ao renderizar a aba Próximas)
