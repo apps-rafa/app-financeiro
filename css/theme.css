@@ -228,7 +228,13 @@ input.campo-travado,
     padding: 0.26rem 0.15rem;
     max-width: 11rem;
     font-size: .8em;
-    overflow-wrap: break-word;
+    /* Nunca quebra linha — um e-mail comprido que não cabe nos 11rem
+       precisa truncar (com "…"), não quebrar no meio da palavra: sem
+       isso, a última letra ("m" de ".com") caía numa 2ª linha sozinha,
+       fora da caixa do sublinhado, com cara de erro de estilo. */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 /* Some só numa tela BEM apertada — o e-mail logado tem prioridade sobre o
    nome do app (que já encolheu até virar só o emoji nesse ponto). */
