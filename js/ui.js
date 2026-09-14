@@ -450,6 +450,10 @@ function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
                 const atual = _subModoGrupoDe(tipoUI, tipoRec);
                 const novo = subBtn.dataset.submodo === atual ? 'cronologica' : subBtn.dataset.submodo;
                 _setSubModoGrupo(tipoUI, tipoRec, novo);
+                // Clicar no filtro já abre o grupo — não faz sentido escolher
+                // "por categoria" e continuar vendo o grupo fechado.
+                const det = subBtn.closest('details.rec-grupo');
+                if (det) det.open = true;
                 renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia);
                 return;
             }
@@ -1421,7 +1425,7 @@ async function atualizarProximasTransacoes() {
         const tipoUI = ehDespesa ? 'saida' : 'entrada';
 
         // Faturas de cartão só fazem sentido olhando pras despesas
-        const faturasHTML = ehDespesa ? renderFaturasCartao() : '';
+        const faturasHTML = ehDespesa ? renderFaturasCartao(container) : '';
 
         document.getElementById('modoProximas')?.classList.toggle('vazio', proximas.length === 0);
         if (proximas.length === 0) {
@@ -1536,9 +1540,11 @@ function _agruparProximasPorRecorrencia(ctxList, abertos = {}) {
     }).join('');
 }
 
-/** Bloco "Faturas de cartão" no topo das Próximas: cada cartão de crédito
- *  com o total lançado no mês e o dia de vencimento. */
-function renderFaturasCartao() {
+/** Bloco "Faturas de cartão de crédito" no topo das Próximas: cada cartão
+ *  com o total lançado no mês e o dia de vencimento — colapsável, com os
+ *  lançamentos daquele cartão dentro (despesas + estornos/reembolsos que
+ *  abatem a fatura), fechado por padrão. */
+function renderFaturasCartao(container) {
     const cartoes = ((estadoApp.menus && estadoApp.menus.metodos) || [])
         .filter(m => m.metodoKind === 'Crédito');
     if (!cartoes.length) return '';
@@ -1547,31 +1553,38 @@ function renderFaturasCartao() {
     const coresMet = (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.metodo) || {};
     const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
 
+    const abertos = {};
+    container?.querySelectorAll('details.fatura-item[data-nome]').forEach(d => { abertos[d.dataset.nome] = d.open; });
+
     const linhas = cartoes.map(m => {
         const rot = (typeof rotuloMetodo === 'function') ? rotuloMetodo(m) : m.nome;
-        const totalDespesas = estadoApp.transacoes.saidas
-            .filter(t => t.metodo === rot)
-            .reduce((s, t) => s + valorDe(t), 0);
+        const despesas = estadoApp.transacoes.saidas.filter(t => t.metodo === rot);
         // Receita com esse método = estorno/reembolso lançado na fatura —
         // abate do total, não é receita separada (ver calcularResumoMes).
-        const totalEstornos = estadoApp.transacoes.entradas
-            .filter(t => t.metodo === rot)
-            .reduce((s, t) => s + valorDe(t), 0);
+        const estornos = estadoApp.transacoes.entradas.filter(t => t.metodo === rot);
+        const totalDespesas = despesas.reduce((s, t) => s + valorDe(t), 0);
+        const totalEstornos = estornos.reduce((s, t) => s + valorDe(t), 0);
         const total = totalDespesas - totalEstornos;
         if (!total) return '';
         const diaV = Math.min(parseInt(m.diaVencimento, 10) || 1, ultimoDia);
         const venc = `${String(diaV).padStart(2, '0')}/${String(mes.getMonth() + 1).padStart(2, '0')}`;
         const cor = coresMet[rot] || (typeof corPadraoChip === 'function' ? corPadraoChip(rot) : 'var(--primary)');
+        const itensHTML = [...despesas, ...estornos].sort(_porDataDesc)
+            .map(t => gerarHTMLTransacao(t, t.tipo === 'entradas' ? 'entrada' : 'saida', { comRecorrenciaChip: true }))
+            .join('');
         return `
-        <div class="fatura-item" style="--cor-cartao:${cor}">
+        <details class="fatura-item" data-nome="${rot.replace(/"/g, '&quot;')}" style="--cor-cartao:${cor}" ${abertos[rot] ? 'open' : ''}>
+          <summary>
             <span class="fatura-nome">${rot}</span>
             <span class="fatura-venc">vence ${venc}</span>
             <span class="fatura-total">${formatarMoeda(total)}</span>
-        </div>`;
+          </summary>
+          <div class="fatura-itens">${itensHTML}</div>
+        </details>`;
     }).filter(Boolean).join('');
 
     return linhas
-        ? `<div class="faturas-cartao"><h3 class="faturas-titulo">Faturas de cartão</h3>${linhas}</div>`
+        ? `<div class="faturas-cartao"><h3 class="faturas-titulo">Faturas de cartão de crédito</h3>${linhas}</div>`
         : '';
 }
 
