@@ -82,7 +82,7 @@
             <!-- Dashboard Summary -->
             <section class="dashboard">
                 <div class="summary-card entradas" data-tab="entradas">
-                    <h3><svg class="seta-icone" viewBox="0 0 24 24" width="11" height="11" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg> Receita</h3>
+                    <h3><svg class="seta-icone" viewBox="0 0 24 24" width="11" height="11" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg> <span class="card-titulo-txt">Receita</span><button type="button" class="dup-aviso" data-dup-aviso="entrada" hidden>⚠️ Duplicatas</button></h3>
                     <div class="card-linhas">
                         <div class="card-linhas-topo">
                             <span class="linha"><i>atual</i><b id="entradasAtual">R$ 0,00</b></span>
@@ -93,7 +93,7 @@
                     </div>
                 </div>
                 <div class="summary-card saidas" data-tab="saidas">
-                    <h3><svg class="seta-icone" viewBox="0 0 24 24" width="11" height="11" aria-hidden="true"><path fill="var(--despesa-text)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg> Despesa</h3>
+                    <h3><svg class="seta-icone" viewBox="0 0 24 24" width="11" height="11" aria-hidden="true"><path fill="var(--despesa-text)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg> <span class="card-titulo-txt">Despesa</span><button type="button" class="dup-aviso" data-dup-aviso="saida" hidden>⚠️ Duplicatas</button></h3>
                     <div class="card-linhas">
                         <div class="card-linhas-topo">
                             <span class="linha"><i>atual</i><b id="saidasAtual">R$ 0,00</b></span>
@@ -126,9 +126,8 @@
             <section id="entradas" class="tab-content">
                 <div class="transacoes-container">
                     <div class="modo-lista-linha">
-                        <svg class="modo-lista-icone" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 4h18v2.5l-7 8V19l-4 2v-6.5l-7-8V4z"/></svg>
+                        <button type="button" class="modo-lista-icone" id="modoEntradasIcone" title="Tirar filtro (ordem cronológica)" aria-label="Tirar filtro"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 4h18v2.5l-7 8V19l-4 2v-6.5l-7-8V4z"/></svg></button>
                         <div class="modo-lista" id="modoEntradas">
-                            <button type="button" class="modo-btn active" data-modo="cronologica">Cronológica</button>
                             <button type="button" class="modo-btn" data-modo="recorrencia">Recorrência</button>
                             <button type="button" class="modo-btn" data-modo="categoria">Categoria</button>
                         </div>
@@ -147,9 +146,8 @@
             <section id="saidas" class="tab-content">
                 <div class="transacoes-container">
                     <div class="modo-lista-linha">
-                        <svg class="modo-lista-icone" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 4h18v2.5l-7 8V19l-4 2v-6.5l-7-8V4z"/></svg>
+                        <button type="button" class="modo-lista-icone" id="modoSaidasIcone" title="Tirar filtro (ordem cronológica)" aria-label="Tirar filtro"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 4h18v2.5l-7 8V19l-4 2v-6.5l-7-8V4z"/></svg></button>
                         <div class="modo-lista" id="modoSaidas">
-                            <button type="button" class="modo-btn active" data-modo="cronologica">Cronológica</button>
                             <button type="button" class="modo-btn" data-modo="recorrencia">Recorrência</button>
                             <button type="button" class="modo-btn" data-modo="metodo">Forma de pgto.</button>
                             <button type="button" class="modo-btn" data-modo="categoria">Categoria</button>

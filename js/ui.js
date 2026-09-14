@@ -200,9 +200,49 @@ function atualizarResumo() {
     setMini('miniBalanco', estadoApp.resumo.balanco);
     setMini('miniGasto', gastoDiarioValor);
 
+    _atualizarAvisoDuplicatas();
+
     // Depois do texto assentado (e do layout dos cards, que só é conhecido
     // após o DOM aplicar), reavalia se algum valor precisa encolher.
     requestAnimationFrame(ajustarFontesDashboard);
+}
+
+/** Aviso "⚠️ Duplicatas" no card de Receita/Despesa do dashboard, só quando
+ *  aquele mês tem alguma duplicata suspeita (mesma detecção do grupo da
+ *  lista). Clicável — ver abrirGrupoDuplicatas(). Some o texto e deixa só o
+ *  emoji se não couber (medido depois do layout aplicar, como
+ *  definirLabelResp já faz noutros lugares do form). */
+function _atualizarAvisoDuplicatas() {
+    ['entrada', 'saida'].forEach(tipoUI => {
+        const badge = document.querySelector(`.dup-aviso[data-dup-aviso="${tipoUI}"]`);
+        if (!badge) return;
+        const lista = tipoUI === 'entrada' ? estadoApp.transacoes.entradas : estadoApp.transacoes.saidas;
+        const temDuplicata = _detectarDuplicatas(lista).length > 0;
+        badge.hidden = !temDuplicata;
+        if (!temDuplicata) return;
+        badge.textContent = '⚠️ Duplicatas';
+        requestAnimationFrame(() => {
+            const h3 = badge.closest('h3');
+            if (h3 && h3.scrollWidth > h3.clientWidth + 1) badge.textContent = '⚠️';
+        });
+    });
+}
+
+// Força o grupo de duplicatas a abrir no próximo render dessa lista — único
+// jeito de abrir sozinho (todo o resto começa fechado). Usado só pelo clique
+// no aviso do dashboard; reseta sozinho depois de 1 render.
+const _forcarAbrirDuplicatas = { entrada: false, saida: false };
+
+/** Clique no aviso "⚠️ Duplicatas" do dashboard: abre a aba (Receita/Despesa)
+ *  já com o grupo de duplicatas expandido, sem precisar procurar/abrir na mão. */
+function abrirGrupoDuplicatas(tipoUI) {
+    const aba = tipoUI === 'entrada' ? 'entradas' : 'saidas';
+    _forcarAbrirDuplicatas[tipoUI] = true;
+    if (document.getElementById(aba)?.classList.contains('active')) {
+        if (tipoUI === 'entrada') atualizarEntradasLista(); else atualizarSaidasLista();
+    } else if (typeof mudarAba === 'function') {
+        mudarAba(aba);
+    }
 }
 
 /** Dias restantes do mês EXIBIDO (estadoApp.mesAtual), incluindo hoje.
@@ -366,7 +406,11 @@ function _renderGrupoDuplicatas(transacoes, tipoUI, aberto) {
 function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
     if (!container) return;
     _destacarCampoBusca(tipoUI);
-    const abertoDuplicatas = container.querySelector('details.rec-grupo[data-nome="__duplicatas__"]')?.open;
+    let abertoDuplicatas = container.querySelector('details.rec-grupo[data-nome="__duplicatas__"]')?.open;
+    if (_forcarAbrirDuplicatas[tipoUI]) {
+        abertoDuplicatas = true;
+        _forcarAbrirDuplicatas[tipoUI] = false;
+    }
 
     if (modo === 'cronologica') {
         renderListaCronologica(container, transacoes, tipoUI, msgVazia);
@@ -421,7 +465,11 @@ const MODOS_LISTA_ENTRADAS = ['cronologica', 'recorrencia', 'categoria'];
 let modoListaEntradas = _modoListaSalvo('modoListaEntradas', MODOS_LISTA_ENTRADAS);
 
 function definirModoListaEntradas(modo) {
-    modoListaEntradas = MODOS_LISTA_ENTRADAS.includes(modo) ? modo : 'cronologica';
+    // Toggle: clicar de novo no filtro já ativo desliga (volta pra
+    // cronológica) — não tem botão "Cronológica" próprio, é só o "nenhum
+    // filtro ligado".
+    const novo = modo === modoListaEntradas ? 'cronologica' : modo;
+    modoListaEntradas = MODOS_LISTA_ENTRADAS.includes(novo) ? novo : 'cronologica';
     try { localStorage.setItem('modoListaEntradas', modoListaEntradas); } catch (_) {}
     atualizarEntradasLista();
 }
@@ -483,6 +531,7 @@ function atualizarEntradasLista() {
     document.querySelectorAll('#modoEntradas .modo-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.modo === modoListaEntradas));
     document.getElementById('modoEntradas')?.classList.toggle('vazio', !estadoApp.transacoes.entradas.length);
+    document.getElementById('modoEntradasIcone')?.classList.toggle('ativo', modoListaEntradas !== 'cronologica');
     const container = document.querySelector(SELECTORS.entradasLista);
     const termo = buscaEntradas.trim();
     if (termo) {
@@ -497,7 +546,9 @@ const MODOS_LISTA_SAIDAS = ['cronologica', 'recorrencia', 'metodo', 'categoria']
 let modoListaSaidas = _modoListaSalvo('modoListaSaidas', MODOS_LISTA_SAIDAS);
 
 function definirModoListaSaidas(modo) {
-    modoListaSaidas = MODOS_LISTA_SAIDAS.includes(modo) ? modo : 'cronologica';
+    // Toggle: clicar de novo no filtro já ativo desliga (volta pra cronológica).
+    const novo = modo === modoListaSaidas ? 'cronologica' : modo;
+    modoListaSaidas = MODOS_LISTA_SAIDAS.includes(novo) ? novo : 'cronologica';
     try { localStorage.setItem('modoListaSaidas', modoListaSaidas); } catch (_) {}
     atualizarSaidasLista();
 }
@@ -506,6 +557,7 @@ function atualizarSaidasLista() {
     document.querySelectorAll('#modoSaidas .modo-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.modo === modoListaSaidas));
     document.getElementById('modoSaidas')?.classList.toggle('vazio', !estadoApp.transacoes.saidas.length);
+    document.getElementById('modoSaidasIcone')?.classList.toggle('ativo', modoListaSaidas !== 'cronologica');
     const container = document.querySelector(SELECTORS.saidasLista);
     const termo = buscaSaidas.trim();
     if (termo) {
@@ -544,7 +596,7 @@ function _renderListaBusca(container, transacoes, tipoUI, termo) {
     container.innerHTML = `
     <details class="rec-grupo" data-nome="__busca__" style="--cor-rec:var(--primary)" ${aberto ? 'open' : ''}>
       <summary>
-        <span class="rec-grupo-nome">🔎 Resultado da busca</span>
+        <span class="rec-grupo-nome">🔎 Resultado da busca "${termo}"</span>
         <span class="rec-grupo-contagem">${encontrados.length}</span>
         <span class="rec-grupo-total">${formatarMoeda(total)}</span>
       </summary>
@@ -567,19 +619,35 @@ function _renderListaBusca(container, transacoes, tipoUI, termo) {
  *  anterior. Move pro <body> (ainda "conectado" ao documento, então
  *  document.getElementById continua achando) só até o render terminar. */
 function _destacarCampoBusca(tipoUI) {
-    const wrapper = document.getElementById(tipoUI === 'entrada' ? 'buscaEntradas' : 'buscaSaidas')?.closest('.busca-lista-linha');
-    if (wrapper) document.body.appendChild(wrapper);
+    const input = document.getElementById(tipoUI === 'entrada' ? 'buscaEntradas' : 'buscaSaidas');
+    const wrapper = input?.closest('.busca-lista-linha');
+    if (!wrapper) return;
+    // Se o usuário está digitando (campo com foco) nesse exato momento, guarda
+    // onde estava o cursor — mover o nó pro <body> e de volta tira o foco
+    // (mesmo sendo o MESMO nó), então sem isso cada tecla digitada obrigava
+    // clicar de novo no campo pra continuar.
+    if (document.activeElement === input) {
+        wrapper._focoSalvo = { selStart: input.selectionStart, selEnd: input.selectionEnd };
+    }
+    document.body.appendChild(wrapper);
 }
 
 function _posicionarCampoBusca(container, tipoUI) {
     if (!container) return;
-    const wrapper = document.getElementById(tipoUI === 'entrada' ? 'buscaEntradas' : 'buscaSaidas')?.closest('.busca-lista-linha');
+    const input = document.getElementById(tipoUI === 'entrada' ? 'buscaEntradas' : 'buscaSaidas');
+    const wrapper = input?.closest('.busca-lista-linha');
     if (!wrapper) return;
     const grafico = container.querySelector('.cron-barra');
     if (grafico) {
         grafico.insertAdjacentElement('afterend', wrapper);
     } else {
         container.insertAdjacentElement('afterbegin', wrapper);
+    }
+    if (wrapper._focoSalvo) {
+        const { selStart, selEnd } = wrapper._focoSalvo;
+        delete wrapper._focoSalvo;
+        input.focus();
+        try { input.setSelectionRange(selStart, selEnd); } catch (_) {}
     }
 }
 

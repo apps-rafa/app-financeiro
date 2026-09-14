@@ -58,8 +58,24 @@
 }
 .modo-lista-icone {
     flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     color: var(--text-muted);
     opacity: .8;
+    background: transparent;
+    border: none;
+    padding: .2rem;
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    line-height: 0;
+}
+.modo-lista-icone:hover { opacity: 1; background: var(--surface-3); }
+/* "Aceso" quando algum filtro está ligado (clicar aqui desliga, igual
+   clicar de novo no botão ativo — volta pra ordem cronológica). */
+.modo-lista-icone.ativo {
+    color: var(--primary);
+    opacity: 1;
 }
 
 /* Sem lançamento nenhum no mês: os filtros não têm o que filtrar — fica

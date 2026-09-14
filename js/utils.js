@@ -46,8 +46,8 @@ function validarCampo(valor) {
  * Valida um formulário de transação
  */
 function validarFormularioTransacao(dados) {
-    // Receita (entradas) não tem método
-    const rotulo = { data: 'a data', valor: 'o valor', metodo: 'o método', categoria: 'a categoria' };
+    // Receita (entradas) não tem forma de pgto.
+    const rotulo = { data: 'a data', valor: 'o valor', metodo: 'a forma de pgto.', categoria: 'a categoria' };
     const obrig = dados.tipo === 'saidas'
         ? ['data', 'valor', 'metodo', 'categoria']
         : ['data', 'valor', 'categoria'];

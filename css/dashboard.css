@@ -134,7 +134,32 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    white-space: nowrap;
+    overflow: hidden;
 }
+.card-titulo-txt { overflow: hidden; text-overflow: ellipsis; }
+
+/* Aviso de duplicatas no card do dashboard — clicável, some se não houver
+   espaço (JS troca pro emoji sozinho; ver _atualizarAvisoDuplicatas). Nunca
+   quebra linha: ou cabe do jeito que está, ou encolhe pro emoji só. */
+.dup-aviso {
+    flex: 0 0 auto;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    font-weight: var(--font-weight-bold);
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--warning, #f59e0b);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.dup-aviso:hover { text-decoration: underline; }
 
 .summary-card .amount {
     /* Tamanho-base (cqw) — ver comentário em .card-linhas .linha.total

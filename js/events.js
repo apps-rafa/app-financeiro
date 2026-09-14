@@ -67,18 +67,32 @@ function configurarEventListeners() {
     const btnConfig = document.getElementById('btnConfig');
     if (btnConfig) btnConfig.addEventListener('click', () => mudarAba('menus'));
 
-    // Aba Despesas: alternar "Por recorrência" / "Por método" / "Por categoria" / "Ordem cronológica"
+    // Aba Despesas: alternar "Por recorrência" / "Por método" / "Por categoria"
+    // — toggle: sem nenhum ligado, fica em ordem cronológica.
     const modoSaidas = document.getElementById('modoSaidas');
     if (modoSaidas) modoSaidas.addEventListener('click', e => {
         const btn = e.target.closest('.modo-btn');
         if (btn && typeof definirModoListaSaidas === 'function') definirModoListaSaidas(btn.dataset.modo);
     });
 
-    // Aba Receitas: alternar "Por recorrência" / "Por categoria" / "Ordem cronológica"
+    // Aba Receitas: alternar "Por recorrência" / "Por categoria"
     const modoEntradas = document.getElementById('modoEntradas');
     if (modoEntradas) modoEntradas.addEventListener('click', e => {
         const btn = e.target.closest('.modo-btn');
         if (btn && typeof definirModoListaEntradas === 'function') definirModoListaEntradas(btn.dataset.modo);
+    });
+
+    // Ícone do funil: desliga o filtro ativo (se nenhum estiver ligado, não
+    // faz nada) — mesmo efeito de clicar de novo no botão já ativo.
+    document.getElementById('modoSaidasIcone')?.addEventListener('click', () => {
+        if (modoListaSaidas !== 'cronologica' && typeof definirModoListaSaidas === 'function') {
+            definirModoListaSaidas(modoListaSaidas);
+        }
+    });
+    document.getElementById('modoEntradasIcone')?.addEventListener('click', () => {
+        if (modoListaEntradas !== 'cronologica' && typeof definirModoListaEntradas === 'function') {
+            definirModoListaEntradas(modoListaEntradas);
+        }
     });
 
     // Busca em tempo real (Receitas/Despesas) — filtra a cada tecla, funciona
@@ -111,6 +125,16 @@ function configurarEventListeners() {
     // visão, então precisa do toggle que mudarAba() já tem embutido.
     document.querySelector('.summary-card.entradas')?.addEventListener('click', () => mudarAba('entradas'));
     document.querySelector('.summary-card.saidas')?.addEventListener('click', () => mudarAba('saidas'));
+
+    // Aviso "⚠️ Duplicatas" dentro do card — clique próprio (não é só abrir a
+    // aba: precisa também abrir o grupo de duplicatas já expandido), então
+    // para a propagação pro listener do card acima (que só faz toggle).
+    document.querySelectorAll('.dup-aviso').forEach(badge => {
+        badge.addEventListener('click', e => {
+            e.stopPropagation();
+            if (typeof abrirGrupoDuplicatas === 'function') abrirGrupoDuplicatas(badge.dataset.dupAviso);
+        });
+    });
     
     // Formulário
     const form = document.querySelector(SELECTORS.formTransacao);
@@ -333,8 +357,15 @@ function mudarTipoTransacao(tipo) {
     if (typeof atualizarLabelsPorTipo === 'function') atualizarLabelsPorTipo();
     if (typeof atualizarCamposRecorrencia === 'function') atualizarCamposRecorrencia();
 
-    // Recarregar menus para o novo tipo
-    carregarMenus();
+    // Recarregar menus para o novo tipo — se o usuário trocar de tipo antes
+    // dos menus carregarem pela 1a vez (ex.: clicou rápido, "+ Lançamento"
+    // recém aberto), reaplica a visibilidade dos campos depois que os dados
+    // chegarem, pra não ficar com um estado calculado antes de tempo.
+    carregarMenus().then(() => {
+        if (estadoApp.tipoAtual !== tipo) return; // trocou de novo enquanto carregava
+        if (typeof atualizarLabelsPorTipo === 'function') atualizarLabelsPorTipo();
+        if (typeof atualizarCamposRecorrencia === 'function') atualizarCamposRecorrencia();
+    });
 }
 
 /**
