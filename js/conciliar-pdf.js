@@ -510,7 +510,7 @@ function renderConciliar(secId, modo) {
     document.getElementById(arquivoId)?.addEventListener('change', e => onConciliarArquivos(e, secId, modo));
 
     const lista = document.getElementById(listaId);
-    lista.innerHTML = estado.pdfs.map(p => _renderPdfEntrada(p, modo, abertos)).join('');
+    lista.innerHTML = estado.pdfs.map(p => _renderPdfEntrada(p, modo, abertos, secId)).join('');
 
     estado.pdfs.forEach(p => {
         document.getElementById(`conciliarMetodo-${p.id}`)?.addEventListener('change', async e => {
@@ -539,7 +539,7 @@ function _lerAbertosConciliar(container) {
     return abertos;
 }
 
-function _renderPdfEntrada(p, modo, abertos = {}) {
+function _renderPdfEntrada(p, modo, abertos = {}, secId = '') {
     const rotuloArquivo = modo === 'pdf' ? 'PDF' : 'CSV';
     if (p.status === 'carregando') {
         return `<div class="conciliar-pdf-card"><b>${p.nomeArquivo}</b> — lendo...</div>`;
@@ -580,7 +580,7 @@ function _renderPdfEntrada(p, modo, abertos = {}) {
             id: `${p.id}:pdf`, abertos,
             padraoAberto: res.noPdfNaoNoApp.length > 0,
             titulo: `⚠️ No ${rotuloArquivo} mas não lançado no app (${res.noPdfNaoNoApp.length})`,
-            corpo: _renderTabelaLinhasPDF(p, res.noPdfNaoNoApp)
+            corpo: _renderTabelaLinhasPDF(p, res.noPdfNaoNoApp, secId, modo)
         })}
 
         ${_grupoColapsavelConciliar({
@@ -612,21 +612,116 @@ function _grupoColapsavelConciliar({ id, abertos, padraoAberto, titulo, corpo })
         </details>`;
 }
 
-function _renderTabelaLinhasPDF(p, linhas) {
+function _renderTabelaLinhasPDF(p, linhas, secId, modo) {
     if (!linhas.length) return `<p class="import-csv-desc">Nenhuma.</p>`;
     return `
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">
-            <thead><tr><th>Data</th><th>Valor</th><th>Tipo</th><th>Descrição</th></tr></thead>
-            <tbody>${linhas.map(l => `
+            <thead><tr><th></th><th>Data</th><th>Valor</th><th>Tipo</th><th>Descrição</th></tr></thead>
+            <tbody>${linhas.map(l => {
+                const idx = p.linhas.indexOf(l);
+                return `
                 <tr>
+                    <td><button type="button" class="btn-mini-add" title="Lançar esse item no app"
+                            onclick="_abrirLancarConciliar('${secId}','${modo}','${p.id}',${idx})">+</button></td>
                     <td>${l.dataISO.split('-').reverse().join('/')}</td>
                     <td>${formatarMoeda(l.valor)}</td>
                     <td><span class="chip-tipo chip-tipo--${l.tipo}">${l.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
                     <td class="import-csv-desc" title="${l.descricao}">${l.descricao}</td>
-                </tr>`).join('')}</tbody>
+                </tr>`;
+            }).join('')}</tbody>
         </table>
     </div>`;
+}
+
+/** "+" de uma linha "no CSV/PDF mas não lançado no app": popup pequeno
+ *  (Categoria + Frequência + Descrição editável — Data/Valor/Forma de
+ *  pgto./Tipo já vêm do arquivo, só mostrados como contexto) que cria o
+ *  lançamento direto, sem sair da tela de conciliação — trocar de aba
+ *  pra usar o formulário grande perderia o arquivo já carregado (a aba
+ *  de Configuração é remontada do zero sempre que reabre). */
+function _abrirLancarConciliar(secId, modo, pId, idx) {
+    const estado = _estadosConciliar[secId];
+    const p = estado?.pdfs.find(x => x.id === pId);
+    const l = p?.linhas[idx];
+    if (!l) return;
+
+    const metodoObj = (estadoApp.menus.metodos || []).find(m => rotuloMetodo(m) === p.metodoEscolhido);
+    const diaFechamento = (metodoObj && metodoObj.metodoKind === 'Crédito') ? metodoObj.diaFechamento : null;
+    const compRaw = diaFechamento && typeof competenciaDe === 'function' ? competenciaDe(l.dataISO, diaFechamento) : l.dataISO.slice(0, 7);
+    const competencia = /^\d{4}-\d{2}$/.test(compRaw) ? `${compRaw}-01` : compRaw;
+
+    const categorias = l.tipo === 'entradas'
+        ? (estadoApp.menus.categoriasReceita || [])
+        : (estadoApp.menus.categoriasDespesa || []);
+    const sugestao = typeof _resolverCategoria === 'function' ? _resolverCategoria(p.formato === 'fatura' ? l.descricao : l.descricao, l.tipo) : null;
+    const diaPadrao = parseInt(l.dataISO.slice(8, 10), 10);
+    const esc = s => String(s || '').replace(/"/g, '&quot;');
+
+    const ov = mostrarDialogo({
+        titulo: 'Lançar no app',
+        corpoHTML: `
+            <p class="import-csv-desc">
+                ${l.dataISO.split('-').reverse().join('/')} · ${formatarMoeda(l.valor)} ·
+                ${l.tipo === 'entradas' ? 'Receita' : 'Despesa'} · ${esc(p.metodoEscolhido)}
+            </p>
+            <div class="form-group">
+                <label for="lcDescricao">Descrição</label>
+                <input type="text" id="lcDescricao" value="${esc(l.descricao)}">
+            </div>
+            <div class="form-group">
+                <label for="lcCategoria">Categoria</label>
+                <select id="lcCategoria">
+                    <option value="">Selecione...</option>
+                    ${categorias.map(c => `<option value="${esc(c)}" ${c === sugestao ? 'selected' : ''}>${c}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="lcFrequencia">Frequência</label>
+                <select id="lcFrequencia">
+                    <option value="Pontual">Pontual</option>
+                    <option value="Mensal">Mensal</option>
+                </select>
+            </div>
+            <div class="form-group" id="lcDiaVencimentoWrap" hidden>
+                <label for="lcDiaVencimento">Dia de vencimento</label>
+                <input type="number" id="lcDiaVencimento" min="1" max="31" value="${diaPadrao}">
+            </div>
+        `,
+        acoes: [
+            { label: 'Cancelar' },
+            {
+                label: 'Lançar', primario: true,
+                onClick: async () => {
+                    const categoria = document.getElementById('lcCategoria').value;
+                    if (!categoria) { mostrarNotificacao('Escolha uma categoria', 'erro'); return true; }
+                    const frequencia = document.getElementById('lcFrequencia').value;
+                    const descricao = document.getElementById('lcDescricao').value.trim();
+                    const diaRecorrencia = frequencia === 'Mensal' ? (document.getElementById('lcDiaVencimento').value || '') : '';
+                    try {
+                        await adicionarTransacaoAPI({
+                            tipo: l.tipo, data: l.dataISO, valor: l.valor, metodo: p.metodoEscolhido,
+                            categoria, descricao, formaPagamento: 'À vista',
+                            tipoRecorrencia: frequencia, diaRecorrencia, diaSemana: '', semanas: [],
+                            competencia
+                        });
+                        mostrarNotificacao('✓ Lançamento criado', 'sucesso');
+                        await _recompararPDV(p);
+                        renderConciliar(secId, modo);
+                        if (typeof recarregarDados === 'function') await recarregarDados();
+                        if (typeof atualizarUI === 'function') atualizarUI();
+                    } catch (err) {
+                        console.error('Erro ao lançar da conciliação:', err);
+                        mostrarNotificacao('Erro ao lançar', 'erro');
+                        return true;
+                    }
+                }
+            }
+        ]
+    });
+    ov.querySelector('#lcFrequencia').addEventListener('change', e => {
+        ov.querySelector('#lcDiaVencimentoWrap').hidden = e.target.value !== 'Mensal';
+    });
 }
 
 function _renderTabelaTransacoesApp(transacoes) {
