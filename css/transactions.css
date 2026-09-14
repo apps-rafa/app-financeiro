@@ -308,20 +308,38 @@
 }
 
 /* Organizador dentro de um grupo de recorrência (ex.: "Pontual" por
-   Cronológica/Categoria/Forma de pgto.) — mesma ideia do .modo-lista de
-   fora, só menor, já que vive dentro de um grupo já recolhível. */
+   Categoria/Forma de pgto.) — ao lado do nome do grupo, dentro do próprio
+   <summary> (não numa linha embaixo). Mesma ideia visual do .modo-lista de
+   fora, só menor. */
 .subgrupo-organizador {
-    display: flex;
-    gap: .25rem;
-    background: var(--surface-3);
-    padding: .2rem;
-    border-radius: var(--radius-xs);
-    margin-bottom: .3rem;
-}
-.subgrupo-modo-btn {
-    flex: 1 1 0;
+    display: inline-flex;
+    align-items: center;
+    flex: 0 1 auto;
     min-width: 0;
-    padding: .3rem .2rem;
+    gap: .2rem;
+    background: var(--surface-3);
+    padding: .15rem;
+    border-radius: var(--radius-xs);
+}
+.subgrupo-modo-icone {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    padding: .25rem;
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    line-height: 0;
+}
+.subgrupo-modo-icone:hover { background: var(--surface); }
+.subgrupo-modo-icone.ativo { color: var(--primary); }
+.subgrupo-modo-btn {
+    flex: none;
+    min-width: 0;
+    padding: .3rem .5rem;
     border: 1px solid transparent;
     border-radius: var(--radius-xs);
     background: transparent;
@@ -329,7 +347,7 @@
     font-size: .7rem;
     font-weight: var(--font-weight-semibold);
     cursor: pointer;
-    white-space: normal;
+    white-space: nowrap;
     line-height: 1.1;
     text-align: center;
 }

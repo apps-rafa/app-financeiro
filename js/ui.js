@@ -445,8 +445,19 @@ function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
             }
             const subBtn = e.target.closest('[data-submodo]');
             if (subBtn) {
+                e.preventDefault(); // está dentro do <summary> — sem isso, o clique também abre/fecha o <details>
                 const tipoRec = subBtn.closest('[data-grupo-rec]').dataset.grupoRec;
-                _setSubModoGrupo(tipoUI, tipoRec, subBtn.dataset.submodo);
+                const atual = _subModoGrupoDe(tipoUI, tipoRec);
+                const novo = subBtn.dataset.submodo === atual ? 'cronologica' : subBtn.dataset.submodo;
+                _setSubModoGrupo(tipoUI, tipoRec, novo);
+                renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia);
+                return;
+            }
+            const subIcone = e.target.closest('[data-submodo-icone]');
+            if (subIcone) {
+                e.preventDefault();
+                const tipoRec = subIcone.closest('[data-grupo-rec]').dataset.grupoRec;
+                _setSubModoGrupo(tipoUI, tipoRec, 'cronologica');
                 renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia);
                 return;
             }
@@ -532,6 +543,7 @@ function atualizarEntradasLista() {
         b.classList.toggle('active', b.dataset.modo === modoListaEntradas));
     document.getElementById('modoEntradas')?.classList.toggle('vazio', !estadoApp.transacoes.entradas.length);
     document.getElementById('modoEntradasIcone')?.classList.toggle('ativo', modoListaEntradas !== 'cronologica');
+    _ajustarLabelsFiltro(document.getElementById('modoEntradas'));
     const container = document.querySelector(SELECTORS.entradasLista);
     const termo = buscaEntradas.trim();
     if (termo) {
@@ -558,6 +570,7 @@ function atualizarSaidasLista() {
         b.classList.toggle('active', b.dataset.modo === modoListaSaidas));
     document.getElementById('modoSaidas')?.classList.toggle('vazio', !estadoApp.transacoes.saidas.length);
     document.getElementById('modoSaidasIcone')?.classList.toggle('ativo', modoListaSaidas !== 'cronologica');
+    _ajustarLabelsFiltro(document.getElementById('modoSaidas'));
     const container = document.querySelector(SELECTORS.saidasLista);
     const termo = buscaSaidas.trim();
     if (termo) {
@@ -917,27 +930,31 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
             : subModo === 'metodo'
             ? _renderItensSubagrupados(itens, tipoUI, t => t.metodo, 'Sem forma de pagamento', abertosSub)
             : itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('');
+        // Ao lado do nome do grupo (não embaixo) — mesma lógica de toggle do
+        // filtro principal: ícone de funil desliga, sem opção "Cronológica"
+        // própria (é só o estado "nenhum submodo ligado").
         const submenuHTML = !comSubmodo ? '' : `
-            <div class="subgrupo-organizador" data-grupo-rec="${tipoRec.replace(/"/g, '&quot;')}">
-              <button type="button" class="subgrupo-modo-btn${subModo === 'cronologica' ? ' active' : ''}" data-submodo="cronologica">Cronológica</button>
-              <button type="button" class="subgrupo-modo-btn${subModo === 'categoria' ? ' active' : ''}" data-submodo="categoria">Categoria</button>
-              <button type="button" class="subgrupo-modo-btn${subModo === 'metodo' ? ' active' : ''}" data-submodo="metodo">Forma de pgto.</button>
-            </div>`;
+            <span class="subgrupo-organizador" data-grupo-rec="${tipoRec.replace(/"/g, '&quot;')}">
+              <button type="button" class="subgrupo-modo-icone${subModo !== 'cronologica' ? ' ativo' : ''}" data-submodo-icone="1" title="Tirar filtro"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M3 4h18v2.5l-7 8V19l-4 2v-6.5l-7-8V4z"/></svg></button>
+              <button type="button" class="subgrupo-modo-btn${subModo === 'categoria' ? ' active' : ''}" data-submodo="categoria" data-full="🏷️ Categoria" data-emoji="🏷️">🏷️ Categoria</button>
+              <button type="button" class="subgrupo-modo-btn${subModo === 'metodo' ? ' active' : ''}" data-submodo="metodo" data-full="💳 Forma de pgto." data-emoji="💳">💳 Forma de pgto.</button>
+            </span>`;
 
         return `
         <details class="rec-grupo" data-nome="${tipoRec.replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[tipoRec] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${rotulo}</span>
+            ${submenuHTML}
             <span class="rec-grupo-contagem">${itens.length}</span>
             <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
-            ${submenuHTML}
             ${corpoItens}
           </div>
         </details>`;
     }).join('');
 
+    container.querySelectorAll('.subgrupo-organizador').forEach(_ajustarLabelsFiltro);
     container.onclick = onListaTransacaoClick;
 }
 
@@ -1569,6 +1586,24 @@ function definirLabelResp(sel, full, short) {
     if (!short) return;
     const semEspaco = el.offsetParent !== null && el.scrollWidth > el.clientWidth + 1;
     if (semEspaco) el.textContent = short;
+}
+
+/** Mesma ideia de definirLabelResp, mas pra uma FILEIRA inteira de botões de
+ *  filtro (data-full/data-emoji cada um) — usado no filtro principal
+ *  (Recorrência/Forma de pgto./Categoria) e no organizador inline dentro de
+ *  "Pontual" (Categoria/Forma de pgto.). Se a fileira não couber numa linha
+ *  só, TODOS os botões encolhem pro emoji junto (troca uniforme, não um de
+ *  cada vez) — mantém alinhado e nunca quebra linha. */
+function _ajustarLabelsFiltro(rowEl) {
+    if (!rowEl) return;
+    const btns = [...rowEl.querySelectorAll('[data-full]')];
+    if (!btns.length) return;
+    btns.forEach(b => { b.textContent = b.dataset.full; });
+    requestAnimationFrame(() => {
+        if (rowEl.scrollWidth > rowEl.clientWidth + 1) {
+            btns.forEach(b => { b.textContent = b.dataset.emoji; });
+        }
+    });
 }
 
 /**

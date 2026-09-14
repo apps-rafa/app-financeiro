@@ -140,7 +140,11 @@
     white-space: nowrap;
     overflow: hidden;
 }
-.card-titulo-txt { overflow: hidden; text-overflow: ellipsis; }
+/* Nunca encolhe/trunca — é o aviso de duplicatas que cede espaço primeiro
+   (vira só o emoji, ver _atualizarAvisoDuplicatas); sem isso, um filho com
+   overflow:hidden vira o único que "cabe encolher" no flex e a JS nunca
+   detecta que faltou espaço, porque quem cede é sempre este aqui. */
+.card-titulo-txt { flex: 0 0 auto; }
 
 /* Aviso de duplicatas no card do dashboard — clicável, some se não houver
    espaço (JS troca pro emoji sozinho; ver _atualizarAvisoDuplicatas). Nunca
