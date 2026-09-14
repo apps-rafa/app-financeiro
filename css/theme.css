@@ -135,7 +135,6 @@ input.campo-travado,
     border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
     font-weight: 700;
     padding: 0.7rem;
-    font-size: var(--font-size-base);
     outline: none;
 }
 .tab-btn[data-tab="adicionar"]:hover { color: var(--primary); }
@@ -231,7 +230,9 @@ input.campo-travado,
     font-size: .8em;
     overflow-wrap: break-word;
 }
-@media (max-width: 460px) {
+/* Some só numa tela BEM apertada — o e-mail logado tem prioridade sobre o
+   nome do app (que já encolheu até virar só o emoji nesse ponto). */
+@media (max-width: 340px) {
     .user-email { display: none; }
 }
 

@@ -21,14 +21,16 @@
 .summary-card.saidas       { grid-column: 2; grid-row: 1 / span 2; }
 .summary-card.balanco      { grid-column: 3; grid-row: 1; }
 .summary-card.gasto-diario { grid-column: 3; grid-row: 2; }
-/* Conteúdo centralizado verticalmente — esses 2 cards são mais baixos que
-   Receita/Despesa, então título+valor ficavam "puxados" pro topo em vez
-   de ocupar o meio da caixa. */
+/* Alinhado no topo (não centralizado) — com o valor logo abaixo do
+   título nos 2, "Balanço" e "Gasto diário" ficam com o número na mesma
+   altura; centralizar bagunçava isso, já que só "Gasto diário" tem uma
+   3ª linha (subtítulo "N dias restantes") puxando o conteúdo dele mais
+   pra cima que o de "Balanço". */
 .summary-card.balanco,
 .summary-card.gasto-diario {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 /* Espaço realmente apertado (mobile estreito): volta pro 2x2 empilhado. */
@@ -40,6 +42,19 @@
     .summary-card.saidas       { grid-column: 2; grid-row: 1; }
     .summary-card.balanco      { grid-column: 1; grid-row: 2; }
     .summary-card.gasto-diario { grid-column: 2; grid-row: 2; }
+}
+
+/* Mobile bem estreito: nem o 2x2 cabe confortável mais — Receita e Despesa
+   (os 2 cards com mais linha de conteúdo: atual/a receber/total) passam a
+   ocupar 1 coluna cada, 100% da largura, um embaixo do outro. */
+@media (max-width: 400px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+    }
+    .summary-card.entradas     { grid-column: 1; grid-row: 1; }
+    .summary-card.saidas       { grid-column: 1; grid-row: 2; }
+    .summary-card.balanco      { grid-column: 1; grid-row: 3; }
+    .summary-card.gasto-diario { grid-column: 1; grid-row: 4; }
 }
 
 /* Grade 2x2: Receitas | Despesas ; Balanço | Gasto diário */
