@@ -1069,7 +1069,7 @@ let tipoProximasAtual = (() => {
 const MODOS_PROXIMAS_SAIDAS = ['cronologica', 'recorrencia', 'metodo', 'categoria'];
 const MODOS_PROXIMAS_ENTRADAS = ['cronologica', 'recorrencia', 'categoria'];
 const ROTULOS_MODO_PROXIMAS = {
-    recorrencia: 'Recorrência', metodo: 'Método', categoria: 'Categoria', cronologica: 'Cronológica'
+    recorrencia: 'Recorrência', metodo: 'Forma de pgto.', categoria: 'Categoria', cronologica: 'Cronológica'
 };
 function _modosProximasValidos() {
     return tipoProximasAtual === 'entradas' ? MODOS_PROXIMAS_ENTRADAS : MODOS_PROXIMAS_SAIDAS;
@@ -1558,7 +1558,7 @@ function abrirNovaCategoria(catTipo) {
 /** Diálogo rápido para criar um método a partir do formulário */
 function abrirNovoMetodo() {
     const ov = mostrarDialogo({
-        titulo: 'Novo método',
+        titulo: 'Nova forma de pagamento',
         corpoHTML: `
             <div class="campo"><label for="dlgMetKind">Tipo</label>
                 <select id="dlgMetKind">

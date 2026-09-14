@@ -298,7 +298,7 @@ function renderImportCSV() {
         <table class="import-csv-tabela">
             <thead><tr>
                 ${comCheckboxIgnorar ? '<th>Ignorar?</th>' : ''}
-                <th>Data</th><th>Valor</th><th>Tipo</th><th>Método</th><th>Categoria</th><th>Descrição</th>
+                <th>Data</th><th>Valor</th><th>Tipo</th><th>Forma de pgto.</th><th>Categoria</th><th>Descrição</th>
             </tr></thead>
             <tbody>${grupo.map(([l, i]) => _renderLinhaImportCSV(l, i, false, comCheckboxIgnorar)).join('')}</tbody>
         </table>
@@ -306,11 +306,11 @@ function renderImportCSV() {
 
     const tabelaSuspeitas = !suspeitas.length ? '' : `
     <div class="import-csv-grupo-titulo">🔁 Possíveis duplicatas — já existe algo parecido no app (${suspeitas.length})</div>
-    <p class="import-csv-nota">Mesmo tipo, data e valor de algo já lançado, mas com método/categoria/descrição diferente. Marcadas pra pular por padrão — desmarque se for mesmo um lançamento novo.</p>
+    <p class="import-csv-nota">Mesmo tipo, data e valor de algo já lançado, mas com forma de pagamento/categoria/descrição diferente. Marcadas pra pular por padrão — desmarque se for mesmo um lançamento novo.</p>
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">
             <thead><tr>
-                <th>Pular?</th><th>Data</th><th>Valor</th><th>Tipo</th><th>Método</th><th>Categoria</th><th>Descrição</th>
+                <th>Pular?</th><th>Data</th><th>Valor</th><th>Tipo</th><th>Forma de pgto.</th><th>Categoria</th><th>Descrição</th>
             </tr></thead>
             <tbody>${suspeitas.map(([l, i]) => _renderLinhaImportCSV(l, i, true)).join('')}</tbody>
         </table>

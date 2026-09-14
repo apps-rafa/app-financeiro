@@ -540,7 +540,7 @@ function _renderPdfEntrada(p, modo) {
         <div class="conciliar-pdf-topo">
             <b>${p.nomeArquivo}</b>
             <span class="import-csv-label-linha">${rotuloFormato}</span>
-            <label class="conciliar-pdf-metodo">Método correspondente
+            <label class="conciliar-pdf-metodo">Forma de pgto. correspondente
                 <select id="conciliarMetodo-${p.id}">
                     <option value="">Selecione...</option>
                     ${metodos.map(m => {
