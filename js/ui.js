@@ -528,8 +528,17 @@ function _normalizarBusca(s) {
 function _filtrarPorBusca(transacoes, termo) {
     const t = _normalizarBusca(termo).trim();
     if (!t) return transacoes;
-    return (transacoes || []).filter(tr => [tr.descricao, tr.categoria, tr.metodo, tr.formaPagamento]
-        .some(campo => _normalizarBusca(campo).includes(t)));
+    return (transacoes || []).filter(tr => {
+        const bateTexto = [tr.descricao, tr.categoria, tr.metodo, tr.formaPagamento]
+            .some(campo => _normalizarBusca(campo).includes(t));
+        if (bateTexto) return true;
+        // Valor: aceita tanto formatado ("r$ 50,00") quanto número solto
+        // ("50" ou "50,5") — sem isso, buscar por valor não achava nada.
+        const valor = (tr.valorMes != null ? tr.valorMes : tr.valor) || 0;
+        const valorFormatado = _normalizarBusca(formatarMoeda(valor));
+        const valorSolto = String(valor).replace('.', ',');
+        return valorFormatado.includes(t) || valorSolto.includes(t);
+    });
 }
 
 function definirBuscaEntradas(termo) {
