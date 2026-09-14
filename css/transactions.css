@@ -9,22 +9,37 @@
     gap: var(--spacing-md);
 }
 
-/* Faturas de cartão (topo das Próximas) */
+/* Faturas de cartão de crédito (topo das Próximas) — colapsável, com os
+   lançamentos daquele cartão dentro; fechado por padrão (mesmo padrão
+   visual/interativo do .rec-grupo). */
 .faturas-cartao { display: flex; flex-direction: column; gap: .4rem; margin-bottom: var(--spacing-md); }
 .faturas-titulo { font-size: .8rem; font-weight: 700; color: var(--text-muted); margin: 0 0 .1rem; text-transform: uppercase; letter-spacing: .03em; }
 .fatura-item {
-    display: flex;
-    align-items: baseline;
-    gap: .5rem;
-    padding: .5rem .7rem;
     background: var(--surface);
     border: 1px solid var(--border);
     border-left: 3px solid var(--cor-cartao, var(--primary));
     border-radius: var(--radius-sm);
+    overflow: hidden;
 }
+.fatura-item > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: baseline;
+    gap: .5rem;
+    padding: .5rem .7rem;
+}
+.fatura-item > summary::-webkit-details-marker { display: none; }
+.fatura-item > summary::before {
+    content: "▸";
+    font-size: .8em;
+    color: var(--cor-cartao, var(--text-muted));
+}
+.fatura-item[open] > summary::before { content: "▾"; }
 .fatura-nome { flex: 1; min-width: 0; font-weight: var(--font-weight-semibold); overflow-wrap: break-word; }
 .fatura-venc { font-size: .72rem; color: var(--text-muted); white-space: nowrap; }
 .fatura-total { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fatura-itens { display: grid; gap: var(--spacing-md); padding: 0 .7rem .6rem; }
 
 /* Alternância de visão das abas Receitas/Despesas/Próximas: recorrência /
    método / categoria / ordem cronológica — sempre numa linha só (a fonte
@@ -364,7 +379,6 @@
 .subgrupo:not(:first-child) { margin-top: .5rem; }
 .subgrupo-cab {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     gap: .5rem;
     padding: .25rem .1rem;
@@ -375,6 +389,10 @@
     list-style: none;
 }
 .subgrupo-cab::-webkit-details-marker { display: none; }
+/* 3 itens flex (▸, nome, total) com justify-content:space-between deixava o
+   nome "flutuando" no meio (centralizado entre a seta e o valor) em vez de
+   colado à esquerda — por isso o nome ganha flex:1 e empurra só o total
+   pra direita, sem precisar de space-between no pai. */
 .subgrupo-cab::before {
     content: '▸';
     margin-right: .3rem;
@@ -384,7 +402,8 @@
 .subgrupo[open] > .subgrupo-cab::before { transform: rotate(90deg); }
 .subgrupo:not([open]) > .subgrupo-cab { border-bottom: 1px dashed var(--border); }
 .subgrupo[open] > .subgrupo-cab { border-bottom: 1px dashed var(--border); margin-bottom: .3rem; }
-.subgrupo-total { font-variant-numeric: tabular-nums; }
+.subgrupo-nome { flex: 1; text-align: left; }
+.subgrupo-total { flex: none; font-variant-numeric: tabular-nums; }
 
 /* Barra única (Cronológica): 2 segmentos proporcionais ao total de cada
    grupo (Atual / A receber|pagar). Hover mostra %+valor (title nativo);
