@@ -87,6 +87,7 @@ h1, h2, h3, h4, label, .item-nome, .despesa-categoria, .amount { color: var(--te
 .add-item-form input,
 .add-item-form select,
 .item-edit input,
+.busca-lista,
 .sugestoes {
     background-color: var(--surface-2);
     color: var(--text);
@@ -94,7 +95,8 @@ h1, h2, h3, h4, label, .item-nome, .despesa-categoria, .amount { color: var(--te
 }
 .form-group input::placeholder,
 .form-group textarea::placeholder,
-.dialogo-corpo input::placeholder { color: var(--text-muted); }
+.dialogo-corpo input::placeholder,
+.busca-lista::placeholder { color: var(--text-muted); }
 
 /* Autofill do navegador (Chrome/Edge) força fundo branco + texto preto
    por conta própria, ignorando o CSS da página — sem isto, um campo
