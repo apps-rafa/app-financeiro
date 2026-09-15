@@ -1544,10 +1544,29 @@ function _onCliqueProximas(e) {
         atualizarProximasTransacoes();
         return;
     }
+    const ordemBtn = e.target.closest('[data-ordem-criacao-toggle]');
+    if (ordemBtn) {
+        e.preventDefault(); // está dentro do <summary> — sem isso, o clique também abre/fecha o <details>
+        const chave = ordemBtn.dataset.ordemCriacaoToggle;
+        _ordemCriacaoGrupo[chave] = !_ordemCriacaoGrupo[chave];
+        const det = ordemBtn.closest('details.subgrupo, details.fatura-item, details.rec-grupo');
+        if (det) det.open = true;
+        atualizarProximasTransacoes();
+        return;
+    }
     onListaTransacaoClick(e);
 }
 
 const _porDataAsc = (a, b) => new Date(a.data) - new Date(b.data);
+/** Mesma ideia de _ordenarPorGrupo, mas pro contexto misto de "Próximas"
+ *  (cada item é {trans, tipoUI, opts}, não a transação direto) — e
+ *  cronológica aqui é ASCENDENTE (mais próxima primeiro), não descendente
+ *  como no histórico de Despesas/Receitas. */
+function _ordenarProximasPorGrupo(itensCtx, chave) {
+    return itensCtx.sort(_ordemCriacaoAtiva(chave)
+        ? (a, b) => (b.trans.id || 0) - (a.trans.id || 0)
+        : (a, b) => _porDataAsc(a.trans, b.trans));
+}
 
 /**
  * Atualiza lista de próximas transações (só do tipo selecionado — Despesa ou Receita)
@@ -1647,7 +1666,7 @@ function _agruparProximasPorTotal(ctxList, { chaveDe, semChave, cores, extraOpts
         mapa.get(k).push(c);
     });
     const grupos = [...mapa.entries()]
-        .map(([nome, itens]) => [nome, itens.sort((a, b) => _porDataAsc(a.trans, b.trans)), itens.reduce((s, c) => s + valorDe(c), 0)])
+        .map(([nome, itens]) => [nome, _ordenarProximasPorGrupo(itens, `proximas:total:${nome}`), itens.reduce((s, c) => s + valorDe(c), 0)])
         .sort((a, b) => b[2] - a[2]);
     const totalGeral = grupos.reduce((s, g) => s + g[2], 0);
 
@@ -1658,6 +1677,8 @@ function _agruparProximasPorTotal(ctxList, { chaveDe, semChave, cores, extraOpts
         <details class="rec-grupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[nome] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
+            ${_renderOrdemCriacaoToggle(`proximas:total:${nome}`)}
+            <span class="rec-grupo-espaco"></span>
             <span class="rec-grupo-contagem">${itens.length}</span>
             <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
           </summary>
@@ -1679,10 +1700,10 @@ function _agruparProximasPorRecorrencia(ctxList, abertos = {}) {
 
     const grupos = [];
     ordem.forEach(tipoRec => {
-        const itens = ctxList.filter(c => chaveDe(c) === tipoRec).sort((a, b) => _porDataAsc(a.trans, b.trans));
+        const itens = _ordenarProximasPorGrupo(ctxList.filter(c => chaveDe(c) === tipoRec), `proximas:recorrencia:${tipoRec}`);
         if (itens.length) grupos.push([tipoRec, itens]);
     });
-    const resto = ctxList.filter(c => !conhecidos.has(chaveDe(c))).sort((a, b) => _porDataAsc(a.trans, b.trans));
+    const resto = _ordenarProximasPorGrupo(ctxList.filter(c => !conhecidos.has(chaveDe(c))), `proximas:recorrencia:Outros`);
     if (resto.length) grupos.push(['Outros', resto]);
 
     const totalGrupo = arr => arr.reduce((s, c) => s + ((c.trans.valorMes != null ? c.trans.valorMes : c.trans.valor) || 0), 0);
@@ -1694,6 +1715,8 @@ function _agruparProximasPorRecorrencia(ctxList, abertos = {}) {
         <details class="rec-grupo" data-nome="${tipoRec.replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[tipoRec] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${rotulo}</span>
+            ${_renderOrdemCriacaoToggle(`proximas:recorrencia:${tipoRec}`)}
+            <span class="rec-grupo-espaco"></span>
             <span class="rec-grupo-contagem">${itens.length}</span>
             <span class="rec-grupo-total">${formatarMoeda(totalGrupo(itens))}</span>
           </summary>
@@ -1738,7 +1761,8 @@ function renderFaturasCartao(container) {
         const diaV = Math.min(parseInt(m.diaVencimento, 10) || 1, ultimoDia);
         const venc = `${String(diaV).padStart(2, '0')}/${String(mes.getMonth() + 1).padStart(2, '0')}`;
         const cor = coresMet[rot] || (typeof corPadraoChip === 'function' ? corPadraoChip(rot) : 'var(--primary)');
-        const todos = [...despesas, ...estornos].sort(_porDataDesc);
+        const chaveFatura = `proximas:fatura:${rot}`;
+        const todos = _ordenarPorGrupo([...despesas, ...estornos], chaveFatura);
         const tipoUiDe = t => t.tipo === 'entradas' ? 'entrada' : 'saida';
 
         // Mesmo organizador inline dos outros grupos (Categoria/Recorrência —
@@ -1759,7 +1783,7 @@ function renderFaturasCartao(container) {
                 mapa.get(k).push(t);
             });
             const gruposSub = [...mapa.entries()]
-                .map(([nome, its]) => [nome, its, its.reduce((s, t) => s + valorDe(t), 0)])
+                .map(([nome, its]) => [nome, _ordenarPorGrupo(its, `${chaveFatura}:sub:${nome}`), its.reduce((s, t) => s + valorDe(t), 0)])
                 .sort((a, b) => b[2] - a[2]);
             itensHTML = gruposSub.map(([nome, its, totalSub]) => {
                 const pctSub = total ? (totalSub / total) * 100 : 0;
@@ -1767,6 +1791,8 @@ function renderFaturasCartao(container) {
                 <details class="subgrupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" ${abertosSub[nome] ? 'open' : ''}>
                   <summary class="subgrupo-cab">
                     <span class="subgrupo-nome">${nome}</span>
+                    ${_renderOrdemCriacaoToggle(`${chaveFatura}:sub:${nome}`)}
+                    <span class="subgrupo-espaco"></span>
                     <span class="subgrupo-contagem">${its.length}</span>
                     <span class="subgrupo-total">${formatarMoeda(totalSub)}${total ? ` · ${formatarPct(pctSub)}%` : ''}</span>
                   </summary>
@@ -1780,6 +1806,8 @@ function renderFaturasCartao(container) {
         <details class="fatura-item" data-nome="${rot.replace(/"/g, '&quot;')}" style="--cor-cartao:${cor}" ${abertos[rot] ? 'open' : ''}>
           <summary>
             <span class="fatura-nome">${rot}</span>
+            ${_renderOrdemCriacaoToggle(chaveFatura)}
+            <span class="fatura-espaco"></span>
             ${organizadorHTML}
             <span class="fatura-venc">vcto. ${venc}</span>
             <span class="fatura-total">${formatarMoeda(total)}</span>

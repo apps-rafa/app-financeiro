@@ -32,11 +32,13 @@
 .fatura-item > summary::-webkit-details-marker { display: none; }
 .fatura-item > summary::before {
     content: "▸";
-    font-size: .8em;
+    font-size: 1.2rem;
+    line-height: 1;
     color: var(--cor-cartao, var(--text-muted));
 }
 .fatura-item[open] > summary::before { content: "▾"; }
-.fatura-nome { flex: 1; min-width: 0; font-weight: var(--font-weight-semibold); overflow-wrap: break-word; }
+.fatura-nome { flex: none; min-width: 0; font-weight: var(--font-weight-semibold); overflow-wrap: break-word; }
+.fatura-espaco { flex: 1; }
 .fatura-venc { font-size: .72rem; color: var(--text-muted); white-space: nowrap; }
 .fatura-total { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .fatura-itens { display: grid; gap: var(--spacing-md); padding: 0 .7rem .6rem; }
@@ -321,6 +323,16 @@
     opacity: .65;
     cursor: default;
 }
+/* Sem <details>/<summary> aqui — não tem nada pra abrir — mas reserva o
+   mesmo espaço da setinha ▸ dos grupos vizinhos (mesmo font-size/gap),
+   invisível, só pra o nome começar na mesma coluna dos grupos que
+   colapsam, em vez de ficar mais pra esquerda que os outros. */
+.rec-grupo--vazio::before {
+    content: "▸";
+    font-size: 1.2rem;
+    line-height: 1;
+    visibility: hidden;
+}
 .rec-grupo-itens {
     display: flex;
     flex-direction: column;
@@ -453,7 +465,7 @@
 .subgrupo-cab::before {
     content: '▸';
     margin-right: .35rem;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     line-height: 1;
     transition: transform .15s ease;
 }
