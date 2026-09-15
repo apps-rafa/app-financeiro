@@ -249,9 +249,10 @@
 }
 #recorrenciaBloco > #diaSemanaGroup { flex: 0 1 5.5rem; }  /* "s/ dia fixo" */
 
-/* Campo "Valor" que se divide em 2 (valor informado + total calculado) */
+/* Campo "Valor" que se divide em 2 ou 3 (valor informado + parcelas + total calculado) */
 #valorBloco { display: flex; gap: .5rem; }
 #valorBloco > .form-group { flex: 1 1 0; min-width: 0; margin: 0; }
+#valorBloco > #parceleGroup { flex: 0 0 4.9rem; }
 
 /* Método divide espaço com "Comp." */
 #metodoBloco {

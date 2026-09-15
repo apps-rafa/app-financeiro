@@ -1595,7 +1595,7 @@ function atualizarCampoParcelas() {
     set('diaRecorrenciaGroup', comParcelamento);
     set('valorTotalGroup', comParcelamento);
     definirLabelResp('label[for="diaRecorrencia"]', 'vcto.', 'vcto.');
-    definirLabelResp('label[for="parcelas"]', 'qtd.', 'qtd.');
+    definirLabelResp('label[for="parcelas"]', 'Parcelas', 'parc.');
     atualizarValorTotal();
 
     // Prefill do dia de vencimento (com o dia da data digitada), só pra quem
@@ -1725,7 +1725,12 @@ function abrirNovoMetodo() {
                 await carregarMenus();
                 if (typeof carregarAbaMenus === "function") await carregarAbaMenus();
                 const sel = document.querySelector(SELECTORS.metodo);
-                if (sel) sel.value = nome;
+                // O valor das <option> do dropdown é rotuloMetodo() (kind + banco
+                // sem travessão), não o "nome" salvo no banco (que usa "—") —
+                // setar sel.value = nome não batia com nenhuma option e a seleção
+                // ficava muda (voltava pra "Selecione...", parecendo que o botão
+                // "Adicionar" não tinha feito nada).
+                if (sel) sel.value = banco ? `${kind} ${banco}` : kind;
                 if (typeof atualizarCampoCredito === 'function') atualizarCampoCredito();
             } }
         ]

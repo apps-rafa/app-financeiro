@@ -205,6 +205,16 @@
                                 <label for="valor">Valor</label>
                                 <input type="number" id="valor" step="0.01" placeholder="0,00" required>
                             </div>
+                            <div class="form-group campo-mini" id="parceleGroup" hidden>
+                                <label for="parcelas">Parcelas</label>
+                                <div class="campo-com-stepper">
+                                    <input type="text" id="parcelas" inputmode="numeric" maxlength="2" value="1" autocomplete="off">
+                                    <div class="stepper-v">
+                                        <button type="button" class="btn-icon btn-mini-seta" data-stepper="parcelas" data-dir="1" tabindex="-1" title="Aumentar">▲</button>
+                                        <button type="button" class="btn-icon btn-mini-seta" data-stepper="parcelas" data-dir="-1" tabindex="-1" title="Diminuir">▼</button>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="form-group" id="valorTotalGroup" hidden>
                                 <label for="valorTotal">Total</label>
                                 <input type="text" id="valorTotal" class="campo-travado" readonly tabindex="-1">
@@ -243,16 +253,6 @@
                             </div>
                         </div>
                         <div id="recorrenciaBloco">
-                            <div class="form-group campo-mini campo-mini--xs" id="parceleGroup" hidden>
-                                <label for="parcelas">Qtd.</label>
-                                <div class="campo-com-stepper">
-                                    <input type="text" id="parcelas" inputmode="numeric" maxlength="2" value="1" autocomplete="off">
-                                    <div class="stepper-v">
-                                        <button type="button" class="btn-icon btn-mini-seta" data-stepper="parcelas" data-dir="1" tabindex="-1" title="Aumentar">▲</button>
-                                        <button type="button" class="btn-icon btn-mini-seta" data-stepper="parcelas" data-dir="-1" tabindex="-1" title="Diminuir">▼</button>
-                                    </div>
-                                </div>
-                            </div>
                             <div class="form-group campo-mini campo-mini--xs" id="diaRecorrenciaGroup" hidden>
                                 <label for="diaRecorrencia">vcto.</label>
                                 <div class="campo-com-stepper">
