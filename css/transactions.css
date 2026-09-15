@@ -384,7 +384,10 @@
     padding: .25rem .1rem;
     font-size: .75rem;
     font-weight: var(--font-weight-semibold);
-    color: var(--text-muted);
+    /* Mesma cor do cabeçalho do grupo de fora (.rec-grupo > summary,
+       branco/var(--text)) — só o nome herda essa cor; contagem e total têm
+       suas próprias cores abaixo (chip cinza e branco, respectivamente). */
+    color: var(--text);
     cursor: pointer;
     list-style: none;
 }
@@ -408,11 +411,11 @@
     font-size: .68rem;
     font-weight: 700;
     color: var(--text-muted);
-    background: var(--surface-2);
+    background: var(--surface-3);
     border-radius: 999px;
     padding: .05rem .4rem;
 }
-.subgrupo-total { flex: none; font-variant-numeric: tabular-nums; }
+.subgrupo-total { flex: none; color: var(--text); font-variant-numeric: tabular-nums; }
 
 /* Barra única (Cronológica): 2 segmentos proporcionais ao total de cada
    grupo (Atual / A receber|pagar). Hover mostra %+valor (title nativo);
