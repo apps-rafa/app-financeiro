@@ -524,6 +524,7 @@ function renderConciliar(secId, modo) {
     <p class="menu-hint">${dica}</p>
     <div class="import-csv-upload">
         <input type="file" id="${arquivoId}" accept="${accept}" multiple>
+        <label class="import-csv-upload-label" for="${arquivoId}">📁 Escolher arquivos</label>
         ${estado.pdfs.length ? `<button type="button" class="mini-btn" id="${secId}Recomecar" title="Apaga os arquivos carregados aqui e começa do zero">✕ Recomeçar</button>` : ''}
     </div>
     <div id="${listaId}"></div>
@@ -599,17 +600,17 @@ function _renderPdfEntrada(p, modo, abertos = {}, secId = '') {
         </p>
 
         ${_grupoColapsavelConciliar({
-            id: `${p.id}:pdf`, abertos,
-            padraoAberto: res.noPdfNaoNoApp.length > 0,
-            titulo: `⚠️ No ${rotuloArquivo} mas não lançado no app (${res.noPdfNaoNoApp.length})`,
-            corpo: _renderTabelaLinhasPDF(p, res.noPdfNaoNoApp, secId, modo)
-        })}
-
-        ${_grupoColapsavelConciliar({
             id: `${p.id}:formatados`, abertos,
             padraoAberto: p.formatados.length > 0,
             titulo: `📋 Lançamentos formatados (${p.formatados.length})`,
             corpo: _renderTabelaFormatados(p, secId, modo)
+        })}
+
+        ${_grupoColapsavelConciliar({
+            id: `${p.id}:pdf`, abertos,
+            padraoAberto: res.noPdfNaoNoApp.length > 0,
+            titulo: `⚠️ No ${rotuloArquivo} mas não lançado no app (${res.noPdfNaoNoApp.length})`,
+            corpo: _renderTabelaLinhasPDF(p, res.noPdfNaoNoApp, secId, modo)
         })}
 
         ${_grupoColapsavelConciliar({
@@ -642,7 +643,7 @@ function _grupoColapsavelConciliar({ id, abertos, padraoAberto, titulo, corpo })
 }
 
 function _renderTabelaLinhasPDF(p, linhas, secId, modo) {
-    if (!linhas.length) return `<p class="import-csv-desc">Nenhuma.</p>`;
+    if (!linhas.length) return `<p class="import-csv-nota">Nenhuma.</p>`;
     return `
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">
@@ -712,7 +713,7 @@ function _abrirLancarConciliar(secId, modo, pId, idx) {
     const ov = mostrarDialogo({
         titulo: existente ? 'Editar lançamento formatado' : 'Formatar lançamento',
         corpoHTML: `
-            <p class="import-csv-desc">
+            <p class="import-csv-nota">
                 ${l.dataISO.split('-').reverse().join('/')} · ${formatarMoeda(l.valor)} ·
                 ${l.tipo === 'entradas' ? 'Receita' : 'Despesa'} · ${esc(p.metodoEscolhido)}
             </p>
@@ -849,7 +850,7 @@ function _renderTabelaFormatados(p, secId, modo) {
                     <td class="import-csv-desc" title="${f.dados.descricao}">${f.dados.descricao}</td>
                 </tr>`).join('')}</tbody>
         </table>
-    </div>` : `<p class="import-csv-desc">Use o "+" nas linhas de cima pra formatar e acumular aqui.</p>`;
+    </div>` : `<p class="import-csv-nota">Use o "+" nas linhas de cima pra formatar e acumular aqui.</p>`;
 
     return `
     ${linhas}
@@ -896,7 +897,7 @@ async function _importarFormatados(secId, modo, pId) {
 }
 
 function _renderTabelaTransacoesApp(transacoes) {
-    if (!transacoes.length) return `<p class="import-csv-desc">Nenhuma.</p>`;
+    if (!transacoes.length) return `<p class="import-csv-nota">Nenhuma.</p>`;
     return `
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">

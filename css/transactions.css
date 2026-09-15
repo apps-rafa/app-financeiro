@@ -291,7 +291,12 @@
     color: var(--cor-rec, var(--text-muted));
 }
 .rec-grupo[open] > summary::before { content: "▾"; }
-.rec-grupo-nome { flex: 1; }
+/* Nome encolhe pro próprio conteúdo (não empurra mais tudo depois pra
+   ponta direita) — o toggle "Ordenar por criação" vem logo em seguida, os
+   dois colados à esquerda ao lado um do outro; quem empurra o resto
+   (organizador de filtro, contagem, total) pra direita é o .rec-grupo-espaco. */
+.rec-grupo-nome { flex: none; }
+.rec-grupo-espaco { flex: 1; }
 .rec-grupo-contagem {
     font-size: .72rem;
     font-weight: 700;
@@ -453,9 +458,14 @@
     transition: transform .15s ease;
 }
 .subgrupo[open] > .subgrupo-cab::before { transform: rotate(90deg); }
+/* Mesmo pisca-pisca de hover do .rec-grupo (ver comentário lá) — a regra
+   global *:hover::before{transform:none!important} também alcançava essa
+   seta. */
+.subgrupo[open] > .subgrupo-cab:hover::before { transform: rotate(90deg) !important; }
 .subgrupo:not([open]) > .subgrupo-cab { border-bottom: 1px dashed var(--border); }
 .subgrupo[open] > .subgrupo-cab { border-bottom: 1px dashed var(--border); margin-bottom: .3rem; }
-.subgrupo-nome { flex: 1; text-align: left; }
+.subgrupo-nome { flex: none; text-align: left; }
+.subgrupo-espaco { flex: 1; }
 .subgrupo-contagem {
     flex: none;
     font-size: .68rem;
