@@ -536,9 +536,20 @@
   padding: .05rem .45rem;
 }
 .fer-grupo .menu-list { margin: 0; padding: .4rem; max-height: 300px; }
+/* Padronizado pra ter a mesma cara/altura em qualquer lugar do app que usa
+   essa classe — inclusive um <select> (ex.: #feriadosUf), que sem
+   appearance:none renderia com o "chrome" nativo do navegador, mais alto
+   e com aparência destoante dos <button class="mini-btn"> vizinhos. Fundo
+   era #fff fixo (não respeitava o tema escuro) — trocado por var(--surface). */
 .mini-btn {
+  box-sizing: border-box;
+  min-height: 1.7rem;
+  display: inline-flex;
+  align-items: center;
+  appearance: none;
+  -webkit-appearance: none;
   border: 1px solid var(--border-strong, #D1D5DB);
-  background: #fff;
+  background: var(--surface);
   color: var(--text-muted, #6B7280);
   border-radius: var(--radius-sm);
   padding: .18rem .5rem;
@@ -585,6 +596,11 @@
 }
 
 /* ============ Importar (dropdown de formato) ============ */
+/* Altura padrão de toda "caixa" da linha de Importar (select de Formato,
+   botão de upload, mês de competência, dia de corte, trocar arquivo) —
+   sem isso cada uma tinha o seu próprio padding/font-size e a linha
+   ficava com caixas de alturas diferentes, degrau feio. */
+.menu-section[data-sub="importar"] { --campo-import-h: 2.15rem; }
 .import-formato-label {
   display: flex;
   flex-direction: column;
@@ -592,16 +608,51 @@
   font-size: .78rem;
   font-weight: 600;
   color: var(--text-muted);
-  margin: .4rem 0 .8rem;
+  margin: .4rem 0;
   max-width: 260px;
 }
 .import-formato-label select {
+  box-sizing: border-box;
+  min-height: var(--campo-import-h);
   padding: .4rem .5rem;
   border: 1px solid var(--border-strong, #D1D5DB);
   border-radius: var(--radius-sm);
   font-size: .85rem;
   color: var(--text);
   background: var(--surface);
+}
+/* Formato + o que cada formato renderiza dentro de #importCsvConteudo/
+   #importPdfConteudo (upload, mês de competência...) numa linha só,
+   só quebrando quando não couber — display:contents faz os FILHOS do
+   container de conteúdo virarem itens flex direto dessa linha, em vez do
+   próprio container (senão ele contaria como 1 bloco só, sempre pulando
+   pra linha de baixo inteiro). */
+[data-importar-modo="csv"], [data-importar-modo="pdf"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: .6rem .8rem;
+}
+/* 2 níveis de wrapper: #importCsvConteudo > #secImportarCSV/#secConciliarCSV
+   (e o par em PDF) > o HTML de verdade — os 2 precisam ser "transparentes"
+   pro layout, senão o div do meio já conta como 1 bloco só na linha. */
+#importCsvConteudo, #importPdfConteudo,
+#importCsvConteudo > div, #importPdfConteudo > div { display: contents; }
+/* Textos corridos (dica de formato, resumo do arquivo) e tudo que vem
+   DEPOIS da linha de Formato/upload sempre ocupam a linha inteira — não
+   fazem sentido "ao lado". Descendente (não filho direto) porque o
+   display:contents em cascata (comentário acima) promove netos a "filhos"
+   visuais da linha; flex-basis não faz nada em quem não virou item flex,
+   então isso é inofensivo em qualquer outro contexto (ex.: dentro de um
+   grupo colapsável, bem mais fundo na árvore). */
+#importCsvConteudo .menu-hint, #importPdfConteudo .menu-hint,
+#importCsvConteudo .import-csv-resumo, #importPdfConteudo .import-csv-resumo,
+#importCsvConteudo .import-csv-nota, #importPdfConteudo .import-csv-nota,
+#importCsvConteudo #importCsvProgresso,
+#importCsvConteudo [id$="Lista"], #importPdfConteudo [id$="Lista"],
+#importCsvConteudo .import-csv-acoes,
+#importCsvConteudo .import-csv-tabela-wrap {
+  flex-basis: 100%;
 }
 
 /* ============ Importar CSV ============ */
@@ -632,6 +683,8 @@
   border: 0;
 }
 .import-csv-upload-label {
+  box-sizing: border-box;
+  min-height: var(--campo-import-h);
   display: inline-flex;
   align-items: center;
   padding: .4rem .8rem;
@@ -665,15 +718,34 @@
   color: var(--text-muted);
 }
 .import-csv-contexto input {
+  box-sizing: border-box;
+  min-height: var(--campo-import-h);
   width: 46px;
   padding: .35rem .4rem;
   border: 1px solid var(--border-strong, #D1D5DB);
   border-radius: var(--radius-sm);
   font-size: .85rem;
 }
-.import-csv-mes-ano { display: flex; gap: .4rem; }
-.import-csv-mes-ano input { width: 46px; }
-.import-csv-contexto #importCsvTrocarArquivo { padding: .35rem .6rem; }
+/* "Mês de competência" não é mais editável (segue o mês em exibição no
+   topo do app) — mesma caixa/altura dos campos vizinhos, só que com cara
+   de valor fixo (fundo neutro, sem borda de input) em vez de campo. */
+.import-csv-competencia {
+  box-sizing: border-box;
+  min-height: var(--campo-import-h);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: .1rem;
+  padding: .25rem .6rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.import-csv-competencia b { font-size: .85rem; color: var(--text); font-weight: 700; }
+.import-csv-contexto #importCsvTrocarArquivo {
+  box-sizing: border-box;
+  min-height: var(--campo-import-h);
+  padding: .35rem .6rem;
+}
 .import-csv-label-linha { display: inline-flex; align-items: center; gap: .3rem; }
 .import-csv-ajuda {
   display: inline-block;
@@ -868,3 +940,14 @@
 }
 .dados-acoes .btn-submit { width: auto; flex: 7 1 0; }
 .dados-acoes .armed { flex: 3 1 0; }
+.dados-selecao-titulo { font-size: .95rem; margin: 1.2rem 0 .3rem; }
+.dados-selecao-lista { display: flex; flex-direction: column; gap: .3rem; }
+.dados-selecao-item {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .82rem;
+  color: var(--text);
+  cursor: pointer;
+}
+label.dados-selecao-item:has(#dadosSelecaoFeriados) { margin-top: .6rem; font-weight: 600; }
