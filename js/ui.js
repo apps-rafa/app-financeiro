@@ -468,8 +468,11 @@ function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
             const ordemBtn = e.target.closest('[data-ordem-criacao-toggle]');
             if (ordemBtn) {
                 e.preventDefault(); // está dentro do <summary> — sem isso, o clique também abre/fecha o <details>
-                _ordemCriacaoPontual[tipoUI] = !_ordemCriacaoPontual[tipoUI];
-                const det = ordemBtn.closest('details.rec-grupo');
+                const chave = ordemBtn.dataset.ordemCriacaoToggle;
+                _ordemCriacaoGrupo[chave] = !_ordemCriacaoGrupo[chave];
+                // Sobe pro <details> mais próximo (subgrupo, se o clique foi
+                // num subgrupo; senão o rec-grupo de fora) — sempre abre.
+                const det = ordemBtn.closest('details.subgrupo, details.rec-grupo');
                 if (det) det.open = true;
                 renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia);
                 return;
@@ -706,7 +709,7 @@ function _renderListaAgrupadaPorTotal(container, transacoes, tipoUI, msgVazia, {
         mapa.get(k).push(t);
     });
     const grupos = [...mapa.entries()]
-        .map(([nome, itens]) => [nome, itens.sort(_porDataDesc), itens.reduce((s, t) => s + valorDe(t), 0)])
+        .map(([nome, itens]) => [nome, _ordenarPorGrupo(itens, `${tipoUI}:${modo}:${nome}`), itens.reduce((s, t) => s + valorDe(t), 0)])
         .sort((a, b) => b[2] - a[2]);
 
     const totalGeral = grupos.reduce((s, g) => s + g[2], 0);
@@ -718,10 +721,12 @@ function _renderListaAgrupadaPorTotal(container, transacoes, tipoUI, msgVazia, {
         const pct = totalGeral ? (total / totalGeral) * 100 : 0;
         const corpoItens = _corpoGrupoComSubmodo(itens, tipoUI, modo, nome, ehDespesa, abertosSub, gerarOpts);
         const submenuHTML = _renderOrganizadorInline(tipoUI, modo, nome, ehDespesa);
+        const ordemCriacaoHTML = _renderOrdemCriacaoToggle(`${tipoUI}:${modo}:${nome}`);
         return `
         <details class="rec-grupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[nome] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
+            ${ordemCriacaoHTML}
             ${submenuHTML}
             <span class="rec-grupo-contagem">${itens.length}</span>
             <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
@@ -795,8 +800,8 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
 
     const atuais = [], pendentes = [];
     transacoes.forEach(t => (_transacaoRealizada(t) ? atuais : pendentes).push(t));
-    atuais.sort(_porDataDesc);
-    pendentes.sort(_porDataDesc);
+    _ordenarPorGrupo(atuais, `${tipoUI}:cronologica:Atual`);
+    _ordenarPorGrupo(pendentes, `${tipoUI}:cronologica:${rotuloPendente}`);
 
     const totalAtual = atuais.reduce((s, t) => s + valorDe(t), 0);
     const totalPendente = pendentes.reduce((s, t) => s + valorDe(t), 0);
@@ -818,6 +823,7 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
         <details class="rec-grupo" data-nome="${nome}" style="--cor-rec:${cor}" ${abertos[nome] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
+            ${_renderOrdemCriacaoToggle(`${tipoUI}:cronologica:${nome}`)}
             <span class="rec-grupo-contagem">${itens.length}</span>
             <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
           </summary>
@@ -844,6 +850,16 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
         if (seg) {
             const det = container.querySelector(`details.rec-grupo[data-nome="${CSS.escape(seg.dataset.cronToggle)}"]`);
             if (det) det.open = !det.open;
+            return;
+        }
+        const ordemBtn = e.target.closest('[data-ordem-criacao-toggle]');
+        if (ordemBtn) {
+            e.preventDefault(); // está dentro do <summary> — sem isso, o clique também abre/fecha o <details>
+            const chave = ordemBtn.dataset.ordemCriacaoToggle;
+            _ordemCriacaoGrupo[chave] = !_ordemCriacaoGrupo[chave];
+            const det = ordemBtn.closest('details.rec-grupo');
+            if (det) det.open = true;
+            renderListaCronologica(container, transacoes, tipoUI, msgVazia);
             return;
         }
         onListaTransacaoClick(e);
@@ -889,13 +905,32 @@ function _setSubModoGrupo(tipoUI, modo, grupoChave, valor) {
     _subModoGrupo[`${tipoUI}:${modo}:${grupoChave}`] = valor;
 }
 
-// Dentro do grupo "Pontual" (visão Por recorrência), o usuário pode trocar
-// a ordem cronológica (padrão, pela data do lançamento) pela ordem em que
-// os lançamentos foram CRIADOS (id crescente = criado depois) — só faz
-// sentido pra Pontual: os outros tipos são instâncias geradas
-// automaticamente a partir de uma recorrência, não têm "ordem de criação"
-// própria que diga algo. Desativado por padrão.
-const _ordemCriacaoPontual = {}; // tipoUI -> bool
+// Dentro de QUALQUER grupo/subgrupo das listas de Despesas/Receitas
+// (Por recorrência, Por método, Por categoria, Cronológica — e os
+// subgrupos de dentro de cada um), o usuário pode trocar a ordem
+// cronológica (padrão, pela data do lançamento) pela ordem em que os
+// lançamentos foram CRIADOS (id maior = criado depois). Chave livre —
+// cada chamador monta a sua (tipoUI+modo+nome do grupo/subgrupo) — ->
+// bool. Desativado por padrão.
+const _ordemCriacaoGrupo = {};
+function _ordemCriacaoAtiva(chave) { return !!_ordemCriacaoGrupo[chave]; }
+/** Ordena `itens` conforme o toggle da chave — cronológica (padrão) ou
+ *  por ordem de criação (id, mais recém-criado primeiro). */
+function _ordenarPorGrupo(itens, chave) {
+    return itens.sort(_ordemCriacaoAtiva(chave) ? (a, b) => (b.id || 0) - (a.id || 0) : _porDataDesc);
+}
+/** Botão "Ordenar por criação" reutilizado por todo grupo/subgrupo — o
+ *  texto encolhe em níveis conforme o espaço aperta (mesma ideia das
+ *  sub-abas de Configuração: cheio -> abreviado -> só emoji), já que ele
+ *  divide a linha do cabeçalho com o nome do grupo, a contagem e o total. */
+function _renderOrdemCriacaoToggle(chave) {
+    const ativo = _ordemCriacaoAtiva(chave);
+    return `<button type="button" class="ordem-criacao-btn${ativo ? ' active' : ''}"
+                    data-ordem-criacao-toggle="${String(chave).replace(/"/g, '&quot;')}"
+                    title="Ordenar pela ordem em que os lançamentos foram criados, em vez de cronológica">
+              <span class="ordcri-emoji">🕓</span><span class="ordcri-full">Ordenar por criação</span><span class="ordcri-media">Ord. por criação</span><span class="ordcri-curto">Por criação</span><span class="ordcri-min">Criação</span>
+            </button>`;
+}
 
 // Quais dimensões aparecem como opção de submodo, conforme o modo (top)
 // escolhido — sempre as OUTRAS 2, nunca a mesma dimensão que já agrupa a
@@ -930,7 +965,7 @@ function _dimensaoSubmodo(dim, ehDespesa) {
 /** Reorganiza os itens de UM grupo pela dimensão escolhida (maior total
  *  primeiro) em vez de cronológico — cartõezinhos colapsáveis, fechados por
  *  padrão, com contagem e % (igual ao grupo de fora). */
-function _renderItensSubagrupados(itens, tipoUI, dimCfg, abertos) {
+function _renderItensSubagrupados(itens, tipoUI, dimCfg, abertos, chavePrefixo) {
     const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
     const mapa = new Map();
     itens.forEach(t => {
@@ -940,7 +975,7 @@ function _renderItensSubagrupados(itens, tipoUI, dimCfg, abertos) {
     });
     const totalGeral = itens.reduce((s, t) => s + valorDe(t), 0);
     const grupos = [...mapa.entries()]
-        .map(([nome, its]) => [nome, its.sort(_porDataDesc), its.reduce((s, t) => s + valorDe(t), 0)])
+        .map(([nome, its]) => [nome, _ordenarPorGrupo(its, `${chavePrefixo}:sub:${nome}`), its.reduce((s, t) => s + valorDe(t), 0)])
         .sort((a, b) => b[2] - a[2]);
     return grupos.map(([nome, its, total]) => {
         const pct = totalGeral ? (total / totalGeral) * 100 : 0;
@@ -948,6 +983,7 @@ function _renderItensSubagrupados(itens, tipoUI, dimCfg, abertos) {
         <details class="subgrupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" ${abertos && abertos[nome] ? 'open' : ''}>
           <summary class="subgrupo-cab">
             <span class="subgrupo-nome">${nome}</span>
+            ${_renderOrdemCriacaoToggle(`${chavePrefixo}:sub:${nome}`)}
             <span class="subgrupo-contagem">${its.length}</span>
             <span class="subgrupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
           </summary>
@@ -984,7 +1020,7 @@ function _corpoGrupoComSubmodo(itens, tipoUI, modo, grupoChave, ehDespesa, abert
     if (subAtual === 'cronologica' || !_SUBMODOS_POR_MODO[modo]) {
         return itens.map(t => gerarHTMLTransacao(t, tipoUI, gerarOpts)).join('');
     }
-    return _renderItensSubagrupados(itens, tipoUI, _dimensaoSubmodo(subAtual, ehDespesa), abertosSub);
+    return _renderItensSubagrupados(itens, tipoUI, _dimensaoSubmodo(subAtual, ehDespesa), abertosSub, `${tipoUI}:${modo}:${grupoChave}`);
 }
 
 /**
@@ -1009,14 +1045,10 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
     const conhecidos = new Set(ordem);
     const grupos = [];
     ordem.forEach(tipoRec => {
-        // "Pontual" com o toggle de ordem de criação ligado: mais recém-criado
-        // primeiro (id maior), em vez de pela data do lançamento.
-        const porCriacao = tipoRec === 'Pontual' && _ordemCriacaoPontual[tipoUI];
-        const itens = transacoes.filter(t => chaveDe(t) === tipoRec)
-            .sort(porCriacao ? (a, b) => (b.id || 0) - (a.id || 0) : _porDataDesc);
+        const itens = _ordenarPorGrupo(transacoes.filter(t => chaveDe(t) === tipoRec), `${tipoUI}:recorrencia:${tipoRec}`);
         if (itens.length) grupos.push([tipoRec, itens]);
     });
-    const resto = transacoes.filter(t => !conhecidos.has(chaveDe(t))).sort(_porDataDesc);
+    const resto = _ordenarPorGrupo(transacoes.filter(t => !conhecidos.has(chaveDe(t))), `${tipoUI}:recorrencia:Outros`);
     if (resto.length) grupos.push(['Outros', resto]);
 
     // Maior total primeiro — mesma ordem da barra proporcional acima (_agruparParaBarra)
@@ -1037,14 +1069,7 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
         // filtro principal: ícone de funil desliga, sem opção "Cronológica"
         // própria (é só o estado "nenhum submodo ligado").
         const submenuHTML = _renderOrganizadorInline(tipoUI, 'recorrencia', tipoRec, ehDespesa);
-        // Só "Pontual" ganha o toggle de ordem de criação — os outros tipos
-        // são gerados automaticamente pela recorrência, não têm uma "ordem
-        // de criação" própria que faça sentido mostrar.
-        const ordemCriacaoHTML = tipoRec === 'Pontual'
-            ? `<button type="button" class="subgrupo-modo-btn${_ordemCriacaoPontual[tipoUI] ? ' active' : ''}"
-                       data-ordem-criacao-toggle="1"
-                       title="Ordenar pela ordem em que os lançamentos foram criados, em vez de cronológica">🕓 Criação</button>`
-            : '';
+        const ordemCriacaoHTML = _renderOrdemCriacaoToggle(`${tipoUI}:recorrencia:${tipoRec}`);
 
         return `
         <details class="rec-grupo" data-nome="${tipoRec.replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[tipoRec] ? 'open' : ''}>

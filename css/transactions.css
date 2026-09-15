@@ -286,7 +286,8 @@
 .rec-grupo > summary::-webkit-details-marker { display: none; }
 .rec-grupo > summary::before {
     content: "▸";
-    font-size: .8em;
+    font-size: 1.2rem;
+    line-height: 1;
     color: var(--cor-rec, var(--text-muted));
 }
 .rec-grupo[open] > summary::before { content: "▾"; }
@@ -372,6 +373,54 @@
     color: var(--text);
 }
 
+/* Toggle "Ordenar por criação" — ao lado do nome de QUALQUER grupo/
+   subgrupo (Por recorrência, Por método, Por categoria, Cronológica, e os
+   subgrupos de dentro de cada um). O texto encolhe em níveis conforme o
+   espaço aperta na linha do cabeçalho (que já divide espaço com o nome, a
+   contagem e o total) — só o emoji sobra no aperto extremo, nunca quebra
+   linha nem estoura a caixa. */
+.ordem-criacao-btn {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    min-width: 0;
+    padding: .25rem .55rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: .7rem;
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    white-space: nowrap;
+    line-height: 1.1;
+}
+.ordem-criacao-btn:hover { border-color: var(--primary); color: var(--primary); }
+.ordem-criacao-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-contrast);
+}
+.ordem-criacao-btn .ordcri-media,
+.ordem-criacao-btn .ordcri-curto,
+.ordem-criacao-btn .ordcri-min { display: none; }
+@media (max-width: 900px) {
+    .ordem-criacao-btn .ordcri-full { display: none; }
+    .ordem-criacao-btn .ordcri-media { display: inline; }
+}
+@media (max-width: 640px) {
+    .ordem-criacao-btn .ordcri-media { display: none; }
+    .ordem-criacao-btn .ordcri-curto { display: inline; }
+}
+@media (max-width: 480px) {
+    .ordem-criacao-btn .ordcri-curto { display: none; }
+    .ordem-criacao-btn .ordcri-min { display: inline; }
+}
+@media (max-width: 360px) {
+    .ordem-criacao-btn .ordcri-min { display: none; }
+}
+
 /* Cartãozinho de cada subgrupo (categoria/forma de pgto.) dentro de um
    grupo de recorrência — colapsável (<details>), fechado por padrão, igual
    ao .rec-grupo de fora, só que sem borda própria (já vive dentro de um
@@ -398,8 +447,9 @@
    pra direita, sem precisar de space-between no pai. */
 .subgrupo-cab::before {
     content: '▸';
-    margin-right: .3rem;
-    font-size: .65rem;
+    margin-right: .35rem;
+    font-size: 1.1rem;
+    line-height: 1;
     transition: transform .15s ease;
 }
 .subgrupo[open] > .subgrupo-cab::before { transform: rotate(90deg); }
