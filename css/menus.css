@@ -685,8 +685,9 @@
 .import-csv-grupo-titulo::before {
   content: '▸';
   display: inline-block;
-  margin-right: .3rem;
-  font-size: .8em;
+  margin-right: .35rem;
+  font-size: 1.15rem;
+  line-height: 1;
   transition: transform .15s ease;
 }
 .import-csv-grupo[open] > .import-csv-grupo-titulo::before { transform: rotate(90deg); }
