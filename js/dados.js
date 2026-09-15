@@ -11,10 +11,13 @@ function iniciarDados() {
     renderDados();
 }
 
-// Seleção pra backup/apagar PARCIAL (em vez de tudo) — vazio num grupo
-// (meses/categorias/formas) = sem filtro nesse grupo (não restringe).
-// Persiste enquanto a aba fica aberta (module-local, não salva no banco).
-const _selecaoDados = { meses: new Set(), categorias: new Set(), formas: new Set(), feriados: false };
+// Seleção pra backup/apagar PARCIAL (em vez de tudo). Meses é a única
+// seleção granular (item por item — faz sentido escolher SÓ setembro);
+// categorias/formas/feriados são um toggle único pro grupo inteiro (não
+// item por item — são metadado de configuração, não dá pra "apagar só a
+// categoria Mercado" por essa tela). Persiste enquanto a aba fica aberta
+// (module-local, não salva no banco).
+const _selecaoDados = { meses: new Set(), categorias: false, formas: false, feriados: false };
 
 function renderDados() {
     const sec = document.getElementById('secDados');
@@ -65,58 +68,52 @@ async function _renderSelecaoDados() {
     cont.innerHTML = `<p class="menu-hint">Carregando...</p>`;
 
     const meses = await _mesesComLancamento();
-    const categorias = [
-        ...(estadoApp.menus.categoriasDespesa || []).map(c => ({ nome: c, tipo: 'Despesa' })),
-        ...(estadoApp.menus.categoriasReceita || []).map(c => ({ nome: c, tipo: 'Receita' }))
-    ];
-    const formas = (estadoApp.menus.metodos || []).map(m => (typeof rotuloMetodo === 'function' ? rotuloMetodo(m) : m.nome));
 
-    const grupo = (titulo, itens, render) => !itens.length ? '' : `
+    const grupoMeses = !meses.length ? '' : `
     <details class="fer-grupo" open>
-      <summary><span class="fer-grupo-nome">${titulo}</span><span class="fer-grupo-contagem">${itens.length}</span></summary>
-      <div class="menu-list dados-selecao-lista">${itens.map(render).join('')}</div>
+      <summary><span class="fer-grupo-nome">Meses</span><span class="fer-grupo-contagem">${meses.length}</span></summary>
+      <div class="menu-list dados-selecao-lista">${meses.map(m => {
+          const [ano, mes] = m.split('-').map(Number);
+          const rotulo = obterMesAnoCurto(new Date(ano, mes - 1, 1));
+          return `<label class="dados-selecao-item"><input type="checkbox" data-selecao-mes value="${m}" ${_selecaoDados.meses.has(m) ? 'checked' : ''}> ${rotulo}</label>`;
+      }).join('')}</div>
     </details>`;
 
+    // Categorias/formas/feriados são um toggle SÓ do grupo inteiro (não item
+    // por item) — são metadado de configuração, não faz sentido "escolher
+    // só a categoria Mercado" nessa tela.
     cont.innerHTML = `
-    ${grupo('Meses', meses, m => {
-        const [ano, mes] = m.split('-').map(Number);
-        const rotulo = obterMesAnoCurto(new Date(ano, mes - 1, 1));
-        return `<label class="dados-selecao-item"><input type="checkbox" data-selecao="meses" value="${m}" ${_selecaoDados.meses.has(m) ? 'checked' : ''}> ${rotulo}</label>`;
-    })}
-    ${grupo('Categorias', categorias, c =>
-        `<label class="dados-selecao-item"><input type="checkbox" data-selecao="categorias" value="${c.nome.replace(/"/g, '&quot;')}" ${_selecaoDados.categorias.has(c.nome) ? 'checked' : ''}> ${c.nome} <span class="import-csv-label-linha">(${c.tipo})</span></label>`
-    )}
-    ${grupo('Formas de pagamento', formas, f =>
-        `<label class="dados-selecao-item"><input type="checkbox" data-selecao="formas" value="${f.replace(/"/g, '&quot;')}" ${_selecaoDados.formas.has(f) ? 'checked' : ''}> ${f}</label>`
-    )}
+    ${grupoMeses}
+    <label class="dados-selecao-item">
+        <input type="checkbox" id="dadosSelecaoCategorias" ${_selecaoDados.categorias ? 'checked' : ''}> Categorias
+    </label>
+    <label class="dados-selecao-item">
+        <input type="checkbox" id="dadosSelecaoFormas" ${_selecaoDados.formas ? 'checked' : ''}> Formas de pagamento
+    </label>
     <label class="dados-selecao-item">
         <input type="checkbox" id="dadosSelecaoFeriados" ${_selecaoDados.feriados ? 'checked' : ''}>
-        Incluir feriados cadastrados (municipais/avulsos e estaduais sincronizados)
+        Feriados cadastrados (municipais/avulsos e estaduais sincronizados)
     </label>
     `;
 
-    cont.querySelectorAll('[data-selecao]').forEach(chk => {
+    cont.querySelectorAll('[data-selecao-mes]').forEach(chk => {
         chk.addEventListener('change', e => {
-            const grupo = e.target.dataset.selecao;
-            const set = _selecaoDados[grupo];
-            if (e.target.checked) set.add(e.target.value); else set.delete(e.target.value);
+            if (e.target.checked) _selecaoDados.meses.add(e.target.value); else _selecaoDados.meses.delete(e.target.value);
         });
     });
-    document.getElementById('dadosSelecaoFeriados')?.addEventListener('change', e => {
-        _selecaoDados.feriados = e.target.checked;
-    });
+    document.getElementById('dadosSelecaoCategorias')?.addEventListener('change', e => { _selecaoDados.categorias = e.target.checked; });
+    document.getElementById('dadosSelecaoFormas')?.addEventListener('change', e => { _selecaoDados.formas = e.target.checked; });
+    document.getElementById('dadosSelecaoFeriados')?.addEventListener('change', e => { _selecaoDados.feriados = e.target.checked; });
 }
 
-/** true se a transação bate com a seleção atual (grupo vazio = não filtra por ele). */
+/** true se a transação bate com a seleção atual (só meses filtra transação —
+ *  categorias/formas/feriados são toggle de metadado, ver acima). */
 function _transacaoNaSelecaoDados(t) {
-    if (_selecaoDados.meses.size && !_selecaoDados.meses.has(String(t.data).slice(0, 7))) return false;
-    if (_selecaoDados.categorias.size && !_selecaoDados.categorias.has(t.categoria)) return false;
-    if (_selecaoDados.formas.size && !_selecaoDados.formas.has(t.metodo)) return false;
-    return true;
+    return !_selecaoDados.meses.size || _selecaoDados.meses.has(String(t.data).slice(0, 7));
 }
 
 function _nadaSelecionadoDados() {
-    return !_selecaoDados.meses.size && !_selecaoDados.categorias.size && !_selecaoDados.formas.size && !_selecaoDados.feriados;
+    return !_selecaoDados.meses.size && !_selecaoDados.categorias && !_selecaoDados.formas && !_selecaoDados.feriados;
 }
 
 async function baixarBackupSelecao() {
@@ -134,12 +131,11 @@ async function baixarBackupSelecao() {
         if (e3) throw e3;
 
         const transacoes = (todasTrans || []).filter(_transacaoNaSelecaoDados);
-        // Categoria/Método só entram filtrados se o usuário marcou algum —
-        // senão mantém todos (não faz sentido filtrar o que não foi pedido).
-        // Recorrência (não tem seleção própria) sempre entra inteira.
+        // Categoria/Método só entram se o toggle do grupo tiver marcado.
+        // Recorrência (sem toggle próprio) sempre entra inteira.
         const menuItensFiltrados = (menuItens || []).filter(m => {
-            if (m.tipo === 'Categoria') return !_selecaoDados.categorias.size || _selecaoDados.categorias.has(m.nome);
-            if (m.tipo === 'Método') return !_selecaoDados.formas.size || _selecaoDados.formas.has(rotuloMetodo(m));
+            if (m.tipo === 'Categoria') return _selecaoDados.categorias;
+            if (m.tipo === 'Método') return _selecaoDados.formas;
             return true;
         });
         const feriadosFinal = _selecaoDados.feriados ? (feriadosRows || []) : [];
@@ -174,14 +170,18 @@ async function baixarBackupSelecao() {
 }
 
 async function confirmarApagarSelecao() {
-    if (_nadaSelecionadoDados()) { mostrarNotificacao('Marque pelo menos um mês, categoria, forma de pagamento ou feriados', 'erro'); return; }
+    if (_nadaSelecionadoDados()) { mostrarNotificacao('Marque pelo menos um mês, categorias, formas de pagamento ou feriados', 'erro'); return; }
     const status = document.getElementById('dadosSelecaoStatus');
     if (status) { status.hidden = false; status.textContent = 'Conferindo o que bate com a seleção...'; }
-    let alvo;
+    // Transação só entra se MESES estiver marcado — categorias/formas/
+    // feriados abaixo são toggle de metadado, não filtram lançamento.
+    let alvo = [];
     try {
-        const { data, error } = await sb.from('transacoes').select('id, data, categoria, metodo');
-        if (error) throw error;
-        alvo = (data || []).filter(_transacaoNaSelecaoDados);
+        if (_selecaoDados.meses.size) {
+            const { data, error } = await sb.from('transacoes').select('id, data');
+            if (error) throw error;
+            alvo = (data || []).filter(_transacaoNaSelecaoDados);
+        }
     } catch (err) {
         console.error('Erro ao conferir seleção:', err);
         mostrarNotificacao('Erro ao conferir a seleção', 'erro');
@@ -190,12 +190,21 @@ async function confirmarApagarSelecao() {
         if (status) status.hidden = true;
     }
 
-    const apagaFeriados = _selecaoDados.feriados;
-    if (!alvo.length && !apagaFeriados) { mostrarNotificacao('Nada bateu com essa seleção', 'erro'); return; }
+    const { categorias: apagaCategorias, formas: apagaFormas, feriados: apagaFeriados } = _selecaoDados;
+    if (!alvo.length && !apagaCategorias && !apagaFormas && !apagaFeriados) {
+        mostrarNotificacao('Nada bateu com essa seleção', 'erro');
+        return;
+    }
+
+    const partes = [];
+    if (alvo.length) partes.push(`${alvo.length} lançamento${alvo.length === 1 ? '' : 's'}`);
+    if (apagaCategorias) partes.push('todas as categorias');
+    if (apagaFormas) partes.push('todas as formas de pagamento');
+    if (apagaFeriados) partes.push('os feriados cadastrados (municipais/avulsos e estaduais sincronizados)');
 
     mostrarDialogo({
         titulo: 'Apagar seleção?',
-        texto: `Remove <strong>${alvo.length}</strong> lançamento${alvo.length === 1 ? '' : 's'}${apagaFeriados ? ' e os feriados cadastrados (municipais/avulsos e estaduais sincronizados)' : ''} que batem com o filtro escolhido. Não dá para desfazer.`,
+        texto: `Remove ${partes.join(', ')}. Não dá para desfazer.`,
         acoes: [
             { label: 'Cancelar' },
             { label: 'Apagar seleção', primario: true, perigo: true, onClick: async () => {
@@ -204,6 +213,14 @@ async function confirmarApagarSelecao() {
                     for (let i = 0; i < ids.length; i += 200) {
                         const lote = ids.slice(i, i + 200);
                         const { error } = await sb.from('transacoes').delete().in('id', lote);
+                        if (error) throw error;
+                    }
+                    if (apagaCategorias) {
+                        const { error } = await sb.from('menu_itens').delete().eq('tipo', 'Categoria');
+                        if (error) throw error;
+                    }
+                    if (apagaFormas) {
+                        const { error } = await sb.from('menu_itens').delete().eq('tipo', 'Método');
                         if (error) throw error;
                     }
                     if (apagaFeriados) {

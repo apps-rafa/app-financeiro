@@ -348,7 +348,7 @@ function renderImportCSV() {
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">
             <thead><tr>
-                ${comCheckboxIgnorar ? `<th><input type="checkbox" id="importCsvIgnorarTudo" title="Marcar/desmarcar todas pra ignorar"> Ignorar?</th>` : ''}
+                ${comCheckboxIgnorar ? `<th><input type="checkbox" id="importCsvIgnorarTudo" title="Marcar/desmarcar todas pra ignorar" ${grupo.every(([l]) => l.ignorarManual) ? 'checked' : ''}> Ignorar?</th>` : ''}
                 <th>Data</th><th>Valor</th><th>Tipo</th><th>Forma de pgto.</th><th>Categoria</th><th>Descrição</th>
             </tr></thead>
             <tbody>${grupo.map(([l, i]) => _renderLinhaImportCSV(l, i, false, comCheckboxIgnorar)).join('')}</tbody>
@@ -364,7 +364,7 @@ function renderImportCSV() {
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">
             <thead><tr>
-                <th><input type="checkbox" id="importCsvPularTudo" title="Marcar/desmarcar todas pra pular"> Pular?</th>
+                <th><input type="checkbox" id="importCsvPularTudo" title="Marcar/desmarcar todas pra pular" ${suspeitas.every(([l]) => l.pularDuplicata) ? 'checked' : ''}> Pular?</th>
                 <th>Data</th><th>Valor</th><th>Tipo</th><th>Forma de pgto.</th><th>Categoria</th><th>Descrição</th>
             </tr></thead>
             <tbody>${suspeitas.map(([l, i]) => _renderLinhaImportCSV(l, i, true)).join('')}</tbody>
