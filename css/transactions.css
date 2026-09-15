@@ -299,6 +299,9 @@
    (organizador de filtro, contagem, total) pra direita é o .rec-grupo-espaco. */
 .rec-grupo-nome { flex: none; }
 .rec-grupo-espaco { flex: 1; }
+/* Grupo de duplicatas tem 2 botões extras (Aceitar/Apagar todas) na mesma
+   linha do título — em telas estreitas quebra em vez de estourar/cortar. */
+.rec-grupo[data-nome="__duplicatas__"] > summary { flex-wrap: wrap; row-gap: .3rem; }
 .rec-grupo-contagem {
     font-size: .72rem;
     font-weight: 700;

@@ -521,12 +521,12 @@ function renderConciliar(secId, modo) {
     const accept = modo === 'pdf' ? '.pdf,application/pdf' : '.csv,text/csv';
 
     sec.innerHTML = `
-    <p class="menu-hint">${dica}</p>
     <div class="import-csv-upload">
         <input type="file" id="${arquivoId}" accept="${accept}" multiple>
         <label class="import-csv-upload-label" for="${arquivoId}">📁 Escolher arquivos</label>
         ${estado.pdfs.length ? `<button type="button" class="mini-btn" id="${secId}Recomecar" title="Apaga os arquivos carregados aqui e começa do zero">✕ Recomeçar</button>` : ''}
     </div>
+    <p class="menu-hint">${dica}</p>
     <div id="${listaId}"></div>
     `;
     document.getElementById(arquivoId)?.addEventListener('change', e => onConciliarArquivos(e, secId, modo));

@@ -387,6 +387,9 @@ function _renderGrupoDuplicatas(transacoes, tipoUI, aberto) {
     <details class="rec-grupo" data-nome="__duplicatas__" style="--cor-rec:var(--despesa-text)" ${aberto ? 'open' : ''}>
       <summary>
         <span class="rec-grupo-nome">🔁 Verificação de duplicatas</span>
+        <button type="button" class="mini-btn" data-dup-aceitar-todas title="Marca todas como &quot;não é duplicata&quot; — não avisa de novo sobre elas">✓ Aceitar todas</button>
+        <button type="button" class="mini-btn armed" data-dup-apagar-todas title="Apaga todos os lançamentos listados aqui">🗑 Apagar todas</button>
+        <span class="rec-grupo-espaco"></span>
         <span class="rec-grupo-contagem">${duplicatas.length}</span>
         <span class="rec-grupo-total">${formatarMoeda(total)}</span>
       </summary>
@@ -1213,6 +1216,33 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
 
 /** Delegação de clique nas listas de transações */
 function onListaTransacaoClick(e) {
+    const aceitarTodas = e.target.closest('[data-dup-aceitar-todas]');
+    if (aceitarTodas) {
+        e.preventDefault(); // dentro do <summary> — sem isso também abre/fecha o <details>
+        const det = aceitarTodas.closest('details.rec-grupo[data-nome="__duplicatas__"]');
+        const ids = [...det.querySelectorAll('[data-act="aprovar-duplicata"]')].map(b => Number(b.dataset.id)).filter(Number.isFinite);
+        ids.forEach(id => _aprovarDuplicata(id));
+        atualizarUI();
+        return;
+    }
+    const apagarTodas = e.target.closest('[data-dup-apagar-todas]');
+    if (apagarTodas) {
+        e.preventDefault();
+        const det = apagarTodas.closest('details.rec-grupo[data-nome="__duplicatas__"]');
+        const ids = [...det.querySelectorAll('[data-act="aprovar-duplicata"]')].map(b => Number(b.dataset.id)).filter(Number.isFinite);
+        if (!ids.length) return;
+        mostrarDialogo({
+            titulo: 'Apagar todas as duplicatas?',
+            texto: `Remove <strong>${ids.length}</strong> lançamento${ids.length === 1 ? '' : 's'} listado${ids.length === 1 ? '' : 's'} neste grupo. Não dá para desfazer.`,
+            acoes: [
+                { label: 'Cancelar' },
+                { label: 'Apagar todas', primario: true, perigo: true, onClick: async () => {
+                    for (const id of ids) await excluirTransacao(id);
+                } }
+            ]
+        });
+        return;
+    }
     const el = e.target.closest('[data-act]');
     if (!el) return;
     const id = Number(el.dataset.id);

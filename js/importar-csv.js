@@ -8,6 +8,15 @@
 // Estado da importação em andamento (module-local, refeito a cada arquivo escolhido)
 let estadoImportCSV = null;
 
+/** Competência do import CSV NÃO é mais um campo editável — segue sempre o
+ *  mês em exibição no topo do app (mesma tira JUN/JUL/AGO...). Trocar de
+ *  mês por lá recalcula quem tá pronto (ver hook em recarregarDados,
+ *  data.js). */
+function _competenciaAtualISO() {
+    const m = (typeof estadoApp !== 'undefined' && estadoApp.mesAtual) ? estadoApp.mesAtual : new Date();
+    return `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
 /** Liga os listeners da sub-aba "Importar CSV" (chamada por carregarAbaMenus).
  *  NÃO reinicia o estado se já havia um arquivo em andamento — reabrir essa
  *  sub-aba (ex.: voltar de Despesas) só remonta o HTML, não pode jogar fora
@@ -206,7 +215,7 @@ function _recalcularLinhas() {
     st.linhas.forEach(l => {
         l.tipo = l.valorBruto < 0 ? 'entradas' : 'saidas';
         l.valor = Math.abs(l.valorBruto);
-        l.dataISO = l.dataCompletaISO || _reconstruirDataISO(l.dia, st.competenciaISO, st.corte);
+        l.dataISO = l.dataCompletaISO || _reconstruirDataISO(l.dia, _competenciaAtualISO(), st.corte);
         if (l.metodoResolvido === undefined) l.metodoResolvido = _resolverMetodo(l.metodoCSV);
         if (l.categoriaResolvida === undefined) {
             // Linhas de receita (valor negativo no CSV) sempre começam sem
@@ -220,10 +229,7 @@ function _linhaPronta(l) {
     if (l.ignorarManual) return false;                 // usuário marcou pra não importar
     if (l.duplicataExata) return false;               // já existe idêntica — ignorada sem perguntar
     if (l.duplicataSuspeita && l.pularDuplicata) return false; // parecida — usuário decide (marcado por padrão)
-    // Competência é sempre gravada na transação (mesmo com data completa,
-    // que não depende dela pra calcular o dia) — sem competência, nada fica pronto.
-    return !!l.dataISO && !!estadoImportCSV?.competenciaISO
-        && !!l.metodoResolvido && !!l.categoriaResolvida && l.valor > 0;
+    return !!l.dataISO && !!l.metodoResolvido && !!l.categoriaResolvida && l.valor > 0;
 }
 
 /* ---------- Detecção de duplicatas contra o que já está no app ---------- */
@@ -300,17 +306,17 @@ function renderImportCSV() {
 
     if (!st) {
         sec.innerHTML = `
+        <div class="import-csv-upload">
+            <input type="file" id="importCsvArquivo" accept=".csv,text/csv">
+            <label class="import-csv-upload-label" for="importCsvArquivo">📁 Escolher arquivo</label>
+        </div>
         <p class="menu-hint">
             Importa vários lançamentos Pontuais de uma vez a partir de um CSV com as colunas
             <b>Data, Valor, Forma de pgto., Tag, Descrição</b>. A coluna Data aceita data completa
             (dd/mm/aaaa) ou só o dia (sem mês/ano) — o dia sozinho é útil pra colar o ciclo de
             fatura de um cartão, mas exige preencher certo o "Dia de corte" pra rolar pro mês
             anterior quando precisar; data completa não tem essa pegadinha.
-        </p>
-        <div class="import-csv-upload">
-            <input type="file" id="importCsvArquivo" accept=".csv,text/csv">
-            <label class="import-csv-upload-label" for="importCsvArquivo">📁 Escolher arquivo</label>
-        </div>`;
+        </p>`;
         const inp = document.getElementById('importCsvArquivo');
         if (inp) inp.addEventListener('change', onImportCsvArquivoEscolhido);
         return;
@@ -342,7 +348,7 @@ function renderImportCSV() {
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">
             <thead><tr>
-                ${comCheckboxIgnorar ? '<th>Ignorar?</th>' : ''}
+                ${comCheckboxIgnorar ? `<th><input type="checkbox" id="importCsvIgnorarTudo" title="Marcar/desmarcar todas pra ignorar"> Ignorar?</th>` : ''}
                 <th>Data</th><th>Valor</th><th>Tipo</th><th>Forma de pgto.</th><th>Categoria</th><th>Descrição</th>
             </tr></thead>
             <tbody>${grupo.map(([l, i]) => _renderLinhaImportCSV(l, i, false, comCheckboxIgnorar)).join('')}</tbody>
@@ -358,7 +364,8 @@ function renderImportCSV() {
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">
             <thead><tr>
-                <th>Pular?</th><th>Data</th><th>Valor</th><th>Tipo</th><th>Forma de pgto.</th><th>Categoria</th><th>Descrição</th>
+                <th><input type="checkbox" id="importCsvPularTudo" title="Marcar/desmarcar todas pra pular"> Pular?</th>
+                <th>Data</th><th>Valor</th><th>Tipo</th><th>Forma de pgto.</th><th>Categoria</th><th>Descrição</th>
             </tr></thead>
             <tbody>${suspeitas.map(([l, i]) => _renderLinhaImportCSV(l, i, true)).join('')}</tbody>
         </table>
@@ -386,28 +393,24 @@ function renderImportCSV() {
     </div>`
     });
 
-    const faltaCompetencia = !st.competenciaISO;
     const faltamData = paraRevisarOuIgnorada.some(([l]) => !l.ignorarManual && !l.dataISO);
     // Se toda linha já veio com data completa (dd/mm/aaaa etc.), o corte não
     // serve pra nada — não tem "dia do mês" pra reconstruir.
     const todasComDataCompleta = st.linhas.length > 0 && st.linhas.every(l => l.dataCompletaISO);
     const faltamMetodoOuCategoria = paraRevisarOuIgnorada.some(([l]) => !l.ignorarManual && (!l.metodoResolvido || !l.categoriaResolvida));
     const motivos = [];
-    if (faltaCompetencia) motivos.push('informe o mês de competência acima');
-    else if (faltamData) motivos.push('data');
+    if (faltamData) motivos.push('data');
     if (faltamMetodoOuCategoria) motivos.push('forma de pgto./categoria');
     const msgBloqueio = motivos.length ? `Resolva ${motivos.join(' e ')} das linhas destacadas pra liberar a importação.` : '';
 
     sec.innerHTML = `
     <div class="import-csv-contexto">
-        <label>Mês de competência
-            <span class="import-csv-mes-ano">
-                <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="importCsvCompetenciaMes"
-                       placeholder="mês" value="${st.competenciaMes ?? ''}">
-                <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="importCsvCompetenciaAno"
-                       placeholder="ano" value="${st.competenciaAno ?? ''}">
+        <div class="import-csv-competencia">
+            <span class="import-csv-label-linha">Mês de competência
+                <span class="import-csv-ajuda" title="Segue o mês em exibição no topo do app — pra importar num mês diferente, troca por lá antes.">?</span>
             </span>
-        </label>
+            <b>${typeof obterMesAnoCurto === 'function' ? obterMesAnoCurto(estadoApp.mesAtual || new Date()) : ''}</b>
+        </div>
         <label ${todasComDataCompleta ? 'hidden' : ''}>
             <span class="import-csv-label-linha">Dia de corte <span class="import-csv-ajuda" title="Dias a partir deste valor caem no mês ANTERIOR à competência (ex.: fechamento do cartão). Deixe em branco se a coluna Data já for do próprio mês de competência.">?</span></span>
             <input type="number" id="importCsvCorte" min="1" max="31" value="${st.corte ?? ''}" placeholder="ex: 14">
@@ -415,7 +418,6 @@ function renderImportCSV() {
         <button type="button" class="mini-btn" id="importCsvTrocarArquivo">Trocar arquivo</button>
     </div>
     ${todasComDataCompleta ? `<p class="import-csv-nota">📅 Data completa detectada na planilha — não precisa de "Dia de corte".</p>` : ''}
-    ${faltaCompetencia ? `<p class="import-csv-aviso">⚠️ Informe o mês de competência${todasComDataCompleta ? '' : ' pra calcular as datas'} — sem isso nenhuma linha fica pronta.</p>` : ''}
     <p class="import-csv-resumo">
         <b>${st.linhas.length}</b> linhas no arquivo — <span class="ok">${prontas} prontas</span>
         ${revisar ? ` · <span class="alerta">${revisar} para revisar</span>` : ''}
@@ -436,20 +438,14 @@ function renderImportCSV() {
     <div id="importCsvProgresso" class="import-csv-progresso" hidden></div>
     `;
 
-    const atualizarCompetenciaDeCampos = () => {
-        const mes = parseInt(document.getElementById('importCsvCompetenciaMes')?.value, 10);
-        const ano = parseInt(document.getElementById('importCsvCompetenciaAno')?.value, 10);
-        st.competenciaMes = Number.isInteger(mes) ? mes : null;
-        st.competenciaAno = Number.isInteger(ano) ? ano : null;
-        st.competenciaISO = (st.competenciaMes >= 1 && st.competenciaMes <= 12 && st.competenciaAno)
-            ? `${st.competenciaAno}-${String(st.competenciaMes).padStart(2, '0')}-01` : null;
-        _recomputarImportCSV({ forcarData: true, refazerDuplicatas: true });
-    };
-    const soDigitos = e => { e.target.value = e.target.value.replace(/\D/g, ''); };
-    document.getElementById('importCsvCompetenciaMes')?.addEventListener('input', soDigitos);
-    document.getElementById('importCsvCompetenciaAno')?.addEventListener('input', soDigitos);
-    document.getElementById('importCsvCompetenciaMes')?.addEventListener('change', atualizarCompetenciaDeCampos);
-    document.getElementById('importCsvCompetenciaAno')?.addEventListener('change', atualizarCompetenciaDeCampos);
+    document.getElementById('importCsvIgnorarTudo')?.addEventListener('change', e => {
+        paraRevisarOuIgnorada.forEach(([l]) => { l.ignorarManual = e.target.checked; });
+        _renderImportCSVPreservandoScroll();
+    });
+    document.getElementById('importCsvPularTudo')?.addEventListener('change', e => {
+        suspeitas.forEach(([l]) => { l.pularDuplicata = e.target.checked; });
+        _renderImportCSVPreservandoScroll();
+    });
     document.getElementById('importCsvCorte')?.addEventListener('change', e => {
         const v = parseInt(e.target.value, 10);
         st.corte = Number.isInteger(v) ? v : null;
@@ -540,7 +536,7 @@ function _recalcularLinhasForcandoData() {
     st.linhas.forEach(l => {
         l.tipo = l.valorBruto < 0 ? 'entradas' : 'saidas';
         l.valor = Math.abs(l.valorBruto);
-        l.dataISO = l.dataCompletaISO || _reconstruirDataISO(l.dia, st.competenciaISO, st.corte);
+        l.dataISO = l.dataCompletaISO || _reconstruirDataISO(l.dia, _competenciaAtualISO(), st.corte);
     });
 }
 
@@ -587,24 +583,6 @@ function _renderLinhaImportCSV(l, i, comCheckboxPular = false, comCheckboxIgnora
 
 /* ---------- Eventos ---------- */
 
-/** Mês/ano mais comum entre as datas completas do arquivo — usado só pra
- *  pré-preencher "Mês de competência" quando a coluna Data já veio
- *  completa (não tem "dia + corte" pra advinhar, então não tem por que
- *  deixar o campo vazio esperando o usuário digitar o óbvio). O usuário
- *  ainda pode trocar se o mês sugerido não for o que ele queria gravar. */
-function _competenciaSugeridaDeDataCompleta(linhas) {
-    const contagem = new Map();
-    linhas.forEach(l => {
-        if (!l.dataCompletaISO) return;
-        const chave = l.dataCompletaISO.slice(0, 7); // 'YYYY-MM'
-        contagem.set(chave, (contagem.get(chave) || 0) + 1);
-    });
-    if (!contagem.size) return null;
-    const [maisComum] = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0];
-    const [ano, mes] = maisComum.split('-').map(Number);
-    return { mes, ano };
-}
-
 function onImportCsvArquivoEscolhido(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -615,16 +593,7 @@ function onImportCsvArquivoEscolhido(e) {
             mostrarNotificacao('Não achei linhas válidas nesse CSV', 'erro');
             return;
         }
-        const todasComDataCompleta = linhas.every(l => l.dataCompletaISO);
-        const anoAtual = new Date().getFullYear();
-        const sugestao = todasComDataCompleta ? _competenciaSugeridaDeDataCompleta(linhas) : null;
-        estadoImportCSV = {
-            linhas,
-            competenciaMes: sugestao ? sugestao.mes : null,
-            competenciaAno: sugestao ? sugestao.ano : anoAtual,
-            competenciaISO: sugestao ? `${sugestao.ano}-${String(sugestao.mes).padStart(2, '0')}-01` : null,
-            corte: null
-        };
+        estadoImportCSV = { linhas, corte: null };
         _recomputarImportCSV({ refazerDuplicatas: true });
     };
     reader.readAsText(file, 'utf-8');
@@ -678,7 +647,7 @@ async function onImportCsvConfirmar() {
                 diaRecorrencia: '',
                 diaSemana: '',
                 semanas: [],
-                competencia: st.competenciaISO
+                competencia: _competenciaAtualISO()
             });
             ok++;
         } catch (err) {
