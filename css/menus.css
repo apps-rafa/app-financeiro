@@ -601,36 +601,53 @@
    sem isso cada uma tinha o seu próprio padding/font-size e a linha
    ficava com caixas de alturas diferentes, degrau feio. */
 .menu-section[data-sub="importar"] { --campo-import-h: 2.15rem; }
+/* Caixa única (borda + fundo, como .import-csv-competencia) com a legenda
+   "Formato" em cima e o <select> dentro sem borda própria — antes a
+   legenda vivia FORA da caixa do select, numa linha própria por cima
+   dela, então a caixa de Formato acabava mais alta/deslocada que as
+   vizinhas (upload, competência...) que não tinham essa legenda extra. */
 .import-formato-label {
+  box-sizing: border-box;
+  min-height: var(--campo-import-h);
   display: flex;
   flex-direction: column;
-  gap: .25rem;
-  font-size: .78rem;
+  justify-content: center;
+  gap: .1rem;
+  padding: .2rem .5rem;
+  font-size: .68rem;
   font-weight: 600;
   color: var(--text-muted);
   margin: .4rem 0;
   max-width: 260px;
-}
-.import-formato-label select {
-  box-sizing: border-box;
-  min-height: var(--campo-import-h);
-  padding: .4rem .5rem;
   border: 1px solid var(--border-strong, #D1D5DB);
   border-radius: var(--radius-sm);
-  font-size: .85rem;
-  color: var(--text);
   background: var(--surface);
 }
+.import-formato-label select {
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.import-formato-label select:focus { outline: none; }
 /* Formato + o que cada formato renderiza dentro de #importCsvConteudo/
    #importPdfConteudo (upload, mês de competência...) numa linha só,
    só quebrando quando não couber — display:contents faz os FILHOS do
    container de conteúdo virarem itens flex direto dessa linha, em vez do
    próprio container (senão ele contaria como 1 bloco só, sempre pulando
    pra linha de baixo inteiro). */
-[data-importar-modo="csv"], [data-importar-modo="pdf"] {
+/* Só os 2 DIVs de conteúdo (CSV/PDF) — não os botões CSV/PDF/Backup do
+   toggle ali em cima, que têm o MESMO data-importar-modo (valores iguais,
+   elementos diferentes); sem o ">div" isso também virava flex e
+   desalinhava o texto dos botões do toggle (destro-esquerda por padrão
+   de botão vs. centralizado que era o certo). */
+.menu-section[data-sub="importar"] > div[data-importar-modo="csv"],
+.menu-section[data-sub="importar"] > div[data-importar-modo="pdf"] {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   gap: .6rem .8rem;
 }
 /* 2 níveis de wrapper: #importCsvConteudo > #secImportarCSV/#secConciliarCSV
@@ -698,6 +715,13 @@
   transition: background .15s, border-color .15s, color .15s;
 }
 .import-csv-upload-label:hover { border-color: var(--primary); color: var(--primary); }
+/* "✕ Recomeçar" ao lado do botão de upload — mesma altura (senão ficava
+   visivelmente menor que "Escolher arquivos", a var() só array pros
+   campos vizinhos, .mini-btn sozinho usa uma altura padrão menor). */
+.import-csv-upload .mini-btn {
+  box-sizing: border-box;
+  min-height: var(--campo-import-h);
+}
 .import-csv-upload input[type="file"]:focus-visible + .import-csv-upload-label {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
@@ -705,27 +729,39 @@
 .import-csv-contexto {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   gap: .8rem;
   padding: .6rem 0;
 }
+/* Mesma caixa (borda+legenda dentro) do Formato/Mês de competência — "Dia
+   de corte" tinha a legenda numa linha própria ACIMA do campo, fora de
+   qualquer caixa, o que deixava essa coluna mais alta/deslocada que as
+   vizinhas. */
 .import-csv-contexto label {
-  display: flex;
-  flex-direction: column;
-  gap: .25rem;
-  font-size: .78rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-.import-csv-contexto input {
   box-sizing: border-box;
   min-height: var(--campo-import-h);
-  width: 46px;
-  padding: .35rem .4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: .1rem;
+  padding: .2rem .5rem;
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--text-muted);
   border: 1px solid var(--border-strong, #D1D5DB);
   border-radius: var(--radius-sm);
-  font-size: .85rem;
+  background: var(--surface);
 }
+.import-csv-contexto input {
+  width: 46px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.import-csv-contexto input:focus { outline: none; }
 /* "Mês de competência" não é mais editável (segue o mês em exibição no
    topo do app) — mesma caixa/altura dos campos vizinhos, só que com cara
    de valor fixo (fundo neutro, sem borda de input) em vez de campo. */
@@ -736,9 +772,13 @@
   flex-direction: column;
   justify-content: center;
   gap: .1rem;
-  padding: .25rem .6rem;
+  padding: .2rem .6rem;
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: 1px solid var(--border-strong, #D1D5DB);
   border-radius: var(--radius-sm);
-  background: var(--surface-2);
+  background: var(--surface);
 }
 .import-csv-competencia b { font-size: .85rem; color: var(--text); font-weight: 700; }
 .import-csv-contexto #importCsvTrocarArquivo {

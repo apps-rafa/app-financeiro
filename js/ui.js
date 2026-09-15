@@ -386,7 +386,7 @@ function _renderGrupoDuplicatas(transacoes, tipoUI, aberto) {
     return `
     <details class="rec-grupo" data-nome="__duplicatas__" style="--cor-rec:var(--despesa-text)" ${aberto ? 'open' : ''}>
       <summary>
-        <span class="rec-grupo-nome">🔁 Verificação de duplicatas</span>
+        <span class="rec-grupo-nome">🔁 Duplicatas</span>
         <button type="button" class="mini-btn" data-dup-aceitar-todas title="Marca todas como &quot;não é duplicata&quot; — não avisa de novo sobre elas">✓ Aceitar todas</button>
         <button type="button" class="mini-btn armed" data-dup-apagar-todas title="Apaga todos os lançamentos listados aqui">🗑 Apagar todas</button>
         <span class="rec-grupo-espaco"></span>
