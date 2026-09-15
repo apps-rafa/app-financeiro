@@ -603,19 +603,35 @@
 }
 
 /* ============ Importar CSV ============ */
-.import-csv-upload { padding: .6rem 0; }
-/* Botão nativo de <input type="file"> com a mesma cara dos outros botões
-   do app (borda + fundo da superfície) em vez do estilo padrão do
-   navegador, que destoava — inclusive não respeitava o tema escuro. */
-.import-csv-upload input[type="file"] {
-  display: block;
-  width: 100%;
-  max-width: 420px;
-  color: var(--text-muted);
-  font-size: .8rem;
+.import-csv-upload {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .5rem;
+  padding: .6rem 0;
 }
-.import-csv-upload input[type="file"]::file-selector-button {
-  margin-right: .6rem;
+/* O <input type="file"> nativo fica escondido (acessível — só fora da
+   tela, não display:none) e vira um <label class="import-csv-upload-label">
+   com a cara dos outros botões do app: o texto nativo "Nenhum arquivo
+   escolhido" não servia pra nada (a seção inteira é remontada do zero a
+   cada evento — trocar forma de pgto., marcar "ignorar" — então esse texto
+   nunca refletia o arquivo de verdade; quem mostra o(s) arquivo(s) já
+   carregado(s) são os cartões abaixo) e ocupava a largura toda, empurrando
+   o "✕ Recomeçar" pra uma linha própria embaixo em vez de ficar do lado. */
+.import-csv-upload input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.import-csv-upload-label {
+  display: inline-flex;
+  align-items: center;
   padding: .4rem .8rem;
   border: 1px solid var(--border-strong, #D1D5DB);
   border-radius: var(--radius);
@@ -626,9 +642,10 @@
   cursor: pointer;
   transition: background .15s, border-color .15s, color .15s;
 }
-.import-csv-upload input[type="file"]::file-selector-button:hover {
-  border-color: var(--primary);
-  color: var(--primary);
+.import-csv-upload-label:hover { border-color: var(--primary); color: var(--primary); }
+.import-csv-upload input[type="file"]:focus-visible + .import-csv-upload-label {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 .import-csv-contexto {
   display: flex;
@@ -672,15 +689,27 @@
 .import-csv-resumo .ok { color: var(--receita-text); font-weight: 700; }
 .import-csv-resumo .alerta { color: var(--despesa-text); font-weight: 700; }
 
+/* Cada grupo ganha um contorno próprio — antes só o <summary> (título)
+   tinha qualquer estilo; o corpo (tabela/nota) ficava "solto", sem nada
+   delimitando onde um grupo acaba e o próximo começa. */
+.import-csv-grupo {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  padding: 0 .7rem .7rem;
+  margin: .7rem 0;
+}
 .import-csv-grupo-titulo {
   font-size: .8rem;
   font-weight: 700;
   color: var(--text-muted);
-  margin: .8rem 0 .35rem;
+  margin: 0 -.7rem;
+  padding: .55rem .7rem;
   cursor: pointer;
   list-style: none;
   user-select: none;
 }
+.import-csv-grupo[open] > .import-csv-grupo-titulo { margin-bottom: .5rem; border-bottom: 1px solid var(--border); }
 .import-csv-grupo-titulo::-webkit-details-marker { display: none; }
 .import-csv-grupo-titulo::before {
   content: '▸';
@@ -691,6 +720,13 @@
   transition: transform .15s ease;
 }
 .import-csv-grupo[open] > .import-csv-grupo-titulo::before { transform: rotate(90deg); }
+/* A regra global *:hover::before{transform:none!important} (animations.css
+   — existe pra cancelar deslocamento em botões no hover) também pegava
+   essa seta sem querer: com o grupo aberto, só de passar o mouse por cima
+   do título ela "destrancava" de volta pra ▸ e voltava a girar ao tirar o
+   mouse — um pisca-pisca sem sentido nenhum aqui. Mais específica, então
+   vence mesmo com !important dos dois lados. */
+.import-csv-grupo[open] > .import-csv-grupo-titulo:hover::before { transform: rotate(90deg) !important; }
 .import-csv-tabela-wrap {
   max-height: 420px;
   overflow: auto;

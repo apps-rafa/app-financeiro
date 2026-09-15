@@ -727,6 +727,7 @@ function _renderListaAgrupadaPorTotal(container, transacoes, tipoUI, msgVazia, {
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
             ${ordemCriacaoHTML}
+            <span class="rec-grupo-espaco"></span>
             ${submenuHTML}
             <span class="rec-grupo-contagem">${itens.length}</span>
             <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
@@ -817,6 +818,7 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
         if (!itens.length) return `
         <div class="rec-grupo rec-grupo--vazio" style="--cor-rec:${cor}">
           <span class="rec-grupo-nome">${nome}</span>
+          <span class="rec-grupo-espaco"></span>
           <span class="rec-grupo-contagem">0</span>
         </div>`;
         return `
@@ -824,6 +826,7 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
             ${_renderOrdemCriacaoToggle(`${tipoUI}:cronologica:${nome}`)}
+            <span class="rec-grupo-espaco"></span>
             <span class="rec-grupo-contagem">${itens.length}</span>
             <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
           </summary>
@@ -984,6 +987,7 @@ function _renderItensSubagrupados(itens, tipoUI, dimCfg, abertos, chavePrefixo) 
           <summary class="subgrupo-cab">
             <span class="subgrupo-nome">${nome}</span>
             ${_renderOrdemCriacaoToggle(`${chavePrefixo}:sub:${nome}`)}
+            <span class="subgrupo-espaco"></span>
             <span class="subgrupo-contagem">${its.length}</span>
             <span class="subgrupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
           </summary>
@@ -1076,6 +1080,7 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
           <summary>
             <span class="rec-grupo-nome">${rotulo}</span>
             ${ordemCriacaoHTML}
+            <span class="rec-grupo-espaco"></span>
             ${submenuHTML}
             <span class="rec-grupo-contagem">${itens.length}</span>
             <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>

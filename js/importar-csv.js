@@ -309,6 +309,7 @@ function renderImportCSV() {
         </p>
         <div class="import-csv-upload">
             <input type="file" id="importCsvArquivo" accept=".csv,text/csv">
+            <label class="import-csv-upload-label" for="importCsvArquivo">📁 Escolher arquivo</label>
         </div>`;
         const inp = document.getElementById('importCsvArquivo');
         if (inp) inp.addEventListener('change', onImportCsvArquivoEscolhido);
