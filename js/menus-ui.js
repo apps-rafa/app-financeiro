@@ -1,20 +1,7 @@
 /**
  * UI DE CONFIGURAÇÃO
- * Categorias, Métodos de pagamento (inclui cartões) e Tipos de recorrência.
+ * Categorias, Métodos de pagamento (inclui cartões).
  */
-
-// Tipos de recorrência: fixos, não editáveis. Só descrição.
-// [kind interno, descrição] — o rótulo exibido vem de rotuloRecorrencia()
-const RECORRENCIAS_INFO = [
-  ['Pontual', 'Acontece uma única vez, sem repetição.'],
-  ['Mensal', 'Repete todo mês no dia informado, ajustado para o dia útil mais próximo.'],
-  ['Parcelada', 'Divide o valor em parcelas mensais — uma por mês, a partir do mês em exibição. No crédito, a fatura é definida pela data da compra e o fechamento do cartão.'],
-  ['Primeiro dia útil do mês', 'Apenas receitas. A data sai no primeiro dia útil do mês em exibição.'],
-  ['Até o 5º dia útil do mês', 'Apenas receitas. Data no 5º dia útil do mês; fica pendente de OK e se confirma sozinho nessa data.'],
-  ['Último dia útil do mês', 'Apenas receitas. A data sai no último dia útil do mês em exibição.'],
-  ['Último dia útil do mês anterior', 'Apenas receitas. A data cai no último dia útil do mês ANTERIOR (ex.: salário de setembro pago em 31/08).'],
-  ['Semanal', 'Repete a cada 7 dias. Pode fixar um dia da semana ou deixar sem dia fixo.']
-];
 
 let menusAtual = null; // cache dos itens carregados (para edição inline)
 let subConfigAtiva = null; // sub-aba selecionada na Configuração — nenhuma por padrão (toggle)
@@ -54,10 +41,6 @@ async function carregarAbaMenus() {
             <span class="subtab-texto met-full">Formas de pagamento</span>
             <span class="subtab-texto met-curto">Pgtos.</span>
           </button>
-          <button class="subtab" data-sub="rec">🔁
-            <span class="subtab-texto rec-full">Frequência</span>
-            <span class="subtab-texto rec-curto">Freq.</span>
-          </button>
           <button class="subtab" data-sub="fer">📅 <span class="subtab-texto">Feriados</span></button>
           <button class="subtab" data-sub="importar">📥 <span class="subtab-texto">Importar</span></button>
           <button class="subtab" data-sub="dados">💾 <span class="subtab-texto">Dados</span></button>
@@ -93,51 +76,6 @@ async function carregarAbaMenus() {
         <div class="menu-list" id="metodosList"></div>
       </div>
 
-      <div class="menu-section" data-sub="rec" hidden>
-        <p class="menu-hint">Tipos fixos do sistema: não dá pra criar, editar nem remover. Mas dá pra desativar e reordenar — é essa ordem que aparece no dropdown do lançamento.</p>
-        <div class="menu-acoes-linha">
-          <button type="button" class="h3-add h3-az" onclick="ordenarAlfabetico('recorrencias')" title="Ordenar de A a Z">A→Z</button>
-        </div>
-        <div class="menu-list menu-list--livre" id="recorrenciasList">
-          ${(() => {
-            const itens = [...(menus.recorrencias || [])].sort((a, b) => {
-              const oa = a.ordem ?? Infinity, ob = b.ordem ?? Infinity;
-              return oa - ob || String(a.nome).localeCompare(String(b.nome), 'pt-BR');
-            });
-            return itens.map((linha, i) => {
-              const kind = linha.nome;
-              const desc = (RECORRENCIAS_INFO.find(([k]) => k === kind) || [])[1] || '';
-              const rotulo = kind === 'Mensal'
-                ? 'Mensal / Contas'
-                : (typeof rotuloRecorrencia === 'function' ? rotuloRecorrencia(kind) : kind);
-              const c = corDoItemMenu(linha);
-              const statusClass = linha.status === 'Ativo' ? 'ativo' : 'inativo';
-              const statusLabel = linha.status === 'Ativo' ? '✓ Ativo' : '✗ Inativo';
-              return `
-              <div class="menu-item ${statusClass}" data-id="${linha.linha}" data-tipo="Recorrência">
-                <div class="item-ordem">
-                  <button class="btn-icon btn-mini-seta" data-act="mover-cima" data-grupo="recorrencias" data-id="${linha.linha}"
-                          title="Mover pra cima" ${i === 0 ? 'disabled' : ''}>▲</button>
-                  <button class="btn-icon btn-mini-seta" data-act="mover-baixo" data-grupo="recorrencias" data-id="${linha.linha}"
-                          title="Mover pra baixo" ${i === itens.length - 1 ? 'disabled' : ''}>▼</button>
-                </div>
-                <div class="item-info">
-                  <div class="item-nome">${rotulo}</div>
-                  <div class="item-descricao item-descricao--full">${desc}</div>
-                </div>
-                <div class="item-status">${statusLabel}</div>
-                <div class="item-actions">
-                  <button class="cor-swatch" style="background:${c}" data-act="cor" data-tipo="Recorrência"
-                          data-id="${linha.linha}" data-nome="${kind}" title="Cor do chip"></button>
-                  <button class="btn-icon ${linha.status === 'Ativo' ? 'btn-warning' : 'btn-success'}"
-                          data-act="${linha.status === 'Ativo' ? 'desativar' : 'ativar'}" data-id="${linha.linha}"
-                          title="${linha.status === 'Ativo' ? 'Desativar' : 'Ativar'}">${linha.status === 'Ativo' ? '⊘' : '↻'}</button>
-                </div>
-              </div>`;
-            }).join('');
-          })()}
-        </div>
-      </div>
 
       <div class="menu-section" data-sub="fer" hidden>
         <div class="feriados-barra">
@@ -212,9 +150,6 @@ async function carregarAbaMenus() {
   renderizarItemsMenu('Categoria', 'categoriasDespesaList', menus.categoriasDespesa, 'categoriasDespesa');
   renderizarItemsMenu('Categoria', 'categoriasReceitaList', menus.categoriasReceita, 'categoriasReceita');
   renderizarItemsMenu('Método', 'metodosList', menus.metodos, 'metodos');
-
-  const recList = document.getElementById('recorrenciasList');
-  if (recList) recList.onclick = onMenuListClick;
 
   feriadosAnoView = (typeof estadoApp !== 'undefined' && estadoApp.mesAtual)
     ? estadoApp.mesAtual.getFullYear() : new Date().getFullYear();
@@ -524,7 +459,6 @@ function _itensDoGrupo(grupo) {
   const base = grupo === 'categoriasReceita' ? menusAtual.categoriasReceita
     : grupo === 'categoriasDespesa' ? menusAtual.categoriasDespesa
     : grupo === 'metodos' ? menusAtual.metodos
-    : grupo === 'recorrencias' ? menusAtual.recorrencias
     : [];
   return [...(base || [])].sort((a, b) => {
     const oa = a.ordem ?? Infinity, ob = b.ordem ?? Infinity;
