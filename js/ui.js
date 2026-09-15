@@ -465,6 +465,15 @@ function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
                 renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia);
                 return;
             }
+            const ordemBtn = e.target.closest('[data-ordem-criacao-toggle]');
+            if (ordemBtn) {
+                e.preventDefault(); // está dentro do <summary> — sem isso, o clique também abre/fecha o <details>
+                _ordemCriacaoPontual[tipoUI] = !_ordemCriacaoPontual[tipoUI];
+                const det = ordemBtn.closest('details.rec-grupo');
+                if (det) det.open = true;
+                renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia);
+                return;
+            }
             if (onClickConteudo) onClickConteudo(e);
         };
     }
@@ -880,6 +889,14 @@ function _setSubModoGrupo(tipoUI, modo, grupoChave, valor) {
     _subModoGrupo[`${tipoUI}:${modo}:${grupoChave}`] = valor;
 }
 
+// Dentro do grupo "Pontual" (visão Por recorrência), o usuário pode trocar
+// a ordem cronológica (padrão, pela data do lançamento) pela ordem em que
+// os lançamentos foram CRIADOS (id crescente = criado depois) — só faz
+// sentido pra Pontual: os outros tipos são instâncias geradas
+// automaticamente a partir de uma recorrência, não têm "ordem de criação"
+// própria que diga algo. Desativado por padrão.
+const _ordemCriacaoPontual = {}; // tipoUI -> bool
+
 // Quais dimensões aparecem como opção de submodo, conforme o modo (top)
 // escolhido — sempre as OUTRAS 2, nunca a mesma dimensão que já agrupa a
 // tela toda. Ordem = ordem dos botões.
@@ -992,7 +1009,11 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
     const conhecidos = new Set(ordem);
     const grupos = [];
     ordem.forEach(tipoRec => {
-        const itens = transacoes.filter(t => chaveDe(t) === tipoRec).sort(_porDataDesc);
+        // "Pontual" com o toggle de ordem de criação ligado: mais recém-criado
+        // primeiro (id maior), em vez de pela data do lançamento.
+        const porCriacao = tipoRec === 'Pontual' && _ordemCriacaoPontual[tipoUI];
+        const itens = transacoes.filter(t => chaveDe(t) === tipoRec)
+            .sort(porCriacao ? (a, b) => (b.id || 0) - (a.id || 0) : _porDataDesc);
         if (itens.length) grupos.push([tipoRec, itens]);
     });
     const resto = transacoes.filter(t => !conhecidos.has(chaveDe(t))).sort(_porDataDesc);
@@ -1016,11 +1037,20 @@ function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
         // filtro principal: ícone de funil desliga, sem opção "Cronológica"
         // própria (é só o estado "nenhum submodo ligado").
         const submenuHTML = _renderOrganizadorInline(tipoUI, 'recorrencia', tipoRec, ehDespesa);
+        // Só "Pontual" ganha o toggle de ordem de criação — os outros tipos
+        // são gerados automaticamente pela recorrência, não têm uma "ordem
+        // de criação" própria que faça sentido mostrar.
+        const ordemCriacaoHTML = tipoRec === 'Pontual'
+            ? `<button type="button" class="subgrupo-modo-btn${_ordemCriacaoPontual[tipoUI] ? ' active' : ''}"
+                       data-ordem-criacao-toggle="1"
+                       title="Ordenar pela ordem em que os lançamentos foram criados, em vez de cronológica">🕓 Criação</button>`
+            : '';
 
         return `
         <details class="rec-grupo" data-nome="${tipoRec.replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[tipoRec] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${rotulo}</span>
+            ${ordemCriacaoHTML}
             ${submenuHTML}
             <span class="rec-grupo-contagem">${itens.length}</span>
             <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
