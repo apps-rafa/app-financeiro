@@ -8,11 +8,14 @@
 // Estado da importação em andamento (module-local, refeito a cada arquivo escolhido)
 let estadoImportCSV = null;
 
-/** Liga os listeners da sub-aba "Importar CSV" (chamada por carregarAbaMenus). */
+/** Liga os listeners da sub-aba "Importar CSV" (chamada por carregarAbaMenus).
+ *  NÃO reinicia o estado se já havia um arquivo em andamento — reabrir essa
+ *  sub-aba (ex.: voltar de Despesas) só remonta o HTML, não pode jogar fora
+ *  a conferência que o usuário ainda não terminou. Pra recomeçar de fato,
+ *  usa "Trocar arquivo"/"Cancelar" (zera estadoImportCSV explicitamente). */
 function iniciarImportarCSV() {
     const sec = document.getElementById('secImportarCSV');
     if (!sec) return;
-    estadoImportCSV = null;
     renderImportCSV();
 }
 

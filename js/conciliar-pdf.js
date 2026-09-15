@@ -17,13 +17,30 @@ const _estadosConciliar = {}; // secId -> { pdfs: [...] }
 /** formatoRestrito: null (aceita qualquer formato da aba) | 'bradesco' | 'nubank' | 'mp'
  *  — o dropdown de formato em Importar sempre manda um valor específico;
  *  null só existe pra chamadas antigas/testes. */
+/** NÃO reinicia o estado se essa instância já vinha com arquivos carregados
+ *  pro mesmo formato — reabrir a aba (ex.: voltar de Despesas) remonta o
+ *  HTML do zero via carregarAbaMenus(), mas isso não pode jogar fora a
+ *  conferência que o usuário ainda não terminou. Só reinicia de fato
+ *  quando o formato mudou (trocou o dropdown) ou é a 1ª vez. Pra recomeçar
+ *  do mesmo formato, usa o botão "✕ Recomeçar" (ver _resetarConciliar). */
 function _iniciarConciliar(secId, modo, formatoRestrito = null) {
     const sec = document.getElementById(secId);
     if (!sec) return;
-    _estadosConciliar[secId] = { pdfs: [], formatoRestrito };
+    const existente = _estadosConciliar[secId];
+    if (!existente || existente.formatoRestrito !== formatoRestrito) {
+        _estadosConciliar[secId] = { pdfs: [], formatoRestrito };
+    }
     if (modo === 'pdf' && typeof pdfjsLib !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
+    renderConciliar(secId, modo);
+}
+
+/** Botão "✕ Recomeçar" — único jeito de zerar de propósito o que já foi
+ *  carregado nessa instância (o usuário ainda pode ir e voltar de outras
+ *  páginas sem perder nada, ver _iniciarConciliar). */
+function _resetarConciliar(secId, modo, formatoRestrito) {
+    _estadosConciliar[secId] = { pdfs: [], formatoRestrito };
     renderConciliar(secId, modo);
 }
 
@@ -507,10 +524,12 @@ function renderConciliar(secId, modo) {
     <p class="menu-hint">${dica}</p>
     <div class="import-csv-upload">
         <input type="file" id="${arquivoId}" accept="${accept}" multiple>
+        ${estado.pdfs.length ? `<button type="button" class="mini-btn" id="${secId}Recomecar" title="Apaga os arquivos carregados aqui e começa do zero">✕ Recomeçar</button>` : ''}
     </div>
     <div id="${listaId}"></div>
     `;
     document.getElementById(arquivoId)?.addEventListener('change', e => onConciliarArquivos(e, secId, modo));
+    document.getElementById(`${secId}Recomecar`)?.addEventListener('click', () => _resetarConciliar(secId, modo, estado.formatoRestrito));
 
     const lista = document.getElementById(listaId);
     lista.innerHTML = estado.pdfs.map(p => _renderPdfEntrada(p, modo, abertos, secId)).join('');
@@ -724,8 +743,8 @@ function _abrirLancarConciliar(secId, modo, pId, idx) {
                     <input type="number" id="lcParcelas" min="2" value="${parcelasPadrao}">
                 </div>
             </div>
-            <label id="lcPagarVctoWrap" hidden style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;margin:.3rem 0">
-                <input type="checkbox" id="lcPagarVcto" ${pagarVctoPadrao ? 'checked' : ''}> Pagar no vencimento
+            <label id="lcPagarVctoWrap" class="chip-toggle" hidden style="align-self:flex-start;margin:.3rem 0">
+                <input type="checkbox" id="lcPagarVcto" hidden ${pagarVctoPadrao ? 'checked' : ''}> pagar no vcto.
             </label>
             <div class="form-group" id="lcDiaSemanaWrap" hidden>
                 <label for="lcDiaSemana">Dia da semana (opcional)</label>

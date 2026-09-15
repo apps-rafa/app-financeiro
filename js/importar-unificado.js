@@ -7,18 +7,51 @@
  * já está no app), sem nunca misturar CSV com PDF.
  */
 
+// Lembrado entre remontagens da aba (ex.: sair pra Despesas e voltar pra
+// Configurações refaz o HTML do zero — sem isso o <select> voltava sempre
+// pra "Selecione..." e o trabalho de conciliação/importação em andamento
+// desaparecia de vista, mesmo o estado em si sobrevivendo em memória.
+let _formatoImportCsvLembrado = '';
+let _formatoImportPdfLembrado = '';
+let _modoImportLembrado = 'csv';
+
 function iniciarImportarUnificado() {
     const selCsv = document.getElementById('importCsvFormato');
     const selPdf = document.getElementById('importPdfFormato');
 
     if (selCsv) {
-        selCsv.addEventListener('change', () => _montarImportCSV(selCsv.value));
+        if (_formatoImportCsvLembrado && [...selCsv.options].some(o => o.value === _formatoImportCsvLembrado)) {
+            selCsv.value = _formatoImportCsvLembrado;
+        }
+        selCsv.addEventListener('change', () => {
+            _formatoImportCsvLembrado = selCsv.value;
+            _montarImportCSV(selCsv.value);
+        });
+        _formatoImportCsvLembrado = selCsv.value;
         _montarImportCSV(selCsv.value);
     }
     if (selPdf) {
-        selPdf.addEventListener('change', () => _montarImportPDF(selPdf.value));
+        if (_formatoImportPdfLembrado && [...selPdf.options].some(o => o.value === _formatoImportPdfLembrado)) {
+            selPdf.value = _formatoImportPdfLembrado;
+        }
+        selPdf.addEventListener('change', () => {
+            _formatoImportPdfLembrado = selPdf.value;
+            _montarImportPDF(selPdf.value);
+        });
+        _formatoImportPdfLembrado = selPdf.value;
         _montarImportPDF(selPdf.value);
     }
+
+    if (_modoImportLembrado !== 'csv') {
+        document.querySelectorAll('.importar-toggle-btn').forEach(b =>
+            b.classList.toggle('active', b.dataset.importarModo === _modoImportLembrado));
+        document.querySelectorAll('[data-importar-modo]:not(.importar-toggle-btn)').forEach(el => {
+            el.hidden = el.dataset.importarModo !== _modoImportLembrado;
+        });
+    }
+    document.querySelectorAll('.importar-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => { _modoImportLembrado = btn.dataset.importarModo; });
+    });
 }
 
 function _semFormatoEscolhido() {
