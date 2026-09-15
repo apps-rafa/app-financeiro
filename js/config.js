@@ -121,7 +121,6 @@ const SELECTORS = {
   categoria: '#categoria',
   formaPagamento: '#formaPagamento',
   parceleGroup: '#parceleGroup',
-  tipoRecorrencia: '#tipoRecorrencia',
   descricao: '#descricao',
   categoriaSugestoes: '#categoriaSugestoes'
 };

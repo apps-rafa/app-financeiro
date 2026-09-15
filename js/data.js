@@ -15,11 +15,6 @@ async function carregarDados() {
 
         console.log(`📊 Carregando dados de ${mes}/${ano}...`);
 
-        // Auto-confirma "Até o 5º dia útil do mês" cujo prazo já passou
-        if (typeof autoConfirmarVencidos === 'function') {
-            try { await autoConfirmarVencidos(); } catch (e) { console.warn('autoConfirmar:', e); }
-        }
-        
         // Carregar entradas
         const entradas = await carregarTransacoes('entradas', mes, ano);
         estadoApp.transacoes.entradas = entradas;
@@ -59,8 +54,7 @@ function carregarDadosSimulados() {
                 categoria: 'Salário',
                 descricao: 'Salário mensal',
                 formaPagamento: 'À vista',
-                tipoRecorrencia: 'Último dia útil do mês',
-                proximaData: '2026-10-30',
+                tipoRecorrencia: 'Pontual',
                 status: 'Ativa'
             }
         ],
@@ -97,8 +91,7 @@ function carregarDadosSimulados() {
                 categoria: 'Casa',
                 descricao: 'Condomínio',
                 formaPagamento: 'À vista',
-                tipoRecorrencia: 'Mensal',
-                proximaData: '2026-10-01',
+                tipoRecorrencia: 'Pontual',
                 status: 'Ativa'
             }
         ]
@@ -125,15 +118,13 @@ async function carregarMenus() {
         estadoApp.menus.categoriasDespesa = menus.categoriasDespesa || [];
         estadoApp.menus.categoriasReceita = menus.categoriasReceita || [];
         estadoApp.menus.metodos = menus.metodos || [];
-        estadoApp.menus.cores = menus.cores || { categoria: {}, metodo: {}, recorrencia: {} };
-        estadoApp.menus.recorrencias = menus.recorrencias || [];
+        estadoApp.menus.cores = menus.cores || { categoria: {}, metodo: {} };
 
         console.log('✓ Menus carregados:', estadoApp.menus);
 
         // Preencher dropdowns
         preencherDropdownCategorias();
         preencherDropdownMetodos();
-        preencherDropdownRecorrencias();
 
         return true;
     } catch (error) {
@@ -192,57 +183,6 @@ function preencherDropdownMetodos() {
     });
     sel.value = atual;
     if (typeof atualizarCampoCredito === 'function') atualizarCampoCredito();
-}
-
-// Ordem preferida de exibição dos tipos de recorrência
-const ORDEM_RECORRENCIA = ['Pontual', 'Mensal', 'Parcelada',
-    'Primeiro dia útil do mês', 'Até o 5º dia útil do mês', 'Último dia útil do mês',
-    'Último dia útil do mês anterior', 'Semanal'];
-
-// Rótulo curto exibido na UI (o valor interno / gravado no banco não muda)
-const RECORRENCIA_ROTULO = {
-    'Primeiro dia útil do mês': '1º dia útil',
-    'Até o 5º dia útil do mês': '5º dia útil',
-    'Último dia útil do mês': 'Último dia útil'
-    // 'Último dia útil do mês anterior' permanece igual
-};
-
-/** Nome exibido de um tipo de recorrência (Mensal -> "Contas/Mensal" em despesa) */
-function rotuloRecorrencia(tipo, ehDespesa) {
-    if (tipo === 'Mensal' && ehDespesa) return 'Contas/Mensal';
-    return RECORRENCIA_ROTULO[tipo] || tipo;
-}
-
-/**
- * Preenche o dropdown de recorrência. Tipos fixos do sistema (todos sempre).
- */
-function preencherDropdownRecorrencias() {
-    const sel = document.querySelector(SELECTORS.tipoRecorrencia);
-    if (!sel) return;
-    const atual = sel.value;
-
-    // O tipo "Mensal" aparece como "Contas" nas despesas
-    const ehDespesa = document.querySelector(SELECTORS.tipoTransacao)?.value === 'saidas';
-    // Despesa não usa os tipos de "dia útil fixo" (só receita)
-    const soReceita = typeof RECORRENCIA_DIA_UTIL !== 'undefined' ? RECORRENCIA_DIA_UTIL : [];
-    // Ordem/ativação vêm do banco (estadoApp.menus.recorrencias já filtra status='Ativo'
-    // e ordena por "ordem"); ORDEM_RECORRENCIA só serve de fallback antes do 1º carregamento.
-    const ativos = (estadoApp.menus && estadoApp.menus.recorrencias && estadoApp.menus.recorrencias.length)
-        ? estadoApp.menus.recorrencias
-        : ORDEM_RECORRENCIA;
-    // "Pontual" é o valor padrão do formulário — nunca pode sumir do dropdown
-    const base = ativos.includes('Pontual') ? ativos : ['Pontual', ...ativos];
-    const disponiveis = base.filter(t => !(ehDespesa && soReceita.includes(t)));
-
-    sel.innerHTML = '';
-    disponiveis.forEach(t => {
-        const o = document.createElement('option');
-        o.value = t;
-        o.textContent = rotuloRecorrencia(t, ehDespesa);
-        sel.appendChild(o);
-    });
-    sel.value = disponiveis.includes(atual) ? atual : 'Pontual';
-    if (typeof atualizarCamposRecorrencia === 'function') atualizarCamposRecorrencia();
 }
 
 /** Método selecionado no formulário (objeto do menu) ou null */

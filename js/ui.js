@@ -280,21 +280,17 @@ const _filtroGrupoDe = (tipoUI, modo) => _filtrosGrupoBarra[`${tipoUI}:${modo}`]
 const _setFiltroGrupoBarra = (tipoUI, modo, valor) => { _filtrosGrupoBarra[`${tipoUI}:${modo}`] = valor; };
 
 /** Agrupa `transacoes` pela MESMA dimensão que o modo de visualização usa
- *  (recorrência/método/categoria) — usado só pra montar a barra proporcional
- *  com as cores/nomes certos; a lista embaixo continua sendo agrupada pelas
- *  funções renderListaAgrupada/PorMetodo/PorCategoria como sempre. */
+ *  (método/categoria) — usado só pra montar a barra proporcional com as
+ *  cores/nomes certos; a lista embaixo continua sendo agrupada pelas
+ *  funções renderListaPorMetodo/PorCategoria como sempre. */
 function _agruparParaBarra(modo, transacoes, tipoUI) {
     const cores = (estadoApp.menus && estadoApp.menus.cores) || {};
     const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
     let chaveDe, semChave, corMapa, rotuloDe = k => k;
     if (modo === 'metodo') {
         chaveDe = t => t.metodo; semChave = 'Sem método'; corMapa = cores.metodo || {};
-    } else if (modo === 'categoria') {
-        chaveDe = t => t.categoria; semChave = 'Sem categoria'; corMapa = cores.categoria || {};
     } else {
-        const ehDespesa = tipoUI === 'saida';
-        chaveDe = t => t.tipoRecorrencia || 'Pontual'; semChave = 'Pontual'; corMapa = cores.recorrencia || {};
-        rotuloDe = k => (typeof rotuloRecorrencia === 'function' ? rotuloRecorrencia(k, ehDespesa) : k);
+        chaveDe = t => t.categoria; semChave = 'Sem categoria'; corMapa = cores.categoria || {};
     }
     const mapa = new Map();
     transacoes.forEach(t => {
@@ -430,10 +426,8 @@ function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
 
         if (modo === 'metodo') {
             renderListaPorMetodo(container, filtrados, tipoUI, msgFiltrado);
-        } else if (modo === 'categoria') {
-            renderListaPorCategoria(container, filtrados, tipoUI, msgFiltrado);
         } else {
-            renderListaAgrupada(container, filtrados, tipoUI, msgFiltrado);
+            renderListaPorCategoria(container, filtrados, tipoUI, msgFiltrado);
         }
 
         container.insertAdjacentHTML('afterbegin', barraHTML);
@@ -490,8 +484,8 @@ function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
     _posicionarCampoBusca(container, tipoUI);
 }
 
-// 'recorrencia' (padrão) | 'categoria' | 'cronologica' — visão da aba Receitas
-const MODOS_LISTA_ENTRADAS = ['cronologica', 'recorrencia', 'categoria'];
+// 'categoria' | 'cronologica' (padrão) — visão da aba Receitas
+const MODOS_LISTA_ENTRADAS = ['cronologica', 'categoria'];
 let modoListaEntradas = _modoListaSalvo('modoListaEntradas', MODOS_LISTA_ENTRADAS);
 
 function definirModoListaEntradas(modo) {
@@ -581,8 +575,8 @@ function atualizarEntradasLista() {
     }
 }
 
-// 'recorrencia' (padrão) | 'metodo' | 'categoria' | 'cronologica' — visão da aba Despesas
-const MODOS_LISTA_SAIDAS = ['cronologica', 'recorrencia', 'metodo', 'categoria'];
+// 'metodo' | 'categoria' | 'cronologica' (padrão) — visão da aba Despesas
+const MODOS_LISTA_SAIDAS = ['cronologica', 'metodo', 'categoria'];
 let modoListaSaidas = _modoListaSalvo('modoListaSaidas', MODOS_LISTA_SAIDAS);
 
 function definirModoListaSaidas(modo) {
@@ -752,7 +746,7 @@ function renderListaPorMetodo(container, transacoes, tipoUI, msgVazia) {
         chaveDe: t => t.metodo,
         semChave: 'Sem forma de pagamento',
         cores,
-        gerarOpts: { comRecorrenciaChip: true },
+        gerarOpts: { semMetodoChip: true },
         modo: 'metodo'
     });
 }
@@ -897,12 +891,12 @@ function _lerAbertosSubgrupo(container) {
     return abertos;
 }
 
-// Dentro de QUALQUER grupo (de Recorrência, Forma de pgto. ou Categoria —
-// não existe em Cronológica: lá os grupos são "Atual"/"A pagar"/"A
-// receber", não fazem sentido reorganizar), o usuário pode escolher ver os
-// itens organizados pelas OUTRAS 2 dimensões em vez de cronológico
-// (padrão). Estado por "tipoUI:modo:chaveDoGrupo" -> 'cronologica' (nenhum
-// filtro ligado) | 'categoria' | 'metodo' | 'recorrencia'.
+// Dentro de QUALQUER grupo (de Forma de pgto. ou Categoria — não existe em
+// Cronológica: lá os grupos são "Atual"/"A pagar"/"A receber", não fazem
+// sentido reorganizar), o usuário pode escolher ver os itens organizados
+// pela OUTRA dimensão em vez de cronológico (padrão). Estado por
+// "tipoUI:modo:chaveDoGrupo" -> 'cronologica' (nenhum filtro ligado) |
+// 'categoria' | 'metodo'.
 const _subModoGrupo = {};
 function _subModoGrupoDe(tipoUI, modo, grupoChave) {
     return _subModoGrupo[`${tipoUI}:${modo}:${grupoChave}`] || 'cronologica';
@@ -942,27 +936,17 @@ function _renderOrdemCriacaoToggle(chave) {
 // escolhido — sempre as OUTRAS 2, nunca a mesma dimensão que já agrupa a
 // tela toda. Ordem = ordem dos botões.
 const _SUBMODOS_POR_MODO = {
-    recorrencia: ['categoria', 'metodo'],
-    metodo: ['categoria', 'recorrencia'],
-    categoria: ['metodo', 'recorrencia']
+    metodo: ['categoria'],
+    categoria: ['metodo']
 };
 
-/** Config (chave/rótulo/emoji) de cada dimensão usável como submodo.
- *  "recorrencia" depende de ehDespesa pro rótulo (Contas/Cartão/...
- *  variam entre despesa e receita), por isso é uma função. */
+/** Config (chave/rótulo/emoji) de cada dimensão usável como submodo. */
 function _dimensaoSubmodo(dim, ehDespesa) {
     switch (dim) {
         case 'categoria':
             return { chaveDe: t => t.categoria, semChave: 'Sem categoria', emoji: '🏷️', label: 'Categoria' };
         case 'metodo':
             return { chaveDe: t => t.metodo, semChave: 'Sem forma de pagamento', emoji: '💳', label: 'Forma de pgto.' };
-        case 'recorrencia':
-            return {
-                chaveDe: t => (typeof rotuloRecorrencia === 'function'
-                    ? rotuloRecorrencia(t.tipoRecorrencia || 'Pontual', ehDespesa)
-                    : (t.tipoRecorrencia || 'Pontual')),
-                semChave: 'Pontual', emoji: '🔁', label: 'Frequência'
-            };
         default:
             return null;
     }
@@ -1030,74 +1014,6 @@ function _corpoGrupoComSubmodo(itens, tipoUI, modo, grupoChave, ehDespesa, abert
     return _renderItensSubagrupados(itens, tipoUI, _dimensaoSubmodo(subAtual, ehDespesa), abertosSub, `${tipoUI}:${modo}:${grupoChave}`);
 }
 
-/**
- * Renderiza a lista de um tipo em subgrupos recolhíveis por tipo de recorrência.
- * Cada subgrupo mostra o total; começa recolhido (como as categorias na Config).
- */
-function renderListaAgrupada(container, transacoes, tipoUI, msgVazia) {
-    if (!container) return;
-    if (!transacoes || !transacoes.length) {
-        container.innerHTML = `<p class="empty-message">${msgVazia}</p>`;
-        container.onclick = null;
-        return;
-    }
-
-    const ehDespesa = tipoUI === 'saida';
-    const cores = (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.recorrencia) || {};
-    const totalGrupo = arr => arr.reduce((s, t) => s + ((t.valorMes != null ? t.valorMes : t.valor) || 0), 0);
-    const chaveDe = t => t.tipoRecorrencia || 'Pontual';
-
-    // Ordem: Pontual primeiro, depois os fixos na ordem padrão
-    const ordem = ['Pontual', ...ORDEM_RECORRENCIA.filter(t => t !== 'Pontual')];
-    const conhecidos = new Set(ordem);
-    const grupos = [];
-    ordem.forEach(tipoRec => {
-        const itens = _ordenarPorGrupo(transacoes.filter(t => chaveDe(t) === tipoRec), `${tipoUI}:recorrencia:${tipoRec}`);
-        if (itens.length) grupos.push([tipoRec, itens]);
-    });
-    const resto = _ordenarPorGrupo(transacoes.filter(t => !conhecidos.has(chaveDe(t))), `${tipoUI}:recorrencia:Outros`);
-    if (resto.length) grupos.push(['Outros', resto]);
-
-    // Maior total primeiro — mesma ordem da barra proporcional acima (_agruparParaBarra)
-    grupos.sort((a, b) => totalGrupo(b[1]) - totalGrupo(a[1]));
-
-    const totalGeral = grupos.reduce((s, [, itens]) => s + totalGrupo(itens), 0);
-    const abertos = _lerAbertosRecGrupo(container);
-    const abertosSub = _lerAbertosSubgrupo(container);
-
-    container.innerHTML = grupos.map(([tipoRec, itens]) => {
-        const rotulo = (typeof rotuloRecorrencia === 'function') ? rotuloRecorrencia(tipoRec, ehDespesa) : tipoRec;
-        const c = cores[tipoRec] || corPadraoChip(tipoRec);
-        const total = totalGrupo(itens);
-        const pct = totalGeral ? (total / totalGeral) * 100 : 0;
-
-        const corpoItens = _corpoGrupoComSubmodo(itens, tipoUI, 'recorrencia', tipoRec, ehDespesa, abertosSub);
-        // Ao lado do nome do grupo (não embaixo) — mesma lógica de toggle do
-        // filtro principal: ícone de funil desliga, sem opção "Cronológica"
-        // própria (é só o estado "nenhum submodo ligado").
-        const submenuHTML = _renderOrganizadorInline(tipoUI, 'recorrencia', tipoRec, ehDespesa);
-        const ordemCriacaoHTML = _renderOrdemCriacaoToggle(`${tipoUI}:recorrencia:${tipoRec}`);
-
-        return `
-        <details class="rec-grupo" data-nome="${tipoRec.replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[tipoRec] ? 'open' : ''}>
-          <summary>
-            <span class="rec-grupo-nome">${rotulo}</span>
-            ${ordemCriacaoHTML}
-            <span class="rec-grupo-espaco"></span>
-            ${submenuHTML}
-            <span class="rec-grupo-contagem">${itens.length}</span>
-            <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
-          </summary>
-          <div class="rec-grupo-itens">
-            ${corpoItens}
-          </div>
-        </details>`;
-    }).join('');
-
-    container.querySelectorAll('.subgrupo-organizador').forEach(_ajustarLabelsFiltro);
-    container.onclick = onListaTransacaoClick;
-}
-
 // Cache das "próximas" (usado ao renderizar a aba Próximas)
 let _proximasCtx = [];
 
@@ -1105,17 +1021,13 @@ let _proximasCtx = [];
  * Gera HTML para uma transação — card único (sem versão compacta/expandida).
  * Layout: DIA DOW — VALOR MÉTODO CATEGORIA DESCRIÇÃO (linha que quebra).
  * opts.semMetodoChip: não mostra o chip de método (ex.: visão "Por método").
- * opts.comRecorrenciaChip: mostra o chip da recorrência no lugar do método.
  * opts.semCategoriaChip: não mostra o chip de categoria (visão "Por categoria").
  */
 function gerarHTMLTransacao(trans, tipo, opts = {}) {
     const ehParcela = !!trans.parcelasTotal;
     const ehOriginal = ehParcela && trans.parcelaNum === 1;
-    const ehSemanalChips = trans.tipoRecorrencia === 'Semanal' && Array.isArray(trans.semanas) && trans.semanas.length;
     // Parcelada: valor da parcela / valor total da compra (ex.: "R$ 15 / 45").
-    const valorFormatado = ehSemanalChips
-        ? `${formatarMoeda(trans.valor)} <span class="valor-meta">/ ${formatarMoeda(trans.valorMes)}</span>`
-        : ehParcela
+    const valorFormatado = ehParcela
         ? `${formatarMoeda(trans.valor)} <span class="valor-meta">/ ${formatarMoeda(trans.valorTotal || 0)}</span>`
         : formatarMoeda(trans.valor);
     const sinal = tipo === 'entrada' ? '+' : '-';
@@ -1131,8 +1043,6 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
     const diaFormatado = _dt ? String(_dt.getDate()).padStart(2, '0') : '--';
     const dowFormatado = _dt ? _dowTri[_dt.getDay()] : '';
 
-    const tagPendente = trans.pendente
-        ? '<span class="pendente-badge">a confirmar</span>' : '';
     const quandoTag = opts.quando ? `<span class="quando-tag">${opts.quando}</span>` : '';
 
     // Info da parcela (nunca vai para a descrição — vem dos campos da linha)
@@ -1153,13 +1063,9 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
         + (dowFormatado ? `<span class="despesa-dow">${dowFormatado}</span>` : '')
         + `</span>`;
 
-    // Chip de método OU de recorrência (visão "Por método")
+    // Chip de método (visão "Por método" não mostra — já é a dimensão que agrupa)
     let metaChip = '';
-    if (opts.comRecorrenciaChip) {
-        const rec = trans.tipoRecorrencia || 'Pontual';
-        const rot = (typeof rotuloRecorrencia === 'function') ? rotuloRecorrencia(rec, tipo === 'saida') : rec;
-        metaChip = chip(cor(cores.recorrencia, rec), rot);
-    } else if (!opts.semMetodoChip) {
+    if (!opts.semMetodoChip) {
         if (trans.metodo) {
             metaChip = chip(cor(cores.metodo, trans.metodo), trans.metodo);
         } else if (trans.formaPagamento && trans.formaPagamento !== 'À vista') {
@@ -1174,9 +1080,6 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
     // Ações
     let acoes = '';
     if (!opts.semAcoes) {
-        if (trans.pendente) {
-            acoes += `<button class="btn-ok" data-act="confirmar-trans" data-id="${trans.id}" title="Confirmar este mês">OK</button>`;
-        }
         if (opts.comAprovarDuplicata) {
             acoes += `<button class="btn-icon btn-success" data-act="aprovar-duplicata" data-id="${trans.id}" title="Não é duplicata — não avisar de novo sobre este lançamento">✓</button>`;
         }
@@ -1188,9 +1091,7 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
         }
     }
 
-    const classes = `despesa-item ${tipo}`
-        + (trans.pendente ? ' pendente' : '')
-        + (trans.quitada ? ' quitada' : '');
+    const classes = `despesa-item ${tipo}` + (trans.quitada ? ' quitada' : '');
 
     // .despesa-conteudo (dia/valor/tags/descrição) e .despesa-actions são
     // colunas separadas de um flex externo — o conteúdo nunca invade a
@@ -1206,7 +1107,6 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
                 ${metaChip}
                 ${catChip}
                 ${quandoTag}
-                ${tagPendente}
                 ${quitadoTag}
                 ${descTxt}
             </div>
@@ -1259,9 +1159,6 @@ function onListaTransacaoClick(e) {
     if (!trans) return;
 
     switch (el.dataset.act) {
-        case 'confirmar-trans':
-            confirmarPendente(id);
-            break;
         case 'quitar-parc':
             quitarParcelamento(id, el.checked);
             break;
@@ -1343,18 +1240,6 @@ function irParaMes(competencia) {
     recarregarDados().then(atualizarUI);
 }
 
-async function confirmarPendente(id) {
-    try {
-        await confirmarPendenteAPI(id);
-        mostrarNotificacao('✓ Mês confirmado', 'sucesso');
-        await recarregarDados();
-        atualizarUI();
-    } catch (e) {
-        console.error(e);
-        mostrarNotificacao('Erro ao confirmar', 'erro');
-    }
-}
-
 /** Carrega a transação no formulário da aba Adicionar em modo edição */
 function iniciarEdicaoTransacao(trans, tipoTransacao) {
     estadoApp.editandoId = trans.id;
@@ -1372,35 +1257,22 @@ function iniciarEdicaoTransacao(trans, tipoTransacao) {
     atualizarLabelsPorTipo();
 
     document.querySelector(SELECTORS.data).value = isoParaDiaMes(trans.data);
-    document.querySelector(SELECTORS.valor).value =
-        (trans.tipoRecorrencia === 'Semanal' && trans.valorSessao != null) ? trans.valorSessao : trans.valor;
-    semanasMarcadas = new Set(trans.semanas || []);
+    document.querySelector(SELECTORS.valor).value = trans.valor;
     document.querySelector(SELECTORS.categoria).value = trans.categoria;
     document.querySelector(SELECTORS.descricao).value = trans.descricao || '';
     // Precisa vir depois de setar a categoria: é ela que decide se o campo
     // Método aparece pra receita (categoria "Reembolso/Estorno").
     if (tipoTransacao === 'entradas' && typeof atualizarCampoMetodoReceita === 'function') atualizarCampoMetodoReceita();
     document.querySelector(SELECTORS.metodo).value = trans.metodo || '';
-    document.querySelector(SELECTORS.tipoRecorrencia).value = trans.tipoRecorrencia || 'Pontual';
 
     const diaRec = document.getElementById('diaRecorrencia');
     if (diaRec) diaRec.value = trans.diaRecorrencia || '';
-    const pv = document.getElementById('pagarVencimento');
-    if (pv) pv.checked = !!trans.pagarNoVencimento;
-    const diaSem = document.getElementById('diaSemana');
-    if (diaSem) diaSem.value = trans.diaSemana ?? '';
     const parc = document.getElementById('parcelas');
-    if (parc) parc.value = 1;
+    if (parc) parc.value = trans.parcelasTotal || 1;
     const comp = document.getElementById('competencia');
     if (comp) { comp.value = mesDeCompetencia(trans.competencia) || comp.value; comp.dataset.editado = "1"; }
 
-    // Recorrências "dia útil fixo": restaura a competência
-    const ehDiaUtil = typeof RECORRENCIA_DIA_UTIL !== 'undefined'
-        && RECORRENCIA_DIA_UTIL.includes(trans.tipoRecorrencia);
-    const compRec = document.getElementById('compRecorrente');
-    if (compRec) compRec.value = ehDiaUtil ? mesDeCompetencia(trans.competencia) : '';
-
-    atualizarCamposRecorrencia();
+    atualizarCampoParcelas();
     atualizarCampoCredito();
 
     const btn = document.querySelector('.btn-submit');
@@ -1415,7 +1287,6 @@ function cancelarEdicaoTransacao(voltarParaOrigem = true) {
     const origem = estadoApp.abaOrigemEdicao;
     estadoApp.editandoId = null;
     estadoApp.abaOrigemEdicao = null;
-    semanasMarcadas = new Set();
     limparFormulario();
     const btn = document.querySelector('.btn-submit');
     if (btn) btn.textContent = 'Adicionar';
@@ -1501,58 +1372,9 @@ async function atualizarGrafico() {
     container.innerHTML = html;
 }
 
-// "Despesa" (padrão) | "Receita" — qual tipo a aba Próximas está mostrando
-let tipoProximasAtual = (() => {
-    try {
-        const salvo = localStorage.getItem('tipoProximas');
-        return salvo === 'entradas' ? 'entradas' : 'saidas';
-    } catch (_) { return 'saidas'; }
-})();
-
-// Modos de agrupamento disponíveis em Próximas — "Por método" só faz
-// sentido pra despesa (receita não usa esse campo).
-const MODOS_PROXIMAS_SAIDAS = ['cronologica', 'recorrencia', 'metodo', 'categoria'];
-const MODOS_PROXIMAS_ENTRADAS = ['cronologica', 'recorrencia', 'categoria'];
-const ROTULOS_MODO_PROXIMAS = {
-    recorrencia: 'Recorrência', metodo: 'Forma de pgto.', categoria: 'Categoria', cronologica: 'Cronológica'
-};
-function _modosProximasValidos() {
-    return tipoProximasAtual === 'entradas' ? MODOS_PROXIMAS_ENTRADAS : MODOS_PROXIMAS_SAIDAS;
-}
-
-let modoListaProximas = _modoListaSalvo('modoListaProximas', MODOS_PROXIMAS_SAIDAS);
-
-/** Troca entre "Despesa"/"Receita" em Próximas — refaz os botões de modo
- *  (o conjunto válido muda: receita não tem "Por método") e recarrega. */
-function definirTipoProximas(tipo) {
-    tipoProximasAtual = tipo === 'entradas' ? 'entradas' : 'saidas';
-    try { localStorage.setItem('tipoProximas', tipoProximasAtual); } catch (_) {}
-    atualizarProximasTransacoes();
-}
-
-function definirModoListaProximas(modo) {
-    const validos = _modosProximasValidos();
-    modoListaProximas = validos.includes(modo) ? modo : 'cronologica';
-    try { localStorage.setItem('modoListaProximas', modoListaProximas); } catch (_) {}
-    atualizarProximasTransacoes();
-}
-
-/** Redesenha os botões de modo pro tipo atual (o conjunto de opções muda
- *  entre Despesa e Receita) e corrige modoListaProximas se ele não existir
- *  mais nesse conjunto (ex.: estava em "Por método" e trocou pra Receita). */
-function _renderBotoesModoProximas() {
-    const el = document.getElementById('modoProximas');
-    if (!el) return;
-    const validos = _modosProximasValidos();
-    if (!validos.includes(modoListaProximas)) modoListaProximas = 'cronologica';
-    el.innerHTML = validos.map(m =>
-        `<button type="button" class="modo-btn${m === modoListaProximas ? ' active' : ''}" data-modo="${m}">${ROTULOS_MODO_PROXIMAS[m]}</button>`
-    ).join('');
-}
-
 /** Clique dentro da lista de "Próximas" — cobre o organizador inline das
- *  faturas de cartão (data-submodo/data-submodo-icone, únicos que têm
- *  submodo aqui) antes de cair no handler padrão (editar/excluir/OK). */
+ *  faturas de cartão (data-submodo/data-submodo-icone) antes de cair no
+ *  handler padrão (editar/excluir). */
 function _onCliqueProximas(e) {
     const subBtn = e.target.closest('[data-submodo]');
     if (subBtn) {
@@ -1587,96 +1409,19 @@ function _onCliqueProximas(e) {
     onListaTransacaoClick(e);
 }
 
-const _porDataAsc = (a, b) => new Date(a.data) - new Date(b.data);
-/** Mesma ideia de _ordenarPorGrupo, mas pro contexto misto de "Próximas"
- *  (cada item é {trans, tipoUI, opts}, não a transação direto) — e
- *  cronológica aqui é ASCENDENTE (mais próxima primeiro), não descendente
- *  como no histórico de Despesas/Receitas. */
-function _ordenarProximasPorGrupo(itensCtx, chave) {
-    return itensCtx.sort(_ordemCriacaoAtiva(chave)
-        ? (a, b) => (b.trans.id || 0) - (a.trans.id || 0)
-        : (a, b) => _porDataAsc(a.trans, b.trans));
-}
-
 /**
- * Atualiza lista de próximas transações (só do tipo selecionado — Despesa ou Receita)
+ * Atualiza a aba "Próximas" — hoje só mostra o resumo de faturas de cartão
+ * de crédito do mês em exibição (a lista de recorrências futuras não existe
+ * mais, só há lançamentos avulsos/parcelados).
  */
 async function atualizarProximasTransacoes() {
     const container = document.querySelector(SELECTORS.proximasLista);
     if (!container) return;
 
-    document.querySelectorAll('#tipoProximas .tipo-btn').forEach(b =>
-        b.classList.toggle('active', b.dataset.tipo === tipoProximasAtual));
-    _renderBotoesModoProximas();
-
     try {
-        // Próximas do MÊS em exibição
-        const mRef = (typeof estadoApp !== 'undefined' && estadoApp.mesAtual) ? estadoApp.mesAtual : new Date();
-        const mes = mRef.getMonth() + 1, ano = mRef.getFullYear();
-        const elTit = document.getElementById('proximasTitulo');
-        if (elTit) {
-            // 4 níveis conforme o espaço aperta (mesma ideia do mês no topo):
-            // "Próximos lançamentos em setembro de 2026" -> "Próx. lançamentos
-            // em setembro de 2026" -> "Próx. lançamentos em SET/2026" ->
-            // "Próx. lançamentos 09/26"
-            const mesPorExtenso = obterMesAnoFormatado(mRef).toLowerCase();
-            const mesCurto = obterMesAnoCurto(mRef);
-            const mesMini = obterMesAnoMini(mRef);
-            elTit.innerHTML =
-                `<span class="prox-titulo-full">Próximos lançamentos em ${mesPorExtenso}</span>` +
-                `<span class="prox-titulo-media">Próx. lançamentos em ${mesPorExtenso}</span>` +
-                `<span class="prox-titulo-curto">Próx. lançamentos em ${mesCurto}</span>` +
-                `<span class="prox-titulo-mini">Próx. lançamentos ${mesMini}</span>`;
-        }
-
-        const ehDespesa = tipoProximasAtual !== 'entradas';
-        const proximas = await carregarProximas(tipoProximasAtual, mes, ano);
-        const tipoUI = ehDespesa ? 'saida' : 'entrada';
-
-        // Faturas de cartão só fazem sentido olhando pras despesas
-        const faturasHTML = ehDespesa ? renderFaturasCartao(container) : '';
-
-        document.getElementById('modoProximas')?.classList.toggle('vazio', proximas.length === 0);
-        if (proximas.length === 0) {
-            // "Nada programado" só faz sentido se realmente não tem nada — com
-            // fatura(s) de cartão pra mostrar, a tela não está vazia.
-            container.innerHTML = faturasHTML
-                || `<p class="empty-message">Nada programado para ${obterMesAnoFormatado(mRef)}</p>`;
-            container.onclick = faturasHTML ? _onCliqueProximas : null;
-            container.querySelectorAll('.faturas-cartao .subgrupo-organizador').forEach(_ajustarLabelsFiltro);
-            _proximasCtx = [];
-            return;
-        }
-
-        // Mesmo box de Receitas/Despesas: dia da ocorrência + valor, expansível
-        _proximasCtx = proximas.map(trans => {
-            const dias = calcularDiasAte(trans.data);
-            const quando = dias <= 0 ? 'hoje' : `em ${dias}d`;
-            // Mesmo lançamento que aparece em Receitas/Despesas — os botões
-            // (OK / editar / excluir) valem aqui também, e agem no mesmo
-            // registro: confirmar/editar/excluir daqui reflete lá (e vice-versa).
-            return { trans: { ...trans }, tipoUI, opts: { quando } };
-        });
-
-        const abertos = _lerAbertosRecGrupo(container);
-        const corpoHTML = modoListaProximas === 'metodo'
-            ? _agruparProximasPorTotal(_proximasCtx, {
-                chaveDe: c => c.trans.metodo, semChave: 'Sem método',
-                cores: (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.metodo) || {},
-                extraOpts: { comRecorrenciaChip: true }, abertos
-            })
-            : modoListaProximas === 'categoria'
-            ? _agruparProximasPorTotal(_proximasCtx, {
-                chaveDe: c => c.trans.categoria, semChave: 'Sem categoria',
-                cores: (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.categoria) || {},
-                extraOpts: { semCategoriaChip: true }, abertos
-            })
-            : modoListaProximas === 'recorrencia'
-            ? _agruparProximasPorRecorrencia(_proximasCtx, abertos)
-            : _proximasCtx.map(c => gerarHTMLTransacao(c.trans, c.tipoUI, c.opts)).join('');
-
-        container.innerHTML = faturasHTML + corpoHTML;
-        container.onclick = _onCliqueProximas;
+        const faturasHTML = renderFaturasCartao(container);
+        container.innerHTML = faturasHTML || `<p class="empty-message">Nenhuma fatura de cartão neste mês</p>`;
+        container.onclick = faturasHTML ? _onCliqueProximas : null;
         container.querySelectorAll('.faturas-cartao .subgrupo-organizador').forEach(_ajustarLabelsFiltro);
     } catch (error) {
         console.error('Erro ao atualizar próximas transações:', error);
@@ -1684,83 +1429,10 @@ async function atualizarProximasTransacoes() {
     }
 }
 
-/** "Próximas" agrupadas por método ou categoria (ordenado por total, maior
- *  primeiro) — mistura entrada/saída, então cada item usa o tipoUI/opts que
- *  já vêm prontos no seu próprio contexto (c.trans/c.tipoUI/c.opts). */
-function _agruparProximasPorTotal(ctxList, { chaveDe, semChave, cores, extraOpts, abertos = {} }) {
-    const valorDe = c => (c.trans.valorMes != null ? c.trans.valorMes : c.trans.valor) || 0;
-    const mapa = new Map();
-    ctxList.forEach(c => {
-        const k = chaveDe(c) || semChave;
-        if (!mapa.has(k)) mapa.set(k, []);
-        mapa.get(k).push(c);
-    });
-    const grupos = [...mapa.entries()]
-        .map(([nome, itens]) => [nome, _ordenarProximasPorGrupo(itens, `proximas:total:${nome}`), itens.reduce((s, c) => s + valorDe(c), 0)])
-        .sort((a, b) => b[2] - a[2]);
-    const totalGeral = grupos.reduce((s, g) => s + g[2], 0);
-
-    return grupos.map(([nome, itens, total]) => {
-        const c = cores[nome] || corPadraoChip(nome);
-        const pct = totalGeral ? (total / totalGeral) * 100 : 0;
-        return `
-        <details class="rec-grupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[nome] ? 'open' : ''}>
-          <summary>
-            <span class="rec-grupo-nome">${nome}</span>
-            ${_renderOrdemCriacaoToggle(`proximas:total:${nome}`)}
-            <span class="rec-grupo-espaco"></span>
-            <span class="rec-grupo-contagem">${itens.length}</span>
-            <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
-          </summary>
-          <div class="rec-grupo-itens">
-            ${itens.map(c2 => gerarHTMLTransacao(c2.trans, c2.tipoUI, { ...c2.opts, ...extraOpts })).join('')}
-          </div>
-        </details>`;
-    }).join('');
-}
-
-/** "Próximas" agrupadas por tipo de recorrência, na ordem fixa de sempre
- *  (Pontual primeiro) — mesma ideia de renderListaAgrupada, mas por cima do
- *  contexto misto entrada/saída de _proximasCtx. */
-function _agruparProximasPorRecorrencia(ctxList, abertos = {}) {
-    const cores = (estadoApp.menus && estadoApp.menus.cores && estadoApp.menus.cores.recorrencia) || {};
-    const chaveDe = c => c.trans.tipoRecorrencia || 'Pontual';
-    const ordem = ['Pontual', ...ORDEM_RECORRENCIA.filter(t => t !== 'Pontual')];
-    const conhecidos = new Set(ordem);
-
-    const grupos = [];
-    ordem.forEach(tipoRec => {
-        const itens = _ordenarProximasPorGrupo(ctxList.filter(c => chaveDe(c) === tipoRec), `proximas:recorrencia:${tipoRec}`);
-        if (itens.length) grupos.push([tipoRec, itens]);
-    });
-    const resto = _ordenarProximasPorGrupo(ctxList.filter(c => !conhecidos.has(chaveDe(c))), `proximas:recorrencia:Outros`);
-    if (resto.length) grupos.push(['Outros', resto]);
-
-    const totalGrupo = arr => arr.reduce((s, c) => s + ((c.trans.valorMes != null ? c.trans.valorMes : c.trans.valor) || 0), 0);
-
-    return grupos.map(([tipoRec, itens]) => {
-        const rotulo = (typeof rotuloRecorrencia === 'function') ? rotuloRecorrencia(tipoRec, false) : tipoRec;
-        const c = cores[tipoRec] || corPadraoChip(tipoRec);
-        return `
-        <details class="rec-grupo" data-nome="${tipoRec.replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[tipoRec] ? 'open' : ''}>
-          <summary>
-            <span class="rec-grupo-nome">${rotulo}</span>
-            ${_renderOrdemCriacaoToggle(`proximas:recorrencia:${tipoRec}`)}
-            <span class="rec-grupo-espaco"></span>
-            <span class="rec-grupo-contagem">${itens.length}</span>
-            <span class="rec-grupo-total">${formatarMoeda(totalGrupo(itens))}</span>
-          </summary>
-          <div class="rec-grupo-itens">
-            ${itens.map(c2 => gerarHTMLTransacao(c2.trans, c2.tipoUI, c2.opts)).join('')}
-          </div>
-        </details>`;
-    }).join('');
-}
-
-/** Bloco "Faturas de cartão de crédito" no topo das Próximas: cada cartão
- *  com o total lançado no mês e o dia de vencimento — colapsável, com os
- *  lançamentos daquele cartão dentro (despesas + estornos/reembolsos que
- *  abatem a fatura), fechado por padrão. */
+/** Bloco "Faturas de cartão de crédito": cada cartão com o total lançado no
+ *  mês e o dia de vencimento — colapsável, com os lançamentos daquele
+ *  cartão dentro (despesas + estornos/reembolsos que abatem a fatura),
+ *  fechado por padrão. */
 function renderFaturasCartao(container) {
     const cartoes = ((estadoApp.menus && estadoApp.menus.metodos) || [])
         .filter(m => m.metodoKind === 'Crédito');
@@ -1803,7 +1475,7 @@ function renderFaturasCartao(container) {
         const subAtual = _subModoGrupoDe(TIPO_UI_FATURA, 'metodo', rot);
         let itensHTML;
         if (subAtual === 'cronologica') {
-            itensHTML = todos.map(t => gerarHTMLTransacao(t, tipoUiDe(t), { comRecorrenciaChip: true })).join('');
+            itensHTML = todos.map(t => gerarHTMLTransacao(t, tipoUiDe(t), { semMetodoChip: true })).join('');
         } else {
             const cfg = _dimensaoSubmodo(subAtual, true);
             const mapa = new Map();
@@ -1826,7 +1498,7 @@ function renderFaturasCartao(container) {
                     <span class="subgrupo-contagem">${its.length}</span>
                     <span class="subgrupo-total">${formatarMoeda(totalSub)}${total ? ` · ${formatarPct(pctSub)}%` : ''}</span>
                   </summary>
-                  ${its.map(t => gerarHTMLTransacao(t, tipoUiDe(t), { comRecorrenciaChip: true })).join('')}
+                  ${its.map(t => gerarHTMLTransacao(t, tipoUiDe(t), { semMetodoChip: true })).join('')}
                 </details>`;
             }).join('');
         }
@@ -1899,155 +1571,42 @@ function ajustarCamposSozinhos() {
 }
 
 /**
- * Mostra/esconde os campos que dependem do tipo de recorrência
- * (dia + checkbox "vencimento" para Mensal/Parcelada; nº de parcelas para Parcelada)
+ * Mostra/esconde o campo "Parcelas" — só existe pra despesa em Crédito.
+ * 1 parcela = lançamento avulso (Pontual) de sempre; mais que isso = compra
+ * parcelada. "Dia de vencimento" (de cada parcela) só aparece com >1 parcela.
  */
-function atualizarCamposRecorrencia() {
-    const tipo = document.querySelector(SELECTORS.tipoRecorrencia).value;
+function atualizarCampoParcelas() {
     const ehReceita = document.querySelector(SELECTORS.tipoTransacao)?.value === 'entradas';
-    const comDia = tipo === 'Mensal' || tipo === 'Parcelada';
-    const ehSemanal = tipo === 'Semanal';
-    const ehCalculada = typeof RECORRENCIA_DIA_UTIL !== 'undefined'
-        && RECORRENCIA_DIA_UTIL.includes(tipo);
-    // Receita Mensal/Parcelada: a data é automática = próximo dia útil (sem checkbox)
-    const receitaAuto = ehReceita && comDia;
-
-    const set = (id, mostrar) => { const el = document.getElementById(id); if (el) el.hidden = !mostrar; };
-    set('diaRecorrenciaGroup', comDia);
-    set('parceleGroup', tipo === 'Parcelada');
-    set('diaSemanaGroup', ehSemanal);
-    set('mesRefGroup', false);   // "Mês de ref." não aparece mais; usa o mês em exibição
-    set('dataCalculadaGroup', ehCalculada);
-    set('semanasChipsGroup', ehSemanal);
-    // Valor se divide em 2 (informado + total) em Semanal e Parcelada
-    set('valorTotalGroup', ehSemanal || tipo === 'Parcelada');
-
     const metodoAtual = typeof metodoSelecionado === 'function' ? metodoSelecionado() : null;
     const ehCredito = !ehReceita && !!metodoAtual && metodoAtual.metodoKind === 'Crédito';
-    const credito = ehCredito && comDia;
 
-    // "Comp." (competência): não existe uma única competência pra Parcelada —
-    // cada parcela cai num mês diferente — então some da tela nesse caso. O
-    // select continua sendo recalculado (recalcularCompetencia) mesmo escondido,
-    // porque a data de vencimento do cartão ainda precisa saber o mês de referência.
-    const compGrupo = document.getElementById('competenciaGroup');
-    if (compGrupo) compGrupo.hidden = !ehCredito || tipo === 'Parcelada';
+    const set = (id, mostrar) => { const el = document.getElementById(id); if (el) el.hidden = !mostrar; };
+    set('parceleGroup', ehCredito);
+    // "Comp." (competência): preview de qual mês esse lançamento vai cair,
+    // calculado a partir da data da compra + fechamento do cartão — só faz
+    // sentido pra Crédito (outros métodos usam o mês da própria data).
+    set('competenciaGroup', ehCredito);
 
-    // Checkbox "pagar no vencimento": só despesa com dia de vencimento (Contas/Parcelada).
-    // No cartão de crédito isso deixa de ser opcional — quem manda é o vencimento do
-    // cartão, então o checkbox some e o comportamento fica sempre ligado.
-    const chkWrap = document.getElementById('pagarVencimentoWrap');
-    if (chkWrap) chkWrap.hidden = ehReceita || !comDia || credito;
-    const chk = document.getElementById('pagarVencimento');
-    if (chk) {
-        if (credito) {
-            chk.checked = true;
-            chk.dataset.forcadoCredito = '1';
-        } else if (ehReceita || !comDia || chk.dataset.forcadoCredito) {
-            // Some das telas de Receita/sem-dia, ou deixou de ser cartão de
-            // crédito: se o "check" tinha sido ligado à força por causa do
-            // cartão (e não pelo usuário), desliga de volta.
-            chk.checked = false;
-            delete chk.dataset.forcadoCredito;
-        }
-    }
+    const parcelasInput = document.getElementById('parcelas');
+    if (!ehCredito && parcelasInput) parcelasInput.value = 1;
+    const parcelas = Math.max(1, parseInt(parcelasInput?.value, 10) || 1);
+    const comParcelamento = ehCredito && parcelas > 1;
 
-    // Campo "Data" livre: escondido para dia-útil fixo e Semanal
-    const mostrarData = !ehCalculada && !ehSemanal;
-    set('dataGroup', mostrarData);
-    const dataMain = document.querySelector(SELECTORS.data);
-    if (dataMain) dataMain.required = mostrarData;
-
-    // Rótulos do contexto (nunca ocupam mais de 1 linha; encurtam em tela estreita)
-    if (receitaAuto || (!ehReceita && comDia)) {
-        definirLabelResp('label[for="data"]', 'Pagamento', 'Pgto.');
-    } else {
-        definirLabelResp('label[for="data"]', 'Data', null);
-    }
-    const grpDiaRec = document.getElementById('diaRecorrenciaGroup');
-    if (grpDiaRec) grpDiaRec.classList.toggle('campo-mini--wide', ehReceita);
-    definirLabelResp('label[for="diaRecorrencia"]',
-        ehReceita ? 'dia pgto.' : 'vcto.',
-        ehReceita ? 'dia pg.' : 'vcto.');
+    set('diaRecorrenciaGroup', comParcelamento);
+    set('valorTotalGroup', comParcelamento);
+    definirLabelResp('label[for="diaRecorrencia"]', 'vcto.', 'vcto.');
     definirLabelResp('label[for="parcelas"]', 'qtd.', 'qtd.');
     atualizarValorTotal();
 
-    // Cartão de crédito: o dia de vencimento é o do cartão, não dá pra escolher.
-    // Fora isso, só um prefill (com o dia da data digitada) pra quem ainda não mexeu.
+    // Prefill do dia de vencimento (com o dia da data digitada), só pra quem
+    // ainda não mexeu — livre pra editar, não trava mais no dia do cartão.
     const diaInput = document.getElementById('diaRecorrencia');
-    const diaSteppers = document.querySelectorAll('[data-stepper="diaRecorrencia"]');
-    if (diaInput) {
-        if (credito) {
-            diaInput.value = metodoAtual.diaVencimento != null ? String(metodoAtual.diaVencimento) : '';
-            diaInput.readOnly = true;
-            diaInput.classList.add('campo-travado');
-            diaSteppers.forEach(b => { b.disabled = true; });
-        } else {
-            diaInput.readOnly = false;
-            diaInput.classList.remove('campo-travado');
-            diaSteppers.forEach(b => { b.disabled = false; });
-            if (comDia && !diaInput.value) {
-                const iso = dataCampoParaISO(document.querySelector(SELECTORS.data).value);
-                if (iso) diaInput.value = String(parseInt(iso.slice(8, 10), 10));
-            }
-        }
+    if (diaInput && comParcelamento && !diaInput.value) {
+        const iso = dataCampoParaISO(document.querySelector(SELECTORS.data).value);
+        if (iso) diaInput.value = String(parseInt(iso.slice(8, 10), 10));
     }
 
-    // Guarda a data livre atual antes de qualquer cálculo automático sobrescrevê-la
-    if (dataMain && (ehCalculada || receitaAuto) && !dataMain.readOnly && !dataMain.dataset.userVal) {
-        dataMain.dataset.userVal = dataMain.value;
-    }
-
-    // Data derivada da competência (primeiro / 5º / último dia útil, deste mês ou do anterior)
-    if (ehCalculada) {
-        definirLabelResp('label[for="dataCalculada"]', 'Data', null);
-        // "Mês de ref." não é mais editável: usa o mês em exibição (na edição, mantém o gravado)
-        const compEl = document.getElementById('compRecorrente');
-        const editando = typeof estadoApp !== 'undefined' && estadoApp.editandoId;
-        if (compEl && !editando && typeof estadoApp !== 'undefined' && estadoApp.mesAtual) {
-            compEl.value = mesDeCompetencia(formatarDataISO(estadoApp.mesAtual));
-        }
-        const compISO = competenciaDeMes(compEl ? compEl.value : '');
-        const dataISO = compISO ? dataDiaUtilPorCompetencia(compISO, tipo) : '';
-        const campo = document.getElementById('dataCalculada');
-        if (campo) campo.value = dataISO ? isoParaDiaMes(dataISO) : "";
-        if (dataMain && dataISO) dataMain.value = isoParaDiaMes(dataISO);
-    }
-
-    // Receita Mensal/Parcelada: data automática = dia informado no próximo dia útil
-    if (dataMain) {
-        if (receitaAuto) {
-            dataMain.dataset.autoReceita = '1';
-            const compISO = (typeof estadoApp !== 'undefined' && estadoApp.mesAtual)
-                ? formatarDataISO(estadoApp.mesAtual) : hojeISO();
-            const dia = document.getElementById('diaRecorrencia')?.value || '';
-            dataMain.value = isoParaDiaMes(dataReceitaMensal(compISO, dia));
-            dataMain.readOnly = true;
-            dataMain.classList.add('campo-travado');
-        } else {
-            delete dataMain.dataset.autoReceita;
-            // Voltou para uma data livre: restaura o que o usuário tinha digitado
-            if (!ehCalculada && dataMain.readOnly) {
-                dataMain.readOnly = false;
-                dataMain.classList.remove('campo-travado');
-            }
-            if (mostrarData && dataMain.dataset.userVal != null && !chk?.checked) {
-                dataMain.value = dataMain.dataset.userVal;
-                delete dataMain.dataset.userVal;
-            }
-        }
-    }
-
-    // Semanal: chips por semana (numeradas), dentro da metade da "Data"
-    if (ehSemanal) renderSemanasChips();
-
-    // Recalcula a competência só agora, com a "Data" já no valor final (livre,
-    // travada por vencimento, etc.) — precisa vir antes de aplicarPagarVencimento(),
-    // que lê o mês daqui pra calcular a data de vencimento do cartão.
     if (ehCredito && typeof recalcularCompetencia === 'function') recalcularCompetencia();
-
-    // "Pagar no vencimento": trava a data do lançamento no dia do vencimento (despesa)
-    aplicarPagarVencimento();
 
     ajustarCamposSozinhos();
 }
@@ -2075,16 +1634,6 @@ function atualizarLabelsPorTipo() {
         if (typeof atualizarCampoCredito === 'function') atualizarCampoCredito();
     }
 
-    const grpDiaRec2 = document.getElementById('diaRecorrenciaGroup');
-    if (grpDiaRec2) grpDiaRec2.classList.toggle('campo-mini--wide', ehReceita);
-    definirLabelResp('label[for="diaRecorrencia"]',
-        ehReceita ? 'dia pgto.' : 'vcto.',
-        ehReceita ? 'dia pg.' : 'vcto.');
-    const lblChk = document.getElementById('pagarVencimentoLabel');
-    if (lblChk) lblChk.textContent = ehReceita ? 'receber neste dia' : 'pagar no vcto.';
-
-    // Recorrência "Mensal" aparece como "Contas" nas despesas -> refaz o dropdown
-    if (typeof preencherDropdownRecorrencias === 'function') preencherDropdownRecorrencias();
     // Categorias são específicas de receita x despesa
     if (typeof preencherDropdownCategorias === 'function') preencherDropdownCategorias();
 
@@ -2209,136 +1758,21 @@ function abrirNovoMetodo() {
 }
 
 /**
- * Quando "pagar no vencimento" está marcado, a data do lançamento fica igual à
- * data de vencimento (dia informado, na competência atual) e o campo Data trava.
- */
-function aplicarPagarVencimento() {
-    const chk = document.getElementById('pagarVencimento');
-    const dataEl = document.querySelector(SELECTORS.data);
-    if (!chk || !dataEl) return;
-    if (dataEl.dataset.autoReceita === '1') return;  // já travado por "próximo dia útil"
-
-    const grupoDia = document.getElementById('diaRecorrenciaGroup');
-    // Sem campo de dia de vencimento visível: o checkbox não se aplica; a data
-    // é gerenciada por atualizarCamposRecorrencia (não mexer aqui).
-    if (!grupoDia || grupoDia.hidden) return;
-    const ativo = chk.checked;
-
-    if (ativo) {
-        if (dataEl.dataset.userVal == null) dataEl.dataset.userVal = dataEl.value;
-        const dia = document.getElementById('diaRecorrencia').value;
-        const compBR = document.getElementById('competencia')?.value;
-        const compISO = competenciaDeMes(compBR || "") ||
-            competenciaDe(dataCampoParaISO(dataEl.value) || hojeISO());
-        const venc = dataVencimento(compISO, dia);
-        if (venc) dataEl.value = isoParaDiaMes(venc);
-        dataEl.readOnly = true;
-        dataEl.classList.add('campo-travado');
-    } else {
-        dataEl.readOnly = false;
-        dataEl.classList.remove('campo-travado');
-        // Desmarcou: a data volta para o valor original que estava antes
-        if (dataEl.dataset.userVal != null) {
-            dataEl.value = dataEl.dataset.userVal;
-            delete dataEl.dataset.userVal;
-        }
-    }
-}
-
-// Conjunto de datas (YYYY-MM-DD) marcadas nas chips do formulário
-let semanasMarcadas = new Set();
-
-const DOW_ABREV = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
-
-/** (Re)desenha as chips de semanas para o mês/dia-da-semana atuais do formulário */
-function renderSemanasChips() {
-    const box = document.getElementById('semanasChips');
-    if (!box) return;
-    const dow = parseInt(document.getElementById('diaSemana').value, 10);
-    const temDiaFixo = Number.isInteger(dow) && dow >= 0 && dow <= 6;
-    // Semanal não tem campo de data -> usa o mês em exibição
-    const iso = dataCampoParaISO(document.querySelector(SELECTORS.data).value)
-        || (typeof estadoApp !== 'undefined' && estadoApp.mesAtual ? formatarDataISO(estadoApp.mesAtual) : hojeISO());
-    if (!iso) { box.innerHTML = ''; return; }
-
-    const d = parseDataLocal(iso);
-    let dias;
-    if (temDiaFixo) {
-        dias = ocorrenciasDoDiaNoMes(d.getFullYear(), d.getMonth(), dow);
-    } else {
-        // Sem dia fixo: uma "semana N" por semana do mês
-        const ultimoDia = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-        const nSemanas = Math.ceil(ultimoDia / 7);
-        dias = [];
-        for (let i = 0; i < nSemanas; i++) {
-            const diaMes = Math.min(1 + i * 7, ultimoDia);
-            dias.push(formatarDataISO(new Date(d.getFullYear(), d.getMonth(), diaMes)));
-        }
-    }
-    const hoje = hojeISO();
-
-    // Reinicia (futuras marcadas) se o conjunto atual não pertence a este mês
-    const pertence = [...semanasMarcadas].some(x => dias.includes(x));
-    if (!pertence) semanasMarcadas = new Set(dias.filter(x => x > hoje));
-    // Mantém só as datas válidas deste mês
-    semanasMarcadas = new Set([...semanasMarcadas].filter(x => dias.includes(x)));
-
-    box.innerHTML = dias.map((dt, i) => {
-        const marc = semanasMarcadas.has(dt);
-        const passada = dt <= hoje;
-        const rot = temDiaFixo ? dt.slice(8, 10) : String(i + 1);
-        return `<button type="button" class="chip${marc ? ' on' : ''}${passada ? ' passada' : ''}" data-dt="${dt}" title="${dt.split('-').reverse().join('/')}">${rot}</button>`;
-    }).join('');
-
-    box.onclick = e => {
-        const chip = e.target.closest('.chip');
-        if (!chip) return;
-        const dt = chip.dataset.dt;
-        if (semanasMarcadas.has(dt)) semanasMarcadas.delete(dt);
-        else semanasMarcadas.add(dt);
-        chip.classList.toggle('on');
-        atualizarResumoSemanas();
-        atualizarValorTotal();
-    };
-
-    atualizarResumoSemanas();
-}
-
-/** Resumo semanal: "<já lançado> / <total>" (sem rótulos) */
-function atualizarResumoSemanas() {
-    const el = document.getElementById('semanasResumo');
-    if (!el) return;
-    const vs = parseFloat(document.querySelector(SELECTORS.valor).value) || 0;
-    const hoje = hojeISO();
-    const marc = [...semanasMarcadas];
-    const x = marc.filter(dt => dt <= hoje).length * vs;
-    const y = marc.length * vs;
-    el.textContent = `${formatarMoeda(x)} / ${formatarMoeda(y)}`;
-}
-
-/** Preenche o campo "Total" (readonly) ao lado do Valor em Semanal/Parcelada */
+ * Preenche o campo "Total" (readonly) ao lado do Valor quando parcelado */
 function atualizarValorTotal() {
     const tot = document.getElementById('valorTotal');
     if (!tot) return;
-    const tipo = document.querySelector(SELECTORS.tipoRecorrencia)?.value;
     const v = parseFloat(document.querySelector(SELECTORS.valor)?.value) || 0;
-    let mult = 0;
-    if (tipo === 'Parcelada') {
-        mult = parseInt(document.getElementById('parcelas')?.value, 10) || 0;
-    } else if (tipo === 'Semanal') {
-        mult = (typeof semanasMarcadas !== 'undefined') ? semanasMarcadas.size : 0;
-    }
+    const mult = parseInt(document.getElementById('parcelas')?.value, 10) || 0;
     tot.value = formatarMoeda(v * mult);
 }
 
 /**
- * Chamado quando o Método muda. O campo Competência (visibilidade + valor) e
- * o vencimento do cartão (dia travado + data de pagamento) dependem tanto do
- * método quanto da recorrência escolhida, então tudo isso é recalculado
- * junto em atualizarCamposRecorrencia().
+ * Chamado quando o Método muda — o campo Parcelas (só existe em Crédito) e a
+ * Competência dependem do método escolhido.
  */
 function atualizarCampoCredito() {
-    if (typeof atualizarCamposRecorrencia === 'function') atualizarCamposRecorrencia();
+    if (typeof atualizarCampoParcelas === 'function') atualizarCampoParcelas();
 }
 
 /**

@@ -142,12 +142,6 @@ function configurarEventListeners() {
         form.addEventListener('submit', submeterFormulario);
     }
     
-    // Campo de tipo de recorrência
-    const tipoRecorrencia = document.querySelector(SELECTORS.tipoRecorrencia);
-    if (tipoRecorrencia) {
-        tipoRecorrencia.addEventListener('change', atualizarCamposRecorrencia);
-    }
-
     // Método -> mostra campo de competência se for Crédito
     const metodo = document.querySelector(SELECTORS.metodo);
     if (metodo) metodo.addEventListener('change', atualizarCampoCredito);
@@ -184,7 +178,7 @@ function configurarEventListeners() {
             // "pagar no vencimento" ou sair de uma recorrência que calcula a data)
             if (!dataInput.readOnly) dataInput.dataset.userVal = dataInput.value;
             recalcularCompetencia();
-            atualizarCamposRecorrencia();
+            atualizarCampoParcelas();
             // Digitou um mês diferente do que tá navegado no topo? A navegação acompanha.
             const m = String(dataInput.value || '').match(/^\d{1,2}\/(\d{1,2})$/);
             if (m) sincronizarMesComFormulario(parseInt(m[1], 10));
@@ -200,22 +194,11 @@ function configurarEventListeners() {
         });
     }
 
-    // Dia da recorrência: só números, 2 dígitos; recalcula "pagar no vencimento"
+    // Dia de vencimento da parcela: só números, 2 dígitos
     const diaRec = document.getElementById('diaRecorrencia');
     if (diaRec) diaRec.addEventListener('input', () => {
         soNumeros(diaRec, 2);
-        if (typeof atualizarCamposRecorrencia === 'function') atualizarCamposRecorrencia();
-    });
-
-    // Checkbox "pagar no vencimento"
-    const pagarVenc = document.getElementById('pagarVencimento');
-    if (pagarVenc) pagarVenc.addEventListener('change', aplicarPagarVencimento);
-
-    // Recorrências "dia útil fixo": mês de referência (select de tricode)
-    const compRec = document.getElementById('compRecorrente');
-    if (compRec) compRec.addEventListener('change', () => {
-        atualizarCamposRecorrencia();
-        sincronizarMesComFormulario(parseInt(compRec.value, 10));
+        if (typeof atualizarCampoParcelas === 'function') atualizarCampoParcelas();
     });
 
     // Botões "+" para criar categoria/método sem sair do lançamento
@@ -224,9 +207,6 @@ function configurarEventListeners() {
     const btnMet = document.getElementById('btnNovoMetodo');
     if (btnMet) btnMet.addEventListener('click', abrirNovoMetodo);
 
-    // Semanal: dia da semana -> refaz as chips; valor -> resumo X/Y + total
-    const diaSem = document.getElementById('diaSemana');
-    if (diaSem) diaSem.addEventListener('change', atualizarCamposRecorrencia);
     const valorInput = document.querySelector(SELECTORS.valor);
     if (valorInput) {
         // type="number" ainda deixa passar "e"/"+"/"-" (notação científica/negativo,
@@ -238,15 +218,15 @@ function configurarEventListeners() {
             // Cobre o caso de colar "1e5" (válido pro <input type=number>, mas
             // sem sentido aqui) — se sobrou "e"/"+"/"-", zera o valor.
             if (/[eE+-]/.test(valorInput.value)) valorInput.value = '';
-            if (typeof atualizarResumoSemanas === 'function') atualizarResumoSemanas();
             if (typeof atualizarValorTotal === 'function') atualizarValorTotal();
         });
     }
-    // Parcelada: nº de parcelas (só números, 2 dígitos) -> recalcula o total
+    // Parcelas: só números, 2 dígitos -> recalcula o total e mostra/esconde
+    // o dia de vencimento (só aparece com mais de 1 parcela)
     const parcInput = document.getElementById('parcelas');
     if (parcInput) parcInput.addEventListener('input', () => {
         soNumeros(parcInput, 2);
-        if (typeof atualizarValorTotal === 'function') atualizarValorTotal();
+        if (typeof atualizarCampoParcelas === 'function') atualizarCampoParcelas();
     });
 
     // Setinhas ▲▼ de "Qtd." e "vcto.": aumentam/diminuem 1 e disparam o
@@ -276,13 +256,13 @@ function configurarEventListeners() {
     }
     
     // Reavalia labels curtos/longos e campos "sozinhos" quando a largura muda
-    if (typeof atualizarCamposRecorrencia === 'function') {
+    if (typeof atualizarCampoParcelas === 'function') {
         let rTimer;
         window.addEventListener('resize', () => {
             clearTimeout(rTimer);
             rTimer = setTimeout(() => {
                 if (document.getElementById('adicionar')?.classList.contains('active')) {
-                    atualizarCamposRecorrencia();
+                    atualizarCampoParcelas();
                 }
             }, 150);
         });
@@ -344,10 +324,7 @@ function mudarTipoTransacao(tipo) {
         form?.reset();
         if (tipoField) tipoField.value = tipo;            // reset() volta ao default
         const dataEl = document.querySelector(SELECTORS.data);
-        if (dataEl) { dataEl.readOnly = false; dataEl.classList.remove('campo-travado'); delete dataEl.dataset.autoReceita; aplicarDataPadrao(true); }
-        const pv = document.getElementById('pagarVencimento');
-        if (pv) pv.checked = false;
-        if (typeof semanasMarcadas !== 'undefined') semanasMarcadas = new Set();
+        if (dataEl) { dataEl.readOnly = false; dataEl.classList.remove('campo-travado'); aplicarDataPadrao(true); }
     }
 
     // Limpar categoria e recarregar opções
@@ -355,7 +332,7 @@ function mudarTipoTransacao(tipo) {
     if (categoriaField) categoriaField.value = '';
 
     if (typeof atualizarLabelsPorTipo === 'function') atualizarLabelsPorTipo();
-    if (typeof atualizarCamposRecorrencia === 'function') atualizarCamposRecorrencia();
+    if (typeof atualizarCampoParcelas === 'function') atualizarCampoParcelas();
 
     // Recarregar menus para o novo tipo — se o usuário trocar de tipo antes
     // dos menus carregarem pela 1a vez (ex.: clicou rápido, "+ Lançamento"
@@ -364,7 +341,7 @@ function mudarTipoTransacao(tipo) {
     carregarMenus().then(() => {
         if (estadoApp.tipoAtual !== tipo) return; // trocou de novo enquanto carregava
         if (typeof atualizarLabelsPorTipo === 'function') atualizarLabelsPorTipo();
-        if (typeof atualizarCamposRecorrencia === 'function') atualizarCamposRecorrencia();
+        if (typeof atualizarCampoParcelas === 'function') atualizarCampoParcelas();
     });
 }
 

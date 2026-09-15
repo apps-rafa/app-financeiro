@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Estado inicial do formulário
     const dataInput = document.querySelector(SELECTORS.data);
     if (dataInput && !dataInput.value) aplicarDataPadrao(true);
-    atualizarCamposRecorrencia();
+    atualizarCampoParcelas();
     atualizarCampoCredito();
     atualizarLabelsPorTipo();
 

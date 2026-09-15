@@ -358,9 +358,8 @@ function _diffDias(iso1, iso2) {
 /** Casa cada linha do PDF (não ignorada) com uma transação do app (mesmo
  *  tipo, mesmo valor) — cada transação só é usada uma vez.
  *  Data: exige data próxima (±2 dias) pra lançamento Pontual, cuja data É
- *  a data real da compra. Mensal/Parcelada no cartão trava a data no
- *  vencimento do cartão (não é a data real da cobrança — ver
- *  aplicarPagarVencimento em js/ui.js), então pra essas basta a mesma
+ *  a data real da compra. Parcelada tem um dia de vencimento próprio por
+ *  parcela (não é a data real da cobrança), então pra essas basta a mesma
  *  competência (mês da fatura), calculada com o fechamento do cartão. */
 function _conciliar(linhasPDF, transacoesApp, diaFechamento) {
     const pool = transacoesApp.map(t => ({ t, usada: false }));
@@ -372,7 +371,7 @@ function _conciliar(linhasPDF, transacoesApp, diaFechamento) {
         const candidata = pool.find(p => {
             if (p.usada || p.t.tipo !== l.tipo) return false;
             if (Math.abs(Math.abs(parseFloat(p.t.valor)) - l.valor) >= 0.005) return false;
-            const dataTravada = p.t.tipo_recorrencia === 'Mensal' || p.t.tipo_recorrencia === 'Parcelada';
+            const dataTravada = p.t.tipo_recorrencia === 'Parcelada';
             if (dataTravada && compLinha) return p.t.competencia === compLinha;
             return _diffDias(p.t.data, l.dataISO) <= 2;
         });
@@ -670,9 +669,9 @@ function _renderTabelaLinhasPDF(p, linhas, secId, modo) {
 }
 
 /** "+" (ou "✓" se já formatado) de uma linha "no CSV/PDF mas não lançado
- *  no app": popup com TODOS os campos que o tipo de recorrência escolhido
- *  precisa (igual ao formulário grande — dia de vencimento, parcelas, dia
- *  da semana...), mas sem sair da tela de conciliação (trocar pra aba
+ *  no app": popup com os campos do formulário grande (Crédito ganha o
+ *  campo Parcelas, com Dia de vencimento quando >1), mas sem sair da tela
+ *  de conciliação (trocar pra aba
  *  "+ Lançamento" perderia o arquivo já carregado, já que a aba de
  *  Configuração é remontada do zero sempre que reabre).
  *  O botão NÃO lança na hora — só monta o registro e acumula em
@@ -698,17 +697,12 @@ function _abrirLancarConciliar(secId, modo, pId, idx) {
     const diaPadrao = parseInt(l.dataISO.slice(8, 10), 10);
     const esc = s => String(s || '').replace(/"/g, '&quot;');
 
-    // Mesmas opções de frequência do formulário grande — despesa não usa os
-    // tipos de "dia útil fixo" (só receita); ver preencherDropdownRecorrencias.
-    const tiposFreq = (typeof ORDEM_RECORRENCIA !== 'undefined' ? ORDEM_RECORRENCIA : ['Pontual', 'Mensal', 'Parcelada', 'Semanal'])
-        .filter(t => l.tipo !== 'saidas' || typeof RECORRENCIA_DIA_UTIL === 'undefined' || !RECORRENCIA_DIA_UTIL.includes(t));
-    const rotuloFreq = t => (typeof RECORRENCIA_ROTULO !== 'undefined' && RECORRENCIA_ROTULO[t]) || t;
-    const freqPadrao = existente ? existente.dados.tipoRecorrencia : 'Pontual';
+    // "Parcelas" só existe pra Crédito — mesmo gatilho do formulário grande
+    // (ver atualizarCampoParcelas, js/ui.js): 1x = avulso de sempre, >1 = compra
+    // parcelada.
+    const ehCredito = !!metodoObj && metodoObj.metodoKind === 'Crédito';
     const diaRecPadrao = existente ? existente.dados.diaRecorrencia : diaPadrao;
-    const parcelasPadrao = existente ? existente.dados.parcelas : 2;
-    const diaSemanaPadrao = existente && existente.dados.diaSemana !== '' ? existente.dados.diaSemana : '';
-    const semanasPadrao = new Set(existente ? existente.dados.semanas : []);
-    const pagarVctoPadrao = existente ? !!existente.dados.pagarNoVencimento : false;
+    const parcelasPadrao = existente ? (existente.dados.parcelas || 1) : 1;
 
     const ov = mostrarDialogo({
         titulo: existente ? 'Editar lançamento formatado' : 'Formatar lançamento',
@@ -728,37 +722,14 @@ function _abrirLancarConciliar(secId, modo, pId, idx) {
                     ${categorias.map(c => `<option value="${esc(c)}" ${c === sugestao ? 'selected' : ''}>${c}</option>`).join('')}
                 </select>
             </div>
-            <div class="form-group">
-                <label for="lcFrequencia">Frequência</label>
-                <select id="lcFrequencia">
-                    ${tiposFreq.map(t => `<option value="${t}" ${t === freqPadrao ? 'selected' : ''}>${rotuloFreq(t)}</option>`).join('')}
-                </select>
-            </div>
-            <div id="lcMensalParceladaWrap" hidden style="display:flex;gap:.5rem">
+            <div id="lcParcelasWrap" ${ehCredito ? '' : 'hidden'} style="display:flex;gap:.5rem">
                 <div class="form-group" style="flex:1">
+                    <label for="lcParcelas">Parcelas</label>
+                    <input type="number" id="lcParcelas" min="1" value="${parcelasPadrao}">
+                </div>
+                <div class="form-group" id="lcDiaVencimentoWrap" hidden style="flex:1">
                     <label for="lcDiaVencimento">Dia de vencimento</label>
                     <input type="number" id="lcDiaVencimento" min="1" max="31" value="${diaRecPadrao}">
-                </div>
-                <div class="form-group" id="lcParcelasWrap" hidden style="flex:1">
-                    <label for="lcParcelas">Parcelas</label>
-                    <input type="number" id="lcParcelas" min="2" value="${parcelasPadrao}">
-                </div>
-            </div>
-            <label id="lcPagarVctoWrap" class="chip-toggle" hidden style="align-self:flex-start;margin:.3rem 0">
-                <input type="checkbox" id="lcPagarVcto" hidden ${pagarVctoPadrao ? 'checked' : ''}> pagar no vcto.
-            </label>
-            <div class="form-group" id="lcDiaSemanaWrap" hidden>
-                <label for="lcDiaSemana">Dia da semana (opcional)</label>
-                <select id="lcDiaSemana">
-                    <option value="">Sem dia fixo</option>
-                    ${['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
-                        .map((d, i) => `<option value="${i}" ${String(i) === String(diaSemanaPadrao) ? 'selected' : ''}>${d}</option>`).join('')}
-                </select>
-            </div>
-            <div class="form-group" id="lcSemanasWrap" hidden>
-                <label>Semanas do mês</label>
-                <div class="semanas-chips">
-                    ${[1, 2, 3, 4, 5].map(n => `<span class="chip lcSemanaChip${semanasPadrao.has(n) ? ' on' : ''}" data-semana="${n}">${n}ª</span>`).join('')}
                 </div>
             </div>
         `,
@@ -776,32 +747,18 @@ function _abrirLancarConciliar(secId, modo, pId, idx) {
                 onClick: () => {
                     const categoria = document.getElementById('lcCategoria').value;
                     if (!categoria) { mostrarNotificacao('Escolha uma categoria', 'erro'); return true; }
-                    const frequencia = document.getElementById('lcFrequencia').value;
                     const descricao = document.getElementById('lcDescricao').value.trim();
-                    const comDia = frequencia === 'Mensal' || frequencia === 'Parcelada';
-                    const diaRecorrencia = comDia ? (document.getElementById('lcDiaVencimento').value || '') : '';
-                    if (comDia && !(parseInt(diaRecorrencia, 10) >= 1 && parseInt(diaRecorrencia, 10) <= 31)) {
+                    const parcelas = ehCredito ? (parseInt(document.getElementById('lcParcelas').value, 10) || 1) : 1;
+                    const tipoRecorrencia = parcelas > 1 ? 'Parcelada' : 'Pontual';
+                    const diaRecorrencia = tipoRecorrencia === 'Parcelada' ? (document.getElementById('lcDiaVencimento').value || '') : '';
+                    if (tipoRecorrencia === 'Parcelada' && !(parseInt(diaRecorrencia, 10) >= 1 && parseInt(diaRecorrencia, 10) <= 31)) {
                         mostrarNotificacao('Informe o dia de vencimento (1 a 31)', 'erro'); return true;
                     }
-                    const parcelas = frequencia === 'Parcelada' ? (document.getElementById('lcParcelas').value || '') : '';
-                    if (frequencia === 'Parcelada' && !(parseInt(parcelas, 10) >= 1)) {
-                        mostrarNotificacao('Informe em quantas parcelas', 'erro'); return true;
-                    }
-                    const ehSemanal = frequencia === 'Semanal';
-                    const diaSemana = ehSemanal ? document.getElementById('lcDiaSemana').value : '';
-                    const semanas = ehSemanal
-                        ? [...ov.querySelectorAll('.lcSemanaChip.on')].map(c => parseInt(c.dataset.semana, 10))
-                        : [];
-                    if (ehSemanal && diaSemana !== '' && !semanas.length) {
-                        mostrarNotificacao('Marque pelo menos uma semana', 'erro'); return true;
-                    }
-                    const pagarNoVencimento = comDia && l.tipo === 'saidas' && document.getElementById('lcPagarVcto').checked;
 
                     const dados = {
                         tipo: l.tipo, data: l.dataISO, valor: l.valor, metodo: p.metodoEscolhido,
-                        categoria, descricao, formaPagamento: frequencia === 'Parcelada' ? 'Parcelada' : 'À vista',
-                        tipoRecorrencia: frequencia, diaRecorrencia, parcelas, diaSemana, semanas,
-                        pagarNoVencimento, competencia
+                        categoria, descricao, formaPagamento: tipoRecorrencia === 'Parcelada' ? 'Parcelada' : 'À vista',
+                        tipoRecorrencia, diaRecorrencia, parcelas, competencia
                     };
                     if (existente) {
                         existente.dados = dados;
@@ -815,21 +772,14 @@ function _abrirLancarConciliar(secId, modo, pId, idx) {
     });
 
     const $ = sel => ov.querySelector(sel);
-    const aplicarVisibilidade = () => {
-        const freq = $('#lcFrequencia').value;
-        const comDia = freq === 'Mensal' || freq === 'Parcelada';
-        const ehSemanal = freq === 'Semanal';
-        $('#lcMensalParceladaWrap').hidden = !comDia;
-        $('#lcParcelasWrap').hidden = freq !== 'Parcelada';
-        $('#lcPagarVctoWrap').hidden = !comDia || l.tipo !== 'saidas';
-        $('#lcDiaSemanaWrap').hidden = !ehSemanal;
-        $('#lcSemanasWrap').hidden = !ehSemanal;
-    };
-    $('#lcFrequencia').addEventListener('change', aplicarVisibilidade);
-    aplicarVisibilidade();
-    ov.querySelectorAll('.lcSemanaChip').forEach(chip => {
-        chip.addEventListener('click', () => chip.classList.toggle('on'));
-    });
+    if (ehCredito) {
+        const aplicarVisibilidade = () => {
+            const parcelas = parseInt($('#lcParcelas').value, 10) || 1;
+            $('#lcDiaVencimentoWrap').hidden = parcelas <= 1;
+        };
+        $('#lcParcelas').addEventListener('input', aplicarVisibilidade);
+        aplicarVisibilidade();
+    }
 }
 
 function _renderTabelaFormatados(p, secId, modo) {
@@ -837,7 +787,7 @@ function _renderTabelaFormatados(p, secId, modo) {
     const linhas = p.formatados.length ? `
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">
-            <thead><tr><th></th><th>Data</th><th>Valor</th><th>Tipo</th><th>Categoria</th><th>Frequência</th><th>Descrição</th></tr></thead>
+            <thead><tr><th></th><th>Data</th><th>Valor</th><th>Tipo</th><th>Categoria</th><th>Parcelas</th><th>Descrição</th></tr></thead>
             <tbody>${p.formatados.map(f => `
                 <tr>
                     <td><button type="button" class="btn-icon btn-danger" title="Remover"
@@ -846,7 +796,7 @@ function _renderTabelaFormatados(p, secId, modo) {
                     <td>${formatarMoeda(f.dados.valor)}</td>
                     <td><span class="chip-tipo chip-tipo--${f.dados.tipo}">${f.dados.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
                     <td>${f.dados.categoria}</td>
-                    <td>${f.dados.tipoRecorrencia}</td>
+                    <td>${f.dados.parcelas > 1 ? `${f.dados.parcelas}x` : 'à vista'}</td>
                     <td class="import-csv-desc" title="${f.dados.descricao}">${f.dados.descricao}</td>
                 </tr>`).join('')}</tbody>
         </table>

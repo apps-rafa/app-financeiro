@@ -66,20 +66,14 @@ function validarFormularioTransacao(dados) {
         return { valido: false, erro: 'O valor precisa ser maior que zero' };
     }
 
-    // Contas / Parcelada: dia do vencimento (o campo já vem pré-preenchido).
-    // Competência não é pedida: no crédito ela sai da data + fechamento do cartão.
-    if ((dados.tipoRecorrencia === 'Mensal' || dados.tipoRecorrencia === 'Parcelada')
-        && !(parseInt(dados.diaRecorrencia, 10) >= 1 && parseInt(dados.diaRecorrencia, 10) <= 31)) {
-        return { valido: false, erro: 'Informe o dia do vencimento (1 a 31)' };
-    }
-
-    if (dados.tipoRecorrencia === 'Parcelada' && !(parseInt(dados.parcelas, 10) >= 1)) {
-        return { valido: false, erro: 'Informe em quantas parcelas' };
-    }
-
-    if (dados.tipoRecorrencia === 'Semanal' && dados.diaSemana !== '' && dados.diaSemana != null
-        && !(dados.semanas && dados.semanas.length >= 1)) {
-        return { valido: false, erro: 'Marque pelo menos uma semana' };
+    // Parcelada: dia do vencimento (o campo já vem pré-preenchido) + nº de parcelas
+    if (dados.tipoRecorrencia === 'Parcelada') {
+        if (!(parseInt(dados.diaRecorrencia, 10) >= 1 && parseInt(dados.diaRecorrencia, 10) <= 31)) {
+            return { valido: false, erro: 'Informe o dia do vencimento (1 a 31)' };
+        }
+        if (!(parseInt(dados.parcelas, 10) >= 1)) {
+            return { valido: false, erro: 'Informe em quantas parcelas' };
+        }
     }
 
     return { valido: true };
@@ -173,9 +167,7 @@ function aplicarDataPadrao(force) {
     el.dataset.qtdDigitos = String((nova.match(/\d/g) || []).length);
     delete el.dataset.userVal;
     if (typeof recalcularCompetencia === 'function') recalcularCompetencia();
-    // Recorrência/cartão de crédito: refaz o vencimento travado (dia do cartão)
-    // em cima do novo mês em exibição.
-    if (typeof atualizarCamposRecorrencia === 'function') atualizarCamposRecorrencia();
+    if (typeof atualizarCampoParcelas === 'function') atualizarCampoParcelas();
 }
 
 /** Liga a máscara de data num input: keydown (backspace na "/") + sincroniza o
@@ -407,74 +399,36 @@ function limparFormulario() {
         if (typeof estadoApp !== 'undefined') estadoApp.tipoAtual = 'saidas';
         form.querySelectorAll('.tipo-btn').forEach(b =>
             b.classList.toggle('active', b.dataset.tipo === 'saidas'));
-        const pv = document.getElementById('pagarVencimento');
-        if (pv) pv.checked = false;
         const dataEl = document.querySelector(SELECTORS.data);
         if (dataEl) delete dataEl.dataset.userVal;
-        if (typeof semanasMarcadas !== 'undefined') semanasMarcadas = new Set();
         const btnSub = document.querySelector('.btn-submit');
         if (btnSub && !estadoApp.editandoId) btnSub.textContent = 'Adicionar';
-        if (typeof preencherDropdownRecorrencias === 'function') preencherDropdownRecorrencias();
-        if (typeof atualizarCamposRecorrencia === 'function') atualizarCamposRecorrencia();
+        if (typeof atualizarCampoParcelas === 'function') atualizarCampoParcelas();
         if (typeof atualizarLabelsPorTipo === 'function') atualizarLabelsPorTipo();
         if (typeof atualizarCampoCredito === 'function') atualizarCampoCredito();
     }
 }
 
 /**
- * Obtém dados do formulário
+ * Obtém dados do formulário. Só existem 2 tipos: Pontual (padrão) e
+ * Parcelada (crédito com mais de 1 parcela — ver atualizarCampoParcelas,
+ * js/ui.js). Competência: sempre derivada da data + fechamento do cartão
+ * pra qualquer lançamento em Crédito; pro resto, o mês em exibição.
  */
 function obterDadosFormulario() {
-    const tipoRecorrencia = document.querySelector(SELECTORS.tipoRecorrencia).value;
-    const diaRecorrencia = document.getElementById('diaRecorrencia')?.value || '';
-
-    // "Dia útil fixo": competência (mês) vem do próprio grupo; senão, do campo de Crédito
-    const ehDiaUtil = typeof RECORRENCIA_DIA_UTIL !== 'undefined'
-        && RECORRENCIA_DIA_UTIL.includes(tipoRecorrencia);
-
     const ehEntrada = document.querySelector(SELECTORS.tipoTransacao).value === 'entradas';
     const mesExib = (typeof estadoApp !== 'undefined' && estadoApp.mesAtual)
         ? formatarDataISO(estadoApp.mesAtual) : hojeISO();
 
-    // Semanal não tem campo de data: usa a 1ª semana marcada (ou o mês em exibição)
-    const semanasSel = typeof semanasMarcadas !== 'undefined' ? [...semanasMarcadas].sort() : [];
-    let dataISO = dataCampoParaISO(document.querySelector(SELECTORS.data).value);
+    const dataISO = dataCampoParaISO(document.querySelector(SELECTORS.data).value);
+    const diaRecorrencia = document.getElementById('diaRecorrencia')?.value || '';
+    const parcelas = parseInt(document.getElementById('parcelas')?.value, 10) || 1;
 
-    // O select "Comp." só é populado/mostrado pra despesa no cartão de crédito
-    // (ver atualizarCampoCredito, em js/ui.js) — pra qualquer outro método ele
-    // nunca foi tocado e fica preso na 1ª <option> ("01"/Janeiro) do HTML. Ler
-    // esse valor fora do contexto de crédito jogava a competência pra Janeiro
-    // de qualquer lançamento (Dinheiro, PIX, Semanal, Pontual sem cartão...).
-    // Crédito conta pra competência tanto em despesa quanto em receita (ex.:
-    // estorno/reembolso lançado direto na fatura) — só a despesa mostra o
-    // select "Comp." (ver atualizarCamposRecorrencia), então na receita a
-    // competência sempre cai no ramo "Pontual" logo abaixo.
     const _met = typeof metodoSelecionado === 'function' ? metodoSelecionado() : null;
-    const ehMetodoCredito = !!_met && _met.metodoKind === 'Crédito';
-    const ehCreditoDespesa = !ehEntrada && ehMetodoCredito;
+    const ehMetodoCredito = !ehEntrada && !!_met && _met.metodoKind === 'Crédito';
+    const tipoRecorrencia = (ehMetodoCredito && parcelas > 1) ? 'Parcelada' : 'Pontual';
 
-    let compISO = ehDiaUtil
-        ? competenciaDeMes(document.getElementById('compRecorrente')?.value || '')
-        : (ehCreditoDespesa ? competenciaDeMes(document.getElementById('competencia')?.value || '') : '');
-    if (tipoRecorrencia === 'Semanal') {
-        dataISO = semanasSel[0] || mesExib;
-    } else if (ehEntrada && (tipoRecorrencia === 'Mensal' || tipoRecorrencia === 'Parcelada')) {
-        // Receita Mensal/Parcelada: competência = mês em exibição; data = próximo dia útil
-        compISO = mesExib.slice(0, 8) + '01';
-        dataISO = dataReceitaMensal(compISO, diaRecorrencia);
-    }
-
-    // Crédito à vista (Pontual): a competência é sempre derivada da data da
-    // compra + fechamento do cartão — nunca depende de campo obrigatório.
-    // Mensal/Parcelada não entra aqui: ali a "Data" já é o vencimento travado
-    // (não a data da compra), então competência já veio certa do campo
-    // "Comp." (calculada em cima do mês em exibição, não da data travada —
-    // senão o fechamento seria aplicado 2x e a competência pularia de mês).
-    const _comDiaCredito = tipoRecorrencia === 'Mensal' || tipoRecorrencia === 'Parcelada';
-    if (ehMetodoCredito && dataISO && !ehDiaUtil && !_comDiaCredito) {
-        compISO = competenciaDe(dataISO, _met.diaFechamento || null);
-    }
-    // Última rede: se ainda não há competência, usa o mês em exibição
+    let compISO = (ehMetodoCredito && dataISO) ? competenciaDe(dataISO, _met.diaFechamento || null) : '';
     if (!compISO) compISO = mesExib.slice(0, 8) + '01';
 
     return {
@@ -486,12 +440,8 @@ function obterDadosFormulario() {
         formaPagamento: tipoRecorrencia === 'Parcelada' ? 'Parcelada' : 'À vista',
         tipoRecorrencia,
         diaRecorrencia,
-        pagarVencimento: !!document.getElementById('pagarVencimento')?.checked,
-        diaSemana: document.getElementById('diaSemana')?.value ?? '',
-        semanas: semanasSel,
-        valorSessao: parseFloat(document.querySelector(SELECTORS.valor).value) || 0,
-        parcelas: parseInt(document.getElementById('parcelas')?.value, 10) || 1,
-        competencia: compISO || '',
+        parcelas,
+        competencia: compISO,
         descricao: document.querySelector(SELECTORS.descricao).value
     };
 }

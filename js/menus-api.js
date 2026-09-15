@@ -1,6 +1,6 @@
 /**
  * API DE MENUS - SUPABASE
- * Gerencia categorias, métodos e tipos de recorrência (tabela menu_itens).
+ * Gerencia categorias e métodos (tabela menu_itens).
  * Mantém as assinaturas usadas por js/menus-ui.js.
  * "linha" nas funções abaixo = coluna id (bigint) da tabela.
  */
@@ -11,10 +11,6 @@ const CATEGORIAS_DESPESA_SEED = ['Alimentação', 'Alimentação app', 'Assinatu
     'Compras', 'Compras online', 'Lazer', 'Mercado', 'Saúde', 'Serviços',
     'Transporte app', 'Transporte'];
 const CATEGORIAS_RECEITA_SEED = ['Salário', 'Bônus', '13º', 'PL', 'Freelance', CATEGORIA_REEMBOLSO_ESTORNO];
-// Vocabulário fixo de tipos de recorrência (não vão para o banco)
-const RECORRENCIAS_KINDS = ['Pontual', 'Mensal', 'Parcelada',
-  'Primeiro dia útil do mês', 'Até o 5º dia útil do mês', 'Último dia útil do mês',
-  'Último dia útil do mês anterior', 'Semanal'];
 
 /**
  * Se o usuário atual ainda não tem nenhum item de menu, cria o conjunto padrão.
@@ -33,9 +29,7 @@ async function semearMenusPadraoSeVazio() {
             ...CATEGORIAS_DESPESA_SEED.map(nome => ({ tipo: 'Categoria', nome, categoria_tipo: 'saidas', cor: cor(nome) })),
             ...CATEGORIAS_RECEITA_SEED.map(nome => ({ tipo: 'Categoria', nome, categoria_tipo: 'entradas', cor: cor(nome) })),
             { tipo: 'Método', nome: 'Dinheiro', metodo_kind: 'Dinheiro', cor: cor('Dinheiro') },
-            { tipo: 'Método', nome: 'PIX/Débito', metodo_kind: 'PIX/Débito', cor: cor('PIX/Débito') },
-            // Recorrências: só guardam a cor do chip (o vocabulário é fixo no código)
-            ...RECORRENCIAS_KINDS.map(nome => ({ tipo: 'Recorrência', nome, cor: cor(nome) }))
+            { tipo: 'Método', nome: 'PIX/Débito', metodo_kind: 'PIX/Débito', cor: cor('PIX/Débito') }
         ];
         const { error: insErr } = await sb.from('menu_itens').insert(linhas);
         if (insErr) throw insErr;
@@ -44,31 +38,6 @@ async function semearMenusPadraoSeVazio() {
     } catch (error) {
         console.error('Erro ao semear menus padrão:', error);
         return false;
-    }
-}
-
-let _recorrenciasGarantidas = false;
-/**
- * Garante que existem linhas tipo='Recorrência' (uma por RECORRENCIAS_KINDS)
- * para guardar a cor do chip. Para usuários antigos que não têm essas linhas.
- */
-async function garantirRecorrenciasNoBanco() {
-    if (_recorrenciasGarantidas) return;
-    try {
-        const { data, error } = await sb.from('menu_itens')
-            .select('nome').eq('tipo', 'Recorrência');
-        if (error) throw error;
-        const existentes = new Set((data || []).map(r => r.nome));
-        const faltando = RECORRENCIAS_KINDS.filter(n => !existentes.has(n));
-        if (faltando.length) {
-            const cor = n => (typeof corPadraoChip === 'function' ? corPadraoChip(n) : null);
-            await sb.from('menu_itens').insert(
-                faltando.map(nome => ({ tipo: 'Recorrência', nome, cor: cor(nome) }))
-            );
-        }
-        _recorrenciasGarantidas = true;
-    } catch (e) {
-        console.error('Erro ao garantir recorrências no banco:', e);
     }
 }
 
@@ -126,7 +95,6 @@ function rotuloMetodo(item) {
  */
 async function carregarMenusCompleto() {
     try {
-        await garantirRecorrenciasNoBanco();
         await garantirCategoriaReembolsoNoBanco();
         const { data, error } = await sb
             .from('menu_itens')
@@ -142,8 +110,7 @@ async function carregarMenusCompleto() {
             categorias,
             categoriasDespesa: categorias.filter(c => c.categoriaTipo !== 'entradas'),
             categoriasReceita: categorias.filter(c => c.categoriaTipo === 'entradas'),
-            metodos: itens.filter(i => i.tipo === 'Método'),
-            recorrencias: itens.filter(i => i.tipo === 'Recorrência')
+            metodos: itens.filter(i => i.tipo === 'Método')
         };
     } catch (error) {
         console.error('Erro ao carregar menus:', error);

@@ -128,7 +128,6 @@
                     <div class="modo-lista-linha">
                         <button type="button" class="modo-lista-icone" id="modoEntradasIcone" title="Tirar filtro (ordem cronológica)" aria-label="Tirar filtro"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 4h18v2.5l-7 8V19l-4 2v-6.5l-7-8V4z"/></svg></button>
                         <div class="modo-lista" id="modoEntradas">
-                            <button type="button" class="modo-btn" data-modo="recorrencia" data-full="🔁 Frequência" data-emoji="🔁">🔁 Frequência</button>
                             <button type="button" class="modo-btn" data-modo="categoria" data-full="🏷️ Categoria" data-emoji="🏷️">🏷️ Categoria</button>
                         </div>
                         <button type="button" class="btn-fechar-form btn-fechar-aba" data-fechar-aba="entradas" title="Fechar" aria-label="Fechar">&times;</button>
@@ -148,7 +147,6 @@
                     <div class="modo-lista-linha">
                         <button type="button" class="modo-lista-icone" id="modoSaidasIcone" title="Tirar filtro (ordem cronológica)" aria-label="Tirar filtro"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 4h18v2.5l-7 8V19l-4 2v-6.5l-7-8V4z"/></svg></button>
                         <div class="modo-lista" id="modoSaidas">
-                            <button type="button" class="modo-btn" data-modo="recorrencia" data-full="🔁 Frequência" data-emoji="🔁">🔁 Frequência</button>
                             <button type="button" class="modo-btn" data-modo="metodo" data-full="💳 Forma de pgto." data-emoji="💳">💳 Forma de pgto.</button>
                             <button type="button" class="modo-btn" data-modo="categoria" data-full="🏷️ Categoria" data-emoji="🏷️">🏷️ Categoria</button>
                         </div>
@@ -170,28 +168,15 @@
                 </div>
             </section>
 
-            <!-- Tab: Próximas Transações -->
+            <!-- Tab: Próximas (faturas de cartão de crédito do mês) -->
             <section id="proximas" class="tab-content">
                 <div class="proximas-container">
                     <div class="form-header proximas-header">
-                        <div class="tipo-selector" id="tipoProximas">
-                            <button type="button" class="tipo-btn" data-tipo="saidas">
-                                <svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--despesa-text)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg><span class="tipo-label">Despesas</span>
-                            </button>
-                            <button type="button" class="tipo-btn" data-tipo="entradas">
-                                <svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg><span class="tipo-label">Receitas</span>
-                            </button>
-                        </div>
+                        <h2 class="proximas-titulo-fixo">Faturas de cartão de crédito</h2>
                         <button type="button" class="btn-fechar-form btn-fechar-aba" data-fechar-aba="proximas" title="Fechar" aria-label="Fechar">&times;</button>
                     </div>
-                    <div class="modo-lista-linha">
-                        <svg class="modo-lista-icone" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 4h18v2.5l-7 8V19l-4 2v-6.5l-7-8V4z"/></svg>
-                        <div class="modo-lista" id="modoProximas">
-                            <!-- Botões de modo (recorrência/método/categoria/cronológica) — montados via JS conforme o tipo -->
-                        </div>
-                    </div>
                     <div id="proximasLista" class="transacoes-lista">
-                        <!-- Próximas transações -->
+                        <!-- Faturas de cartão -->
                     </div>
                 </div>
             </section>
@@ -249,32 +234,15 @@
                         </div>
                     </div>
 
-                    <!-- Linha 2: Data + Recorrência (a "Recorrência" carrega seu campo
-                         auxiliar, se houver: Qtd./Vcto./dia/mês-ref) -->
+                    <!-- Linha 2: Data + Parcelas (só aparece com forma de pgto. em Crédito) -->
                     <div class="form-row" id="linhaRecorrencia">
                         <div id="dataBloco">
                             <div class="form-group" id="dataGroup">
-                                <div class="label-linha">
-                                    <label for="data">Data</label>
-                                    <label class="chip-toggle" id="pagarVencimentoWrap" hidden><input type="checkbox" id="pagarVencimento" hidden><span id="pagarVencimentoLabel">pagar no vcto.</span></label>
-                                </div>
+                                <label for="data">Data</label>
                                 <input type="text" id="data" inputmode="numeric" placeholder="dd/mm" maxlength="5" autocomplete="off" required>
-                            </div>
-                            <div class="form-group" id="dataCalculadaGroup" hidden>
-                                <label for="dataCalculada">Data</label>
-                                <input type="text" id="dataCalculada" class="campo-travado" readonly tabindex="-1">
-                            </div>
-                            <div class="form-group" id="semanasChipsGroup" hidden>
-                                <label>Semanas do mês</label>
-                                <div id="semanasChips" class="semanas-chips"></div>
-                                <div id="semanasResumo" class="semanas-resumo"></div>
                             </div>
                         </div>
                         <div id="recorrenciaBloco">
-                            <div class="form-group" id="recorrenciaGroup">
-                                <label for="tipoRecorrencia">Recorrência</label>
-                                <select id="tipoRecorrencia" required></select>
-                            </div>
                             <div class="form-group campo-mini campo-mini--xs" id="parceleGroup" hidden>
                                 <label for="parcelas">Qtd.</label>
                                 <div class="campo-com-stepper">
@@ -294,30 +262,6 @@
                                         <button type="button" class="btn-icon btn-mini-seta" data-stepper="diaRecorrencia" data-dir="-1" data-min="1" data-max="31" tabindex="-1" title="Diminuir">▼</button>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="form-group campo-mini" id="diaSemanaGroup" hidden>
-                                <label for="diaSemana">dia</label>
-                                <select id="diaSemana">
-                                    <option value="0">Dom.</option>
-                                    <option value="1">Seg.</option>
-                                    <option value="2">Ter.</option>
-                                    <option value="3">Qua.</option>
-                                    <option value="4">Qui.</option>
-                                    <option value="5">Sex.</option>
-                                    <option value="6">Sáb.</option>
-                                    <option value="" selected>—</option>
-                                </select>
-                            </div>
-                            <div class="form-group campo-mini campo-mini--xs" id="mesRefGroup" hidden>
-                                <label for="compRecorrente">Mês de ref.</label>
-                                <select id="compRecorrente">
-                                    <option value="01">JAN</option><option value="02">FEV</option>
-                                    <option value="03">MAR</option><option value="04">ABR</option>
-                                    <option value="05">MAI</option><option value="06">JUN</option>
-                                    <option value="07">JUL</option><option value="08">AGO</option>
-                                    <option value="09">SET</option><option value="10">OUT</option>
-                                    <option value="11">NOV</option><option value="12">DEZ</option>
-                                </select>
                             </div>
                         </div>
                     </div>
