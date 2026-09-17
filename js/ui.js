@@ -1261,12 +1261,10 @@ function iniciarEdicaoTransacao(trans, tipoTransacao) {
     document.querySelector(SELECTORS.categoria).value = trans.categoria;
     document.querySelector(SELECTORS.descricao).value = trans.descricao || '';
     // Precisa vir depois de setar a categoria: é ela que decide se o campo
-    // Método aparece pra receita (categoria "Reembolso/Estorno").
+    // Método aparece pra receita (categorias "Estorno"/"Reembolso").
     if (tipoTransacao === 'entradas' && typeof atualizarCampoMetodoReceita === 'function') atualizarCampoMetodoReceita();
     document.querySelector(SELECTORS.metodo).value = trans.metodo || '';
 
-    const diaRec = document.getElementById('diaRecorrencia');
-    if (diaRec) diaRec.value = trans.diaRecorrencia || '';
     const parc = document.getElementById('parcelas');
     if (parc) parc.value = trans.parcelasTotal || 1;
     const comp = document.getElementById('competencia');
@@ -1571,9 +1569,11 @@ function ajustarCamposSozinhos() {
 }
 
 /**
- * Mostra/esconde o campo "Parcelas" — só existe pra despesa em Crédito.
- * 1 parcela = lançamento avulso (Pontual) de sempre; mais que isso = compra
- * parcelada. "Dia de vencimento" (de cada parcela) só aparece com >1 parcela.
+ * Mostra/esconde "Comp." e "Parcelas" — só existem pra despesa em Crédito.
+ * 1 parcela = lançamento avulso (Pontual) de sempre, mostrado como "à vista"
+ * no lugar do campo Parcelas; mais que isso = compra parcelada. O dia de
+ * vencimento de cada parcela não é mais perguntado aqui — usa direto o dia
+ * já cadastrado no cartão (ver metodoSelecionado().diaVencimento).
  */
 function atualizarCampoParcelas() {
     const ehReceita = document.querySelector(SELECTORS.tipoTransacao)?.value === 'entradas';
@@ -1581,7 +1581,6 @@ function atualizarCampoParcelas() {
     const ehCredito = !ehReceita && !!metodoAtual && metodoAtual.metodoKind === 'Crédito';
 
     const set = (id, mostrar) => { const el = document.getElementById(id); if (el) el.hidden = !mostrar; };
-    set('parceleGroup', ehCredito);
     // "Comp." (competência): preview de qual mês esse lançamento vai cair,
     // calculado a partir da data da compra + fechamento do cartão — só faz
     // sentido pra Crédito (outros métodos usam o mês da própria data).
@@ -1592,19 +1591,8 @@ function atualizarCampoParcelas() {
     const parcelas = Math.max(1, parseInt(parcelasInput?.value, 10) || 1);
     const comParcelamento = ehCredito && parcelas > 1;
 
-    set('diaRecorrenciaGroup', comParcelamento);
-    set('valorTotalGroup', comParcelamento);
-    definirLabelResp('label[for="diaRecorrencia"]', 'vcto.', 'vcto.');
-    definirLabelResp('label[for="parcelas"]', 'Parcelas', 'parc.');
-    atualizarValorTotal();
-
-    // Prefill do dia de vencimento (com o dia da data digitada), só pra quem
-    // ainda não mexeu — livre pra editar, não trava mais no dia do cartão.
-    const diaInput = document.getElementById('diaRecorrencia');
-    if (diaInput && comParcelamento && !diaInput.value) {
-        const iso = dataCampoParaISO(document.querySelector(SELECTORS.data).value);
-        if (iso) diaInput.value = String(parseInt(iso.slice(8, 10), 10));
-    }
+    set('parceleGroup', comParcelamento);
+    set('avistaGroup', ehCredito && !comParcelamento);
 
     if (ehCredito && typeof recalcularCompetencia === 'function') recalcularCompetencia();
 
@@ -1628,9 +1616,14 @@ function atualizarLabelsPorTipo() {
         const compGrp = document.getElementById('competenciaGroup');
         if (compGrp) compGrp.hidden = true;
     } else {
+        const linhaMetodo = document.getElementById('linhaMetodo');
+        if (linhaMetodo) linhaMetodo.hidden = false;
         const blocoMetodo = document.getElementById('metodoBloco');
         if (blocoMetodo) blocoMetodo.hidden = false;
         if (metodoSel) metodoSel.required = true;
+        // A lista pode ter ficado restrita a Crédito/PIX-Débito (Estorno/
+        // Reembolso na receita) — repõe a lista completa pra despesa.
+        if (typeof preencherDropdownMetodos === 'function') preencherDropdownMetodos();
         if (typeof atualizarCampoCredito === 'function') atualizarCampoCredito();
     }
 
@@ -1638,6 +1631,36 @@ function atualizarLabelsPorTipo() {
     if (typeof preencherDropdownCategorias === 'function') preencherDropdownCategorias();
 
     ajustarCamposSozinhos();
+}
+
+/**
+ * Insere uma categoria nova na posição ALFABÉTICA dentro da lista atual, em
+ * vez de jogar pro fim. "ordem" é inteira no banco, então não dá pra
+ * encaixar num ponto fracionário: o item novo assume a "ordem" de quem
+ * viria depois dele alfabeticamente, e só os itens A PARTIR DAQUELE PONTO
+ * (não a lista toda) são empurrados +1 — quem já vinha antes não muda.
+ */
+async function _inserirCategoriaAlfabetica(lista, nome, dadosExtra) {
+    const itens = [...(lista || [])]
+        .sort((a, b) => {
+            const oa = a.ordem ?? Infinity, ob = b.ordem ?? Infinity;
+            return oa - ob || String(a.nome).localeCompare(String(b.nome), 'pt-BR');
+        })
+        .map((item, i) => ({ ...item, _ordemEfetiva: item.ordem ?? (i + 1) }));
+
+    const depois = itens.findIndex(it => String(it.nome).localeCompare(nome, 'pt-BR') > 0);
+    const novaOrdem = depois === -1
+        ? (itens.length ? itens[itens.length - 1]._ordemEfetiva + 1 : 1)
+        : itens[depois]._ordemEfetiva;
+
+    const ok = await adicionarItemMenuAPI('Categoria', nome, { ...dadosExtra, ordem: novaOrdem });
+    if (!ok) return false;
+
+    if (depois !== -1) {
+        const deslocamentos = itens.slice(depois).map(it => ({ id: it.linha, ordem: it._ordemEfetiva + 1 }));
+        if (deslocamentos.length) await salvarOrdemMenuAPI(deslocamentos);
+    }
+    return true;
 }
 
 /**
@@ -1661,7 +1684,12 @@ function abrirNovaCategoria(catTipo) {
             { label: 'Adicionar', primario: true, onClick: async (ov) => {
                 const nome = ov.querySelector('#dlgCatNome').value.trim();
                 if (!nome) { mostrarNotificacao('Informe o nome', 'info'); return true; }
-                const ok = await adicionarItemMenuAPI('Categoria', nome, {
+                // estadoApp.menus.categoriasReceita/Despesa são só listas de NOMES
+                // (o que o dropdown do formulário precisa) — a ordenação alfabética
+                // exige os itens completos (ordem/linha), então busca fresco aqui.
+                const todasCategorias = typeof obterItensPorTipo === 'function' ? await obterItensPorTipo('Categoria') : [];
+                const listaAtual = (todasCategorias || []).filter(c => (c.categoriaTipo || 'saidas') === tipo);
+                const ok = await _inserirCategoriaAlfabetica(listaAtual, nome, {
                     descricao: ov.querySelector('#dlgCatDesc').value.trim(),
                     categoria_tipo: tipo,
                     cor: corPadraoChip(nome)
@@ -1763,16 +1791,6 @@ function abrirNovoMetodo() {
 }
 
 /**
- * Preenche o campo "Total" (readonly) ao lado do Valor quando parcelado */
-function atualizarValorTotal() {
-    const tot = document.getElementById('valorTotal');
-    if (!tot) return;
-    const v = parseFloat(document.querySelector(SELECTORS.valor)?.value) || 0;
-    const mult = parseInt(document.getElementById('parcelas')?.value, 10) || 0;
-    tot.value = formatarMoeda(v * mult);
-}
-
-/**
  * Chamado quando o Método muda — o campo Parcelas (só existe em Crédito) e a
  * Competência dependem do método escolhido.
  */
@@ -1781,33 +1799,55 @@ function atualizarCampoCredito() {
 }
 
 /**
- * Receita normalmente não tem campo Método (bloco inteiro escondido). A
- * exceção é a categoria fixa "Reembolso/Estorno": um estorno pode vir tanto
- * via Pix quanto direto na fatura do cartão, então o Método passa a
- * determinar isso — mostra o campo (opcional) só quando essa categoria está
- * selecionada.
+ * Receita normalmente não tem campo Método (bloco inteiro escondido). As
+ * exceções são as categorias fixas "Estorno" (volta na fatura do cartão —
+ * só aceita Método de Crédito) e "Reembolso" (volta via Pix/transferência —
+ * só aceita Método PIX/Débito): mostram o campo (opcional), já restrito ao
+ * tipo de método que faz sentido pra cada uma.
  */
 function atualizarCampoMetodoReceita() {
     // Só se aplica à Receita — é ela que esconde o bloco Método por padrão
-    // (mostrando de volta só pra "Reembolso/Estorno"). Despesa SEMPRE
-    // mostra o campo; como o listener de "categoria muda" chama esta
-    // função sem saber qual tipo está ativo, sem essa guarda trocar de
-    // categoria numa Despesa escondia (e limpava) a Forma de pgto. sozinho.
+    // (mostrando de volta só pra Estorno/Reembolso). Despesa SEMPRE mostra
+    // o campo; como o listener de "categoria muda" chama esta função sem
+    // saber qual tipo está ativo, sem essa guarda trocar de categoria numa
+    // Despesa escondia (e limpava) a Forma de pgto. sozinho.
     const ehReceita = document.querySelector(SELECTORS.tipoTransacao)?.value === 'entradas';
     if (!ehReceita) return;
 
     const categoriaAtual = document.querySelector(SELECTORS.categoria)?.value;
-    const comMetodo = categoriaAtual === CATEGORIA_REEMBOLSO_ESTORNO;
+    const ehEstorno = categoriaAtual === CATEGORIA_ESTORNO;
+    const ehReembolso = categoriaAtual === CATEGORIA_REEMBOLSO;
+    const comMetodo = ehEstorno || ehReembolso;
 
+    const linhaMetodo = document.getElementById('linhaMetodo');
+    if (linhaMetodo) linhaMetodo.hidden = !comMetodo;
     const blocoMetodo = document.getElementById('metodoBloco');
     if (blocoMetodo) blocoMetodo.hidden = !comMetodo;
     const metodoSel = document.querySelector(SELECTORS.metodo);
     if (metodoSel) {
         metodoSel.required = false;
-        if (!comMetodo) metodoSel.value = '';
+        const atual = metodoSel.value;
+        metodoSel.innerHTML = '<option value="">Selecione...</option>';
+        if (comMetodo) {
+            (estadoApp.menus.metodos || [])
+                .filter(m => ehEstorno ? m.metodoKind === 'Crédito' : m.metodoKind === 'PIX/Débito')
+                .forEach(m => {
+                    const label = rotuloMetodo(m);
+                    const o = document.createElement('option');
+                    o.value = label; o.textContent = label;
+                    metodoSel.appendChild(o);
+                });
+            metodoSel.value = atual;
+        } else {
+            metodoSel.value = '';
+        }
     }
     const compGrp = document.getElementById('competenciaGroup');
     if (compGrp) compGrp.hidden = true; // receita nunca mostra o select "Comp."
+    const parceleGrp = document.getElementById('parceleGroup');
+    if (parceleGrp) parceleGrp.hidden = true;
+    const avistaGrp = document.getElementById('avistaGroup');
+    if (avistaGrp) avistaGrp.hidden = true;
     ajustarCamposSozinhos();
 }
 

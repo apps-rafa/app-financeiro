@@ -45,7 +45,6 @@ async function carregarAbaMenus() {
           <button class="subtab" data-sub="importar">📥 <span class="subtab-texto">Importar</span></button>
           <button class="subtab" data-sub="dados">💾 <span class="subtab-texto">Dados</span></button>
         </div>
-        <button type="button" class="btn-fechar-form btn-fechar-aba" title="Fechar" aria-label="Fechar">&times;</button>
       </div>
 
       <div class="menu-section menu-section--cols" data-sub="cat" hidden>
@@ -68,10 +67,12 @@ async function carregarAbaMenus() {
       </div>
 
       <div class="menu-section" data-sub="met" hidden>
-        <p class="menu-hint">Use as setinhas ▲▼ pra reordenar do jeito que você quiser — é essa ordem que aparece no dropdown do lançamento.</p>
-        <div class="menu-acoes-linha">
-          <button type="button" class="h3-add h3-az" onclick="ordenarAlfabetico('metodos')" title="Ordenar de A a Z">A→Z</button>
-          <button type="button" class="h3-add" onclick="abrirNovoMetodo()" title="Nova forma de pagamento">+</button>
+        <div class="menu-secao-topo">
+          <p class="menu-hint">Use as setinhas ▲▼ pra reordenar do jeito que você quiser — é essa ordem que aparece no dropdown do lançamento.</p>
+          <div class="menu-acoes-linha">
+            <button type="button" class="h3-add h3-az" onclick="ordenarAlfabetico('metodos')" title="Ordenar de A a Z">A→Z</button>
+            <button type="button" class="h3-add" onclick="abrirNovoMetodo()" title="Nova forma de pagamento">+</button>
+          </div>
         </div>
         <div class="menu-list" id="metodosList"></div>
       </div>
@@ -395,7 +396,7 @@ function renderizarItemsMenu(tipo, containerId, itens, grupo) {
     // no formulário — ver atualizarCampoMetodoReceita), então também não
     // pode ser removida (editar o nome ainda é permitido).
     const semRemocao = (tipo === 'Método' && (item.metodoKind === 'Dinheiro' || item.nome === 'Dinheiro'))
-        || (tipo === 'Categoria' && item.categoriaTipo === 'entradas' && item.nome === CATEGORIA_REEMBOLSO_ESTORNO);
+        || (tipo === 'Categoria' && item.categoriaTipo === 'entradas' && (item.nome === CATEGORIA_ESTORNO || item.nome === CATEGORIA_REEMBOLSO));
 
     const swatch = `<button class="cor-swatch" style="background:${corDoItemMenu(item)}"
         data-act="cor" data-tipo="${tipo}" data-id="${item.linha}" data-nome="${item.nome}" title="Cor do chip"></button>`;

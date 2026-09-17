@@ -194,12 +194,6 @@ function configurarEventListeners() {
         });
     }
 
-    // Dia de vencimento da parcela: só números, 2 dígitos
-    const diaRec = document.getElementById('diaRecorrencia');
-    if (diaRec) diaRec.addEventListener('input', () => {
-        soNumeros(diaRec, 2);
-        if (typeof atualizarCampoParcelas === 'function') atualizarCampoParcelas();
-    });
 
     // Botões "+" para criar categoria/método sem sair do lançamento
     const btnCat = document.getElementById('btnNovaCategoria');
@@ -218,19 +212,17 @@ function configurarEventListeners() {
             // Cobre o caso de colar "1e5" (válido pro <input type=number>, mas
             // sem sentido aqui) — se sobrou "e"/"+"/"-", zera o valor.
             if (/[eE+-]/.test(valorInput.value)) valorInput.value = '';
-            if (typeof atualizarValorTotal === 'function') atualizarValorTotal();
         });
     }
-    // Parcelas: só números, 2 dígitos -> recalcula o total e mostra/esconde
-    // o dia de vencimento (só aparece com mais de 1 parcela)
+    // Parcelas: só números, 2 dígitos -> mostra/esconde "Parcelas" x "à vista"
     const parcInput = document.getElementById('parcelas');
     if (parcInput) parcInput.addEventListener('input', () => {
         soNumeros(parcInput, 2);
         if (typeof atualizarCampoParcelas === 'function') atualizarCampoParcelas();
     });
 
-    // Setinhas ▲▼ de "Qtd." e "vcto.": aumentam/diminuem 1 e disparam o
-    // mesmo "input" que digitar direto no campo dispararia.
+    // Setinhas ▲▼ de "Parcelas": aumentam/diminuem 1 e disparam o mesmo
+    // "input" que digitar direto no campo dispararia.
     document.querySelectorAll('[data-stepper]').forEach(btn => {
         btn.addEventListener('click', () => {
             const input = document.getElementById(btn.dataset.stepper);

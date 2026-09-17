@@ -7,27 +7,21 @@
   padding: 0;
 }
 
-/* Sub-abas: Categorias / Métodos / Recorrências / ... — o "×" de fechar
-   fica FORA do grupo que quebra linha (nunca é um item "viúvo" sozinho
-   numa linha, sempre gruda no fim da última linha dos botões). */
+/* Sub-abas: Categorias / Formas de pagamento / Feriados / Importar / Dados —
+   ocupam 100% da largura disponível. */
 .subtabs {
   display: flex;
   align-items: flex-start;
   gap: 0.4rem;
   margin-bottom: var(--spacing-md);
 }
-.subtabs .btn-fechar-form { flex: none; }
 /* Grid em vez de flex-wrap: toda linha tem o mesmo número de colunas, então
-   quebrar nunca sobra 1 botão sozinho esticado numa linha própria. Só 2
-   estados (não usa auto-fit/auto-fill) — um número intermediário de
-   colunas (4 ou 5) sempre deixava algum rótulo mais longo (ex.:
-   "Recorrências") apertado/estourando a caixa: ou cabem os 6 numa linha
-   só, ou quebra pra exatamente 3+3. */
+   quebrar nunca sobra 1 botão sozinho esticado numa linha própria. */
 .subtabs-itens {
   flex: 1 1 auto;
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 0.4rem;
 }
 @media (max-width: 700px) {
@@ -128,6 +122,17 @@
   gap: 0.4rem;
   margin: 0.5rem 0 0.7rem;
 }
+
+/* Texto de ajuda + ações (A→Z / +) lado a lado, em vez de cada um numa
+   linha — quebra pra 2 linhas só se o espaço apertar de verdade. */
+.menu-secao-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.8rem;
+}
+.menu-secao-topo .menu-hint { flex: 1 1 12rem; margin: 0; }
+.menu-secao-topo .menu-acoes-linha { margin: 0; flex: none; }
 
 /* "A→Z" tem texto, não cabe no círculo do "+" — vira uma pílula discreta.
    Precisa de 2 classes (mesmo peso de ".cat-coluna-topo .h3-add") pra não
@@ -962,7 +967,8 @@
   font-size: .82rem;
 }
 
-/* ============ Dados (backup / apagar tudo) ============ */
+/* ============ Dados (backup / apagar) ============ */
+.dados-incluir { margin-bottom: .8rem; }
 .dados-acoes {
   display: flex;
   gap: .7rem;
@@ -980,14 +986,3 @@
 }
 .dados-acoes .btn-submit { width: auto; flex: 7 1 0; }
 .dados-acoes .armed { flex: 3 1 0; }
-.dados-selecao-titulo { font-size: .95rem; margin: 1.2rem 0 .3rem; }
-.dados-selecao-lista { display: flex; flex-direction: column; gap: .3rem; }
-.dados-selecao-item {
-  display: flex;
-  align-items: center;
-  gap: .4rem;
-  font-size: .82rem;
-  color: var(--text);
-  cursor: pointer;
-}
-label.dados-selecao-item:has(#dadosSelecaoFeriados) { margin-top: .6rem; font-weight: 600; }
