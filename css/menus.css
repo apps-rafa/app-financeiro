@@ -855,11 +855,10 @@
   flex: 1 1 0;
   min-width: 8rem;
 }
-/* "Buscar últimos" agora é só "Buscar últimos [N] dia(s)" (sem select de
-   unidade) — conteúdo bem mais enxuto, não precisa crescer tanto quanto
-   "Rendimentos" (rótulo + 2 opções), que ainda se beneficia de um pouco
-   mais de espaço pra não ficar apertado. */
-.pluggy-sync-periodo { flex-grow: 1; }
+/* "Buscar desde" (mês + ano) — conteúdo bem mais enxuto, não precisa
+   crescer tanto quanto "Rendimentos" (rótulo + 2 opções), que ainda se
+   beneficia de um pouco mais de espaço pra não ficar apertado. */
+.pluggy-sync-periodo { flex-grow: 1.3; gap: .3rem; padding: 0 .5rem; }
 .pluggy-rendimentos { flex-grow: 1.15; }
 .pluggy-toolbar-btn { flex-grow: .85; }
 .pluggy-toolbar-item {
@@ -880,24 +879,43 @@
   color: var(--text-muted);
   white-space: nowrap;
 }
-/* Campo "Buscar últimos N" — só dias (sem unidade pra escolher), o
-   usuário digita direto (sem setas: o spinner nativo do <input
-   type=number> ficava praticamente invisível tanto no tema claro quanto
-   no escuro, e não valia a pena manter um stepper só pra isso). */
-.pluggy-sync-periodo input {
+/* "Buscar desde": select de mês (tricódigo) + ano com setinhas — mesma
+   altura/fonte "de valor" dos outros campos da toolbar (--pluggy-toolbar-fs). */
+.pluggy-sync-mes {
   box-sizing: border-box;
-  width: 2.4rem;
   height: calc(var(--pluggy-toolbar-h) - .9rem);
-  padding: 0 .3rem;
+  padding: 0 .15rem;
   border: 1px solid var(--border-strong, #D1D5DB);
   border-radius: var(--radius-xs);
   background: var(--surface-2);
   font-size: var(--pluggy-toolbar-fs);
   font-weight: 700;
   color: var(--text);
+}
+.pluggy-sync-mes:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+.pluggy-sync-ano-seta {
+  box-sizing: border-box;
+  height: calc(var(--pluggy-toolbar-h) - .9rem);
+  width: 1.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border-strong, #D1D5DB);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--pluggy-toolbar-fs);
+  cursor: pointer;
+}
+.pluggy-sync-ano-seta:hover { color: var(--text); background: var(--surface-3); }
+.pluggy-sync-ano-valor {
+  font-size: var(--pluggy-toolbar-fs);
+  font-weight: 700;
+  color: var(--text);
+  min-width: 2.3rem;
   text-align: center;
 }
-.pluggy-sync-periodo input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
 /* Sem "space-between": isso jogava o último botão ("Ignorar") encostado
    na borda arredondada da caixa — um retângulo reto colado bem na curva
    do canto sempre parece "sangrar" pra fora dela. Com gap normal (herdado
@@ -955,6 +973,16 @@
   white-space: nowrap;
 }
 .pluggy-telegram { margin-bottom: .8rem; }
+/* Texto "Vinculado ao Telegram..." + botão "Desvincular" lado a lado
+   (antes ficavam empilhados, um embaixo do outro). */
+.pluggy-telegram-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+.pluggy-telegram-status .item-descricao { margin: 0; }
 /* 3 botões (Abrir no Telegram / Já vinculei / Gerar outro código) numa
    linha só, dividindo 100% da largura igualmente, mesma altura. */
 .pluggy-telegram-acoes {
@@ -1197,18 +1225,22 @@
 .dados-incluir { margin-bottom: .5rem; }
 /* Não selecionado: bem apagado (cinza, baixa opacidade). Selecionado: chip
    com destaque (cor primária) + "✓" antes do texto. */
-.dados-incluir .modo-btn {
+.dados-incluir .modo-btn,
+.dados-meses .modo-btn {
   opacity: .55;
   color: var(--text-muted);
 }
-.dados-incluir .modo-btn .dados-incluir-check { display: none; }
-.dados-incluir .modo-btn.active {
+.dados-incluir .modo-btn .dados-incluir-check,
+.dados-meses .modo-btn .dados-incluir-check { display: none; }
+.dados-incluir .modo-btn.active,
+.dados-meses .modo-btn.active {
   opacity: 1;
   background: var(--primary);
   color: var(--primary-contrast);
   font-weight: var(--font-weight-semibold);
 }
-.dados-incluir .modo-btn.active .dados-incluir-check { display: inline; }
+.dados-incluir .modo-btn.active .dados-incluir-check,
+.dados-meses .modo-btn.active .dados-incluir-check { display: inline; }
 /* Lista de meses (toggle "Lançamentos") — quantidade variável, então
    precisa quebrar linha (diferente da linha fixa de 4 toggles acima,
    que sempre cabe numa linha só por causa do nowrap). */

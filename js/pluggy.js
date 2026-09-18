@@ -354,7 +354,7 @@ async function carregarTelegramStatus() {
     const box = document.getElementById('pluggyTelegramBox');
     if (!box) return;
 
-    const { data, error } = await sb.from('telegram_users').select('criado_em').maybeSingle();
+    const { data, error } = await sb.from('telegram_users').select('criado_em, chat_id').maybeSingle();
     if (error) {
         console.error(error);
         box.innerHTML = '<p class="empty-text">Erro ao verificar o Telegram</p>';
@@ -362,9 +362,17 @@ async function carregarTelegramStatus() {
     }
 
     if (data) {
+        // Telegram não dá o número de celular sem um passo extra (pedir pra
+        // compartilhar contato) — usa o chat_id (o único identificador que
+        // já temos) mascarado no mesmo estilo de "final do número", só pra
+        // ajudar a reconhecer QUAL conta foi vinculada quando há dúvida.
+        const idStr = String(data.chat_id);
+        const mascara = '•'.repeat(Math.max(idStr.length - 3, 3)) + idStr.slice(-3);
         box.innerHTML = `
-            <p class="item-descricao">✅ Vinculado ao Telegram desde ${new Date(data.criado_em).toLocaleDateString('pt-BR')}</p>
-            <button type="button" class="mini-btn" id="btnDesvincularTelegram">Desvincular</button>`;
+            <div class="pluggy-telegram-status">
+                <p class="item-descricao">✅ Vinculado ao Telegram desde ${new Date(data.criado_em).toLocaleDateString('pt-BR')} (ID ${mascara})</p>
+                <button type="button" class="mini-btn" id="btnDesvincularTelegram">Desvincular</button>
+            </div>`;
     } else {
         box.innerHTML = `
             <p class="menu-hint">Receba avisos de lançamentos novos no Telegram, com botões pra confirmar ou ignorar na hora.</p>
@@ -441,20 +449,34 @@ function onClickRendimentosPluggy(e) {
     document.querySelectorAll('.pluggy-toggle-opt').forEach(b => b.classList.toggle('active', b === btn));
 }
 
-/** Só dígitos no campo "Buscar últimos N" (máx. 3 caracteres, já garantido
- *  pelo maxlength) — cola de texto ou teclas não-numéricas são limpas na
- *  hora, sem esperar o usuário confirmar. */
-function onInputQtdPluggy(e) {
-    e.target.value = e.target.value.replace(/\D/g, '');
+// "Buscar desde": mês (tricódigo, select) + ano (com setinhas) — mês/ano
+// escolhidos viram o 1º dia daquele mês como dateFrom da sincronização.
+// Começa no mês/ano atual, só muda por ação do usuário (não persiste
+// entre aberturas da aba).
+const _syncPluggy = { mes: new Date().getMonth() + 1, ano: new Date().getFullYear() };
+
+function _preencherSeletorSyncPluggy() {
+    const sel = document.getElementById('syncMesPluggy');
+    const anoEl = document.getElementById('syncAnoPluggy');
+    if (!sel || !anoEl) return;
+    if (!sel.options.length) {
+        sel.innerHTML = MESES_TRI.map((tri, i) => `<option value="${i + 1}">${tri}</option>`).join('');
+    }
+    sel.value = String(_syncPluggy.mes);
+    anoEl.textContent = _syncPluggy.ano;
+}
+
+function onChangeSyncMesPluggy(e) {
+    _syncPluggy.mes = parseInt(e.target.value, 10) || _syncPluggy.mes;
+}
+
+function onClickSyncAnoPluggy(delta) {
+    _syncPluggy.ano += delta;
+    _preencherSeletorSyncPluggy();
 }
 
 function calcularDateFromSyncPluggy() {
-    const qtd = parseInt(document.getElementById('syncQtdPluggy')?.value, 10);
-    if (!qtd || qtd <= 0) return null;
-
-    const alvo = new Date();
-    alvo.setDate(alvo.getDate() - qtd);
-    return alvo.toISOString().slice(0, 10);
+    return `${_syncPluggy.ano}-${String(_syncPluggy.mes).padStart(2, '0')}-01`;
 }
 
 /** Botão "Sincronizar agora": busca transações novas em todas as contas. */
@@ -888,7 +910,10 @@ function iniciarPluggy() {
     const btnLimpar = document.getElementById('btnLimparRevisaoPluggy');
     if (btnLimpar) btnLimpar.addEventListener('click', onClickLimparRevisaoPluggy);
     document.querySelector('.pluggy-rendimentos')?.addEventListener('click', onClickRendimentosPluggy);
-    document.getElementById('syncQtdPluggy')?.addEventListener('input', onInputQtdPluggy);
+    _preencherSeletorSyncPluggy();
+    document.getElementById('syncMesPluggy')?.addEventListener('change', onChangeSyncMesPluggy);
+    document.getElementById('syncAnoMenos')?.addEventListener('click', () => onClickSyncAnoPluggy(-1));
+    document.getElementById('syncAnoMais')?.addEventListener('click', () => onClickSyncAnoPluggy(1));
     document.getElementById('pluggyTelegramBox')?.addEventListener('click', onClickTelegramBox);
     carregarContasConectadas();
     carregarTelegramStatus();

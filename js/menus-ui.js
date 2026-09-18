@@ -160,12 +160,13 @@ async function carregarAbaMenus() {
         </div>
         <div class="menu-list" id="pluggyContasList"></div>
 
-        <h3 class="dados-selecao-titulo">Revisão</h3>
         <div class="pluggy-toolbar">
           <div class="pluggy-toolbar-item pluggy-sync-periodo">
-            <span class="pluggy-toolbar-label">Buscar últimos</span>
-            <input type="text" id="syncQtdPluggy" inputmode="numeric" pattern="[0-9]*" maxlength="3" value="30">
-            <span class="pluggy-toolbar-label">dia(s)</span>
+            <span class="pluggy-toolbar-label">Desde</span>
+            <select id="syncMesPluggy" class="pluggy-sync-mes"></select>
+            <button type="button" id="syncAnoMenos" class="pluggy-sync-ano-seta" title="Ano anterior">◂</button>
+            <span id="syncAnoPluggy" class="pluggy-sync-ano-valor"></span>
+            <button type="button" id="syncAnoMais" class="pluggy-sync-ano-seta" title="Próximo ano">▸</button>
           </div>
           <div class="pluggy-toolbar-item pluggy-rendimentos" role="group" aria-label="Rendimentos">
             <span class="pluggy-toolbar-label">Rendimentos</span>
