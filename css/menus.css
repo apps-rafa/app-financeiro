@@ -902,6 +902,8 @@
 }
 .pluggy-stepper-btn:hover { color: var(--primary); }
 .pluggy-sync-periodo select {
+  box-sizing: border-box;
+  height: 100%;
   border: none;
   background: transparent;
   font-size: var(--pluggy-toolbar-fs);
