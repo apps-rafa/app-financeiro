@@ -148,9 +148,11 @@
 }
 #metodoBloco > .form-group { margin: 0; min-width: 0; }
 #metodoBloco > #metodoGroup { flex: 1 1 8rem; }
-/* Select "Mês" — tricode (Jan, Fev...), caixa pequena */
+/* Select "Mês" — tricode (Jan, Fev...), caixa pequena. width:100% (não
+   "auto") pra preencher toda a caixa reservada pelo flex-basis — sem isso
+   o <select> encolhia pro tamanho do texto ("Dez") e sobrava um vão vazio
+   dentro da própria caixa, parecendo um espaço "descolado" da Parcelas. */
 #competenciaGroup select {
-    width: auto;
     padding-right: 1.5rem;
     background-position: right .45rem center;
     text-align: center;

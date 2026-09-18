@@ -31,6 +31,22 @@ async function semearMenusPadraoSeVazio() {
             { tipo: 'Método', nome: 'Dinheiro', metodo_kind: 'Dinheiro', cor: cor('Dinheiro') },
             { tipo: 'Método', nome: 'PIX/Débito', metodo_kind: 'PIX/Débito', cor: cor('PIX/Débito') }
         ];
+
+        // Usuário de teste (login anônimo, "Testar sem cadastro"): já entra
+        // com um cartão de crédito genérico cadastrado, pra não precisar
+        // criar um na mão só pra testar o fluxo de Crédito/parcelamento.
+        let ehAnonimo = false;
+        try {
+            const { data } = await sb.auth.getUser();
+            ehAnonimo = !!data?.user?.is_anonymous;
+        } catch (_) {}
+        if (ehAnonimo) {
+            linhas.push({
+                tipo: 'Método', nome: 'Crédito — Genérico', metodo_kind: 'Crédito', banco: 'Genérico',
+                dia_fechamento: 20, dia_vencimento: 27, cor: cor('Crédito — Genérico')
+            });
+        }
+
         const { error: insErr } = await sb.from('menu_itens').insert(linhas);
         if (insErr) throw insErr;
         console.log('🌱 Menus padrão criados para o usuário');

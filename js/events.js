@@ -197,12 +197,22 @@ function configurarEventListeners() {
             if (/[eE+-]/.test(valorInput.value)) valorInput.value = '';
         });
     }
-    // Parcelas: só números, 2 dígitos -> mostra/esconde "Parcelas" x "à vista"
+    // Parcelas: a caixa mostra "à vista"/"Nx" formatado; ao focar, some o
+    // texto formatado e vira dígito cru pra facilitar editar (o setter da
+    // setinha ▲▼ não passa por aqui focado, então já dispara formatado).
     const parcInput = document.getElementById('parcelas');
-    if (parcInput) parcInput.addEventListener('input', () => {
-        soNumeros(parcInput, 2);
-        if (typeof atualizarCampoParcelas === 'function') atualizarCampoParcelas();
-    });
+    if (parcInput) {
+        parcInput.addEventListener('focus', () => {
+            parcInput.value = String(typeof _parcelasNumero === 'function' ? _parcelasNumero(parcInput) : 1);
+        });
+        parcInput.addEventListener('input', () => {
+            soNumeros(parcInput, 2);
+            if (typeof atualizarCampoParcelas === 'function') atualizarCampoParcelas();
+        });
+        parcInput.addEventListener('blur', () => {
+            if (typeof atualizarCampoParcelas === 'function') atualizarCampoParcelas();
+        });
+    }
 
     // Setinhas ▲▼ de "Parcelas": aumentam/diminuem 1 e disparam o mesmo
     // "input" que digitar direto no campo dispararia.
@@ -213,10 +223,12 @@ function configurarEventListeners() {
             const min = parseInt(btn.dataset.min, 10) || 1;
             const max = parseInt(btn.dataset.max, 10) || 99;
             const dir = parseInt(btn.dataset.dir, 10) || 0;
+            // parseInt já ignora o "x"/"à vista" formatado (para no primeiro
+            // caractere não-numérico) — "à vista" vira NaN, tratado como min.
             let v = parseInt(input.value, 10);
-            if (Number.isNaN(v)) v = dir > 0 ? min - 1 : min + 1;
+            if (Number.isNaN(v)) v = min;
             v = Math.min(max, Math.max(min, v + dir));
-            input.value = String(v);
+            input.value = (input.id === 'parcelas' && typeof _parcelasTexto === 'function') ? _parcelasTexto(v) : String(v);
             input.dispatchEvent(new Event('input', { bubbles: true }));
         });
     });

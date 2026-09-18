@@ -1580,12 +1580,29 @@ function ajustarCamposSozinhos() {
     }
 }
 
+/** Texto mostrado DENTRO da caixa de parcelas: "à vista" pra 1x, "Nx" daí
+ *  pra cima (o rótulo "Parcelas" em cima é sempre fixo — só o conteúdo
+ *  da caixa muda). */
+function _parcelasTexto(n) {
+    return n > 1 ? `${n}x` : 'à vista';
+}
+
+/** Número de parcelas "de verdade" a partir do que estiver na caixa —
+ *  funciona tanto com o texto formatado ("à vista", "3x") quanto com
+ *  dígitos crus (campo em edição, ver foco/blur em events.js): parseInt
+ *  já para no primeiro caractere não-numérico ("3x" -> 3), e "à vista"
+ *  (começa com letra) vira NaN -> cai no padrão de 1. */
+function _parcelasNumero(input) {
+    return Math.max(1, parseInt(input?.value, 10) || 1);
+}
+
 /**
  * Mostra/esconde "Mês" e "Parcelas" — só existem pra despesa em Crédito.
  * O campo de parcelas fica sempre visível junto (setinha ▲▼, começando em
- * 1x) — só o RÓTULO acima dele muda: "à vista" com 1x, "Parcelas" com 2x
- * ou mais. O dia de vencimento de cada parcela não é mais perguntado aqui —
- * usa direto o dia já cadastrado no cartão (ver metodoSelecionado().diaVencimento).
+ * "à vista") com o rótulo "Parcelas" fixo — só o CONTEÚDO da caixa muda
+ * ("à vista" com 1x, "Nx" com 2x ou mais). O dia de vencimento de cada
+ * parcela não é mais perguntado aqui — usa direto o dia já cadastrado no
+ * cartão (ver metodoSelecionado().diaVencimento).
  */
 function atualizarCampoParcelas() {
     const ehReceita = document.querySelector(SELECTORS.tipoTransacao)?.value === 'entradas';
@@ -1599,13 +1616,15 @@ function atualizarCampoParcelas() {
     set('competenciaGroup', ehCredito);
 
     const parcelasInput = document.getElementById('parcelas');
-    if (!ehCredito && parcelasInput) parcelasInput.value = 1;
-    const parcelas = Math.max(1, parseInt(parcelasInput?.value, 10) || 1);
-    const comParcelamento = ehCredito && parcelas > 1;
+    if (!ehCredito && parcelasInput) parcelasInput.value = _parcelasTexto(1);
+    const parcelas = _parcelasNumero(parcelasInput);
+    // Enquanto o campo está em edição (foco), mostra dígito cru — não
+    // reformata a cada tecla (ver focus/input/blur em events.js).
+    if (parcelasInput && document.activeElement !== parcelasInput) {
+        parcelasInput.value = _parcelasTexto(parcelas);
+    }
 
     set('parceleGroup', ehCredito);
-    const labelParcelas = document.querySelector('label[for="parcelas"]');
-    if (labelParcelas) labelParcelas.textContent = comParcelamento ? 'Parcelas' : 'à vista';
 
     if (ehCredito && typeof recalcularCompetencia === 'function') recalcularCompetencia();
 
