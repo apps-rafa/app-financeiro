@@ -441,28 +441,19 @@ function onClickRendimentosPluggy(e) {
     document.querySelectorAll('.pluggy-toggle-opt').forEach(b => b.classList.toggle('active', b === btn));
 }
 
-/** Setas ▲▼ do campo "Buscar últimos N" — nativas do <input type=number>
- *  ficavam ilegíveis (some em claro, some em escuro). */
-function onClickStepperPluggy(e) {
-    const btn = e.target.closest('.pluggy-stepper-btn');
-    if (!btn) return;
-    const input = btn.closest('.pluggy-stepper')?.querySelector('input');
-    if (!input) return;
-    const min = parseInt(input.min, 10) || 1;
-    const atual = parseInt(input.value, 10) || min;
-    input.value = Math.max(min, atual + Number(btn.dataset.step));
+/** Só dígitos no campo "Buscar últimos N" (máx. 3 caracteres, já garantido
+ *  pelo maxlength) — cola de texto ou teclas não-numéricas são limpas na
+ *  hora, sem esperar o usuário confirmar. */
+function onInputQtdPluggy(e) {
+    e.target.value = e.target.value.replace(/\D/g, '');
 }
 
 function calcularDateFromSyncPluggy() {
-    const qtdEl = document.getElementById('syncQtdPluggy');
-    const unidadeEl = document.getElementById('syncUnidadePluggy');
-    const qtd = parseInt(qtdEl?.value, 10);
+    const qtd = parseInt(document.getElementById('syncQtdPluggy')?.value, 10);
     if (!qtd || qtd <= 0) return null;
 
     const alvo = new Date();
-    if (unidadeEl?.value === 'meses') alvo.setMonth(alvo.getMonth() - qtd);
-    else if (unidadeEl?.value === 'anos') alvo.setFullYear(alvo.getFullYear() - qtd);
-    else alvo.setDate(alvo.getDate() - qtd);
+    alvo.setDate(alvo.getDate() - qtd);
     return alvo.toISOString().slice(0, 10);
 }
 
@@ -888,7 +879,7 @@ function iniciarPluggy() {
     const btnLimpar = document.getElementById('btnLimparRevisaoPluggy');
     if (btnLimpar) btnLimpar.addEventListener('click', onClickLimparRevisaoPluggy);
     document.querySelector('.pluggy-rendimentos')?.addEventListener('click', onClickRendimentosPluggy);
-    document.querySelector('.pluggy-sync-periodo')?.addEventListener('click', onClickStepperPluggy);
+    document.getElementById('syncQtdPluggy')?.addEventListener('input', onInputQtdPluggy);
     document.getElementById('pluggyTelegramBox')?.addEventListener('click', onClickTelegramBox);
     carregarContasConectadas();
     carregarTelegramStatus();
