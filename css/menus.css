@@ -774,12 +774,15 @@
 .import-csv-label-linha { display: inline-flex; align-items: center; gap: .3rem; }
 
 /* ============ Pluggy (Importar > Pluggy) ============ */
+.menu-section[data-sub="importar"] { --pluggy-toolbar-h: 2.5rem; }
 /* "Revisão" ficava com um vão enorme antes da barra de sincronização —
    sem classe própria, o <h3> caía no margin padrão do navegador (1em).
    Reaproveitável se outro título "seco" (sem classe) aparecer aqui. */
 .dados-selecao-titulo { margin: 0 0 .4rem; font-size: .95rem; }
 
-/* Grupos "Conectadas"/"Desconectadas" dentro da lista de contas. */
+/* Grupos "Conectadas"/"Desconectadas" dentro da lista de contas — igual
+   collapsible ao .import-csv-grupo (duplicatas do CSV/PDF/Pluggy), com
+   "Conectadas" aberto e "Desconectadas" fechado por padrão. */
 .pluggy-contas-grupo + .pluggy-contas-grupo { margin-top: .8rem; }
 .pluggy-contas-grupo-titulo {
   font-size: .72rem;
@@ -788,21 +791,26 @@
   letter-spacing: .03em;
   color: var(--text-muted);
   margin: 0 0 .3rem;
-}
-.pluggy-conta-sync {
-  display: flex;
-  align-items: center;
-  gap: .3rem;
-  font-size: .78rem;
-  color: var(--text-muted);
-  white-space: nowrap;
+  padding: .2rem 0;
   cursor: pointer;
+  list-style: none;
+  user-select: none;
 }
-.pluggy-conta-sync input { width: auto; }
+.pluggy-contas-grupo-titulo::-webkit-details-marker { display: none; }
+.pluggy-contas-grupo-titulo::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: .3rem;
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform .15s ease;
+}
+.pluggy-contas-grupo[open] > .pluggy-contas-grupo-titulo::before { transform: rotate(90deg); }
+.pluggy-contas-grupo[open] > .pluggy-contas-grupo-titulo:hover::before { transform: rotate(90deg) !important; }
 
 /* Barra de ações da Revisão: "Buscar últimos N", "Rendimentos"
-   (Agrupar/Ignorar), "Sincronizar" e "Limpar" lado a lado, todos com a
-   mesma altura — antes cada um vinha de um componente/altura diferente. */
+   (Agrupar/Ignorar), "Sincronizar" e "Limpar" — uma linha só, ocupando
+   100% da largura, todos com a mesma altura e mesma escala de fonte. */
 .pluggy-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -810,54 +818,97 @@
   gap: .6rem;
   margin: 0 0 .8rem;
 }
+.pluggy-toolbar-item,
+.pluggy-toolbar-btn {
+  flex: 1 1 0;
+  min-width: 8rem;
+}
+/* "Buscar últimos"/"Rendimentos" carregam mais conteúdo (rótulo + campos)
+   que os botões — crescem um pouco mais pra não truncar o texto das
+   opções de Rendimentos (Agrupar/Ignorar). */
+.pluggy-sync-periodo, .pluggy-rendimentos { flex-grow: 1.3; }
+.pluggy-toolbar-btn { flex-grow: .85; }
 .pluggy-toolbar-item {
   box-sizing: border-box;
-  min-height: var(--campo-import-h);
+  height: var(--pluggy-toolbar-h);
   display: flex;
   align-items: center;
   gap: .35rem;
-  padding: 0 .6rem;
+  padding: 0 .55rem;
   border: 1px solid var(--border-strong, #D1D5DB);
   border-radius: var(--radius-sm);
   background: var(--surface);
+  overflow: hidden;
 }
 .pluggy-toolbar-label {
-  font-size: .68rem;
+  font-size: .72rem;
   font-weight: 600;
   color: var(--text-muted);
   white-space: nowrap;
 }
+/* Campo "Buscar últimos N" com setas próprias (▲▼) no lugar das nativas
+   do <input type=number>, que ficavam praticamente invisíveis tanto no
+   tema claro quanto no escuro (spinner do navegador não segue as cores
+   do app). */
+.pluggy-stepper { display: flex; align-items: center; }
 .pluggy-sync-periodo input {
-  width: 2.6rem;
+  width: 1.6rem;
   padding: 0;
+  border: none;
+  background: transparent;
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--text);
+  text-align: right;
+  -moz-appearance: textfield;
+}
+.pluggy-sync-periodo input:focus { outline: none; }
+.pluggy-sync-periodo input::-webkit-outer-spin-button,
+.pluggy-sync-periodo input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.pluggy-stepper-btns {
+  display: inline-flex;
+  flex-direction: column;
+  margin-left: .2rem;
+}
+.pluggy-stepper-btn {
+  width: 1rem;
+  height: .78rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: .55rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.pluggy-stepper-btn:hover { color: var(--primary); }
+.pluggy-sync-periodo select {
   border: none;
   background: transparent;
   font-size: .85rem;
   font-weight: 700;
   color: var(--text);
-}
-.pluggy-sync-periodo input:focus { outline: none; }
-.pluggy-sync-periodo select {
-  border: none;
-  background: transparent;
-  font-size: .8rem;
-  font-weight: 700;
-  color: var(--text);
   padding: 0;
 }
-.pluggy-rendimentos { padding: 0 .3rem 0 .6rem; }
+.pluggy-rendimentos { justify-content: space-between; }
 .pluggy-toggle-opt {
   box-sizing: border-box;
-  min-height: calc(var(--campo-import-h) - .5rem);
-  padding: .25rem .55rem;
+  height: calc(var(--pluggy-toolbar-h) - .7rem);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 .4rem;
   border: 1px solid transparent;
   border-radius: var(--radius-xs);
   background: transparent;
   color: var(--text-muted);
-  font-size: .75rem;
+  font-size: .74rem;
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
-  transition: background .15s, color .15s;
+  transition: background .15s, color .15s, border-color .15s;
 }
 .pluggy-toggle-opt:hover { color: var(--text); }
 .pluggy-toggle-opt.active {
@@ -865,13 +916,22 @@
   border-color: var(--primary);
   color: #fff;
 }
+/* Fora da toolbar (botão "Incluir na sincronização" no card da conta) —
+   precisa da própria borda, já que ali não tem uma caixa por volta. */
+.item-descricao > .pluggy-toggle-opt {
+  height: auto;
+  padding: .3rem .6rem;
+  border-color: var(--border-strong, #D1D5DB);
+  background: var(--surface);
+}
+.item-descricao > .pluggy-toggle-opt.active { border-color: var(--primary); }
 .pluggy-toolbar-btn {
   box-sizing: border-box;
-  min-height: var(--campo-import-h);
+  height: var(--pluggy-toolbar-h);
   width: auto;
-  flex: 0 0 auto;
+  justify-content: center;
   padding: 0 .9rem;
-  font-size: .82rem;
+  font-size: .85rem;
   white-space: nowrap;
 }
 .campo-metodo-conta { display: flex; align-items: center; gap: .4rem; margin-top: .3rem; }

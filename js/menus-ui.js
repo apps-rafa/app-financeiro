@@ -155,7 +155,13 @@ async function carregarAbaMenus() {
           <div class="pluggy-toolbar">
             <div class="pluggy-toolbar-item pluggy-sync-periodo">
               <span class="pluggy-toolbar-label">Buscar últimos</span>
-              <input type="number" id="syncQtdPluggy" min="1" value="30">
+              <div class="pluggy-stepper">
+                <input type="number" id="syncQtdPluggy" min="1" value="30" inputmode="numeric">
+                <span class="pluggy-stepper-btns">
+                  <button type="button" class="pluggy-stepper-btn" data-step="1" title="Aumentar" aria-label="Aumentar">▲</button>
+                  <button type="button" class="pluggy-stepper-btn" data-step="-1" title="Diminuir" aria-label="Diminuir">▼</button>
+                </span>
+              </div>
               <select id="syncUnidadePluggy">
                 <option value="dias">dia(s)</option>
                 <option value="meses">mês(es)</option>

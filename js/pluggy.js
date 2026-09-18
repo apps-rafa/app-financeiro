@@ -18,6 +18,10 @@ const PLUGGY_INCLUDE_SANDBOX = true;
 const PLUGGY_CONNECTOR_IDS = [2, 200];
 
 let _PluggyConnectCtor = null;
+// Estado aberto/fechado dos 2 grupos de contas — sobrevive a re-renders
+// (ex.: depois de (des)conectar uma conta). "Conectadas" começa aberto,
+// "Desconectadas" começa fechado.
+const _abertosPluggyContas = { conectadas: true, desconectadas: false };
 
 /** Título de exibição de uma conta Pluggy — nunca o nome do conector (ex.:
  *  "MeuPluggy" agrega várias instituições reais e não diz nada sozinho). */
@@ -154,13 +158,21 @@ async function carregarContasConectadas() {
     const conectadas = data.filter(c => c.status !== 'desconectado');
     const desconectadas = data.filter(c => c.status === 'desconectado');
 
-    const grupo = (titulo, lista) => !lista.length ? '' : `
-        <div class="pluggy-contas-grupo">
-            <h4 class="pluggy-contas-grupo-titulo">${titulo} (${lista.length})</h4>
+    const grupo = (id, titulo, lista, aberto) => !lista.length ? '' : `
+        <details class="pluggy-contas-grupo" data-grupo-id="${id}" ${aberto ? 'open' : ''}>
+            <summary class="pluggy-contas-grupo-titulo">${titulo} (${lista.length})</summary>
             ${lista.map(gerarHTMLContaPluggy).join('')}
-        </div>`;
+        </details>`;
 
-    container.innerHTML = grupo('Conectadas', conectadas) + grupo('Desconectadas', desconectadas);
+    container.innerHTML =
+        grupo('conectadas', 'Conectadas', conectadas, _abertosPluggyContas.conectadas) +
+        grupo('desconectadas', 'Desconectadas', desconectadas, _abertosPluggyContas.desconectadas);
+
+    container.querySelectorAll('details.pluggy-contas-grupo').forEach(det => {
+        det.addEventListener('toggle', () => {
+            _abertosPluggyContas[det.dataset.grupoId] = det.open;
+        });
+    });
 
     container.onclick = onContasConectadasClick;
     container.onchange = onContasConectadasChange;
@@ -207,10 +219,12 @@ function gerarHTMLContaPluggy(c) {
                 </div>
             </div>
             ${!desconectada ? `
-            <label class="item-descricao pluggy-conta-sync" for="sincronizar-conta-${c.id}">
-                <input type="checkbox" id="sincronizar-conta-${c.id}" data-act="sincronizar-conta" data-id="${c.id}" ${c.sincronizar ? 'checked' : ''}>
-                <span>Incluir no "Sincronizar agora"</span>
-            </label>` : ''}
+            <div class="item-descricao">
+                <button type="button" class="pluggy-toggle-opt ${c.sincronizar ? 'active' : ''}"
+                    data-act="sincronizar-conta" data-id="${c.id}" data-sincronizar="${c.sincronizar ? '1' : '0'}">
+                    Incluir na sincronização
+                </button>
+            </div>` : ''}
         </div>
         <div class="item-actions">
             ${desconectada
@@ -237,6 +251,14 @@ function onContasConectadasClick(e) {
         reconectarConta(Number(btnReconectar.dataset.id));
         return;
     }
+    const btnSync = e.target.closest('[data-act="sincronizar-conta"]');
+    if (btnSync) {
+        const ligar = btnSync.dataset.sincronizar !== '1';
+        btnSync.classList.toggle('active', ligar);
+        btnSync.dataset.sincronizar = ligar ? '1' : '0';
+        associarSincronizarConta(Number(btnSync.dataset.id), ligar);
+        return;
+    }
     const btnApagar = e.target.closest('[data-act="apagar-conta"]');
     if (btnApagar) {
         apagarConta(Number(btnApagar.dataset.id));
@@ -247,11 +269,6 @@ function onContasConectadasChange(e) {
     const sel = e.target.closest('select[data-act="metodo-conta"]');
     if (sel) {
         associarMetodoConta(Number(sel.dataset.id), sel.value ? Number(sel.value) : null);
-        return;
-    }
-    const chk = e.target.closest('input[data-act="sincronizar-conta"]');
-    if (chk) {
-        associarSincronizarConta(Number(chk.dataset.id), chk.checked);
     }
 }
 
@@ -345,6 +362,18 @@ function onClickRendimentosPluggy(e) {
     const btn = e.target.closest('.pluggy-toggle-opt');
     if (!btn) return;
     document.querySelectorAll('.pluggy-toggle-opt').forEach(b => b.classList.toggle('active', b === btn));
+}
+
+/** Setas ▲▼ do campo "Buscar últimos N" — nativas do <input type=number>
+ *  ficavam ilegíveis (some em claro, some em escuro). */
+function onClickStepperPluggy(e) {
+    const btn = e.target.closest('.pluggy-stepper-btn');
+    if (!btn) return;
+    const input = btn.closest('.pluggy-stepper')?.querySelector('input');
+    if (!input) return;
+    const min = parseInt(input.min, 10) || 1;
+    const atual = parseInt(input.value, 10) || min;
+    input.value = Math.max(min, atual + Number(btn.dataset.step));
 }
 
 function calcularDateFromSyncPluggy() {
@@ -633,6 +662,7 @@ function iniciarPluggy() {
     const btnLimpar = document.getElementById('btnLimparRevisaoPluggy');
     if (btnLimpar) btnLimpar.addEventListener('click', onClickLimparRevisaoPluggy);
     document.querySelector('.pluggy-rendimentos')?.addEventListener('click', onClickRendimentosPluggy);
+    document.querySelector('.pluggy-sync-periodo')?.addEventListener('click', onClickStepperPluggy);
     carregarContasConectadas();
     carregarRevisaoPluggy();
 }
