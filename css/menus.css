@@ -953,21 +953,26 @@
   white-space: nowrap;
 }
 .pluggy-telegram { margin-bottom: .8rem; }
+/* 3 botões (Abrir no Telegram / Já vinculei / Gerar outro código) numa
+   linha só, dividindo 100% da largura igualmente, mesma altura. */
 .pluggy-telegram-acoes {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: .6rem;
   margin-top: .4rem;
 }
-.pluggy-telegram-link {
-  display: block;
-  flex: 1 1 auto;
-  width: auto;
+.pluggy-telegram-acoes > * {
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 2.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  text-decoration: none;
+  white-space: nowrap;
 }
-.pluggy-telegram-acoes .mini-btn { flex: 0 0 auto; }
-#pluggyTelegramBox > #btnConectarTelegram { margin-top: .4rem; }
+.pluggy-telegram-link { text-decoration: none; }
 
 /* Campos "soltos" (sem .form-group/.dialogo-corpo em volta) usados nos
    cards da revisão do Pluggy — sem essa regra caíam no estilo nativo do
@@ -998,7 +1003,19 @@
 
 .campo-metodo-conta { display: flex; align-items: center; gap: .4rem; margin-top: .3rem; }
 .campo-metodo-conta label { font-size: .78rem; color: var(--text-muted); white-space: nowrap; }
-.campo-com-add--mini select { font-size: .78rem; padding: .3rem .5rem; }
+/* Sem isto caía no estilo nativo do navegador (fundo branco) — mesma
+   causa-raiz do .select-mini/.input-mini corrigidos antes: campo "solto",
+   sem um .form-group/.dialogo-corpo em volta pra herdar o tema. */
+.campo-com-add--mini select {
+  box-sizing: border-box;
+  font-size: .78rem;
+  padding: .3rem .5rem;
+  border: 1px solid var(--border-strong, #D1D5DB);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.campo-com-add--mini select:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
 .import-csv-ajuda {
   display: inline-block;
   width: 1rem;
