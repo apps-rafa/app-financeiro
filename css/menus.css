@@ -855,12 +855,13 @@
   flex: 1 1 0;
   min-width: 8rem;
 }
-/* "Buscar desde" (mês + ano) — conteúdo bem mais enxuto, não precisa
-   crescer tanto quanto "Rendimentos" (rótulo + 2 opções), que ainda se
-   beneficia de um pouco mais de espaço pra não ficar apertado. */
-.pluggy-sync-periodo { flex-grow: 1.3; gap: .3rem; padding: 0 .5rem; }
-.pluggy-rendimentos { flex-grow: 1.15; }
-.pluggy-toolbar-btn { flex-grow: .85; }
+/* Pesos proporcionais ao conteúdo real de cada caixa (medido) — evita o
+   que dava antes: "Rendimentos" (rótulo + 2 chips, a mais larga) recebendo
+   MENOS espaço que "Sincronizar"/"Limpar" (só um botão), o que cortava
+   "Ignorar" e sobrava espaço vazio nos botões. */
+.pluggy-sync-periodo { flex-grow: 1.4; gap: .3rem; padding: 0 .5rem; min-width: 11rem; }
+.pluggy-rendimentos { flex-grow: 1.4; min-width: 13rem; }
+.pluggy-toolbar-btn { flex-grow: .6; min-width: 7rem; }
 .pluggy-toolbar-item {
   box-sizing: border-box;
   height: var(--pluggy-toolbar-h);
