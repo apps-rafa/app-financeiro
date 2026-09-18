@@ -44,11 +44,20 @@ async function enviarMensagemTelegram(token: string, chatId: number, texto: stri
   }
 }
 
+// Só avisa transação com data de até 2 dias atrás — sem isso, qualquer
+// sincronização que traga uma janela larga (ex.: primeira sync de uma
+// conta nova, ou "Buscar últimos 30 dias") manda um aviso por lançamento
+// do período inteiro de uma vez, virando spam de coisa que já aconteceu
+// há semanas em vez de "acabou de cair".
+const NOTIFICAR_ATE_DIAS_ATRAS = 2;
+
 export async function notificarTelegramNovas(
   supabaseAdmin: SupabaseClient,
   userId: string,
   itens: ItemNovoTelegram[],
 ): Promise<void> {
+  const dataLimite = new Date(Date.now() - NOTIFICAR_ATE_DIAS_ATRAS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  itens = itens.filter((i) => i.data >= dataLimite);
   if (!itens.length) return;
   const token = Deno.env.get("TELEGRAM_BOT_TOKEN");
   if (!token) return;
