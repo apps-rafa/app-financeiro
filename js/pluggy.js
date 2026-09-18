@@ -393,8 +393,10 @@ async function onClickConectarTelegram() {
                 o código vale por 10 minutos.</p>
             <div class="pluggy-telegram-acoes">
                 <a class="btn-submit pluggy-telegram-link" href="${data.link}" target="_blank" rel="noopener">Abrir no Telegram</a>
-                <button type="button" class="mini-btn" id="btnJaVincleiTelegram">Já vinculei, atualizar</button>
-                <button type="button" class="mini-btn" id="btnConectarTelegram">🔁 Gerar outro código</button>
+                <div class="pluggy-telegram-acoes-par">
+                    <button type="button" class="mini-btn" id="btnJaVincleiTelegram">Já vinculei, atualizar</button>
+                    <button type="button" class="mini-btn" id="btnConectarTelegram">🔁 Gerar outro código</button>
+                </div>
             </div>`;
     } catch (e) {
         console.error(e);
