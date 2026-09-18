@@ -783,8 +783,8 @@
 }
 .import-csv-label-linha { display: inline-flex; align-items: center; gap: .3rem; }
 
-/* ============ Pluggy (Importar > Pluggy) ============ */
-.menu-section[data-sub="importar"] {
+/* ============ Pluggy (Configurações > Open Finance) ============ */
+.menu-section[data-sub="of"] {
   --pluggy-toolbar-h: 2.5rem;
   /* Uma escala só pra tudo que é texto "de valor" (número, opção de
      select, texto de botão) dentro da toolbar da Revisão — antes cada
