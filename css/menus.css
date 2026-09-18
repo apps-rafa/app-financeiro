@@ -949,13 +949,20 @@
   white-space: nowrap;
 }
 .pluggy-telegram { margin-bottom: .8rem; }
+.pluggy-telegram-acoes {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin-top: .4rem;
+}
 .pluggy-telegram-link {
   display: block;
+  flex: 1 1 auto;
   width: auto;
   text-align: center;
   text-decoration: none;
-  margin-top: .4rem;
 }
+.pluggy-telegram-acoes .mini-btn { flex: 0 0 auto; }
 .campo-metodo-conta { display: flex; align-items: center; gap: .4rem; margin-top: .3rem; }
 .campo-metodo-conta label { font-size: .78rem; color: var(--text-muted); white-space: nowrap; }
 .campo-com-add--mini select { font-size: .78rem; padding: .3rem .5rem; }
