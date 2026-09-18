@@ -98,6 +98,17 @@ h1, h2, h3, h4, label, .item-nome, .despesa-categoria, .amount { color: var(--te
 .dialogo-corpo input::placeholder,
 .busca-lista::placeholder { color: var(--text-muted); }
 
+/* Lista de opções de QUALQUER <select> do app (nativa do navegador, um
+   popup à parte que não herda o fundo/cor do próprio <select> fechado —
+   inclusive quando o select em si usa fundo transparente, como os campos
+   "soltos" dentro de uma caixa em Importar). Sem isto, o navegador desenha
+   esse popup com as cores padrão do sistema, que ficam ilegíveis tanto no
+   tema claro quanto no escuro dependendo do SO/navegador. */
+select option {
+    background-color: var(--surface-2);
+    color: var(--text);
+}
+
 /* Autofill do navegador (Chrome/Edge) força fundo branco + texto preto
    por conta própria, ignorando o CSS da página — sem isto, um campo
    autopreenchido (ex.: "Data") destoava do tema (claro num fundo escuro). */

@@ -152,26 +152,29 @@ async function carregarAbaMenus() {
           <div class="menu-list" id="pluggyContasList"></div>
 
           <h3 class="dados-selecao-titulo">Revisão</h3>
-          <div class="import-csv-contexto">
-            <label class="pluggy-sync-periodo">
-              <span class="import-csv-label-linha">Buscar últimos</span>
-              <span class="pluggy-sync-periodo-campos">
-                <input type="number" id="syncQtdPluggy" min="1" value="30">
-                <select id="syncUnidadePluggy">
-                  <option value="dias">dia(s)</option>
-                  <option value="meses">mês(es)</option>
-                  <option value="anos">ano(s)</option>
-                </select>
-              </span>
-            </label>
-            <label class="pluggy-check">
-              <input type="checkbox" id="syncAgruparRendimentosPluggy">
-              <span>Agrupar rendimentos</span>
-            </label>
-          </div>
-          <div class="import-csv-acoes">
-            <button type="button" class="btn-submit" id="btnSincronizarPluggy">↻ Sincronizar agora</button>
-            <button type="button" class="mini-btn" id="btnLimparRevisaoPluggy">🧹 Limpar tudo</button>
+          <div class="pluggy-toolbar">
+            <div class="pluggy-toolbar-item pluggy-sync-periodo">
+              <span class="pluggy-toolbar-label">Buscar últimos</span>
+              <div class="pluggy-stepper">
+                <input type="number" id="syncQtdPluggy" min="1" value="30" inputmode="numeric">
+                <span class="pluggy-stepper-btns">
+                  <button type="button" class="pluggy-stepper-btn" data-step="1" title="Aumentar" aria-label="Aumentar">▲</button>
+                  <button type="button" class="pluggy-stepper-btn" data-step="-1" title="Diminuir" aria-label="Diminuir">▼</button>
+                </span>
+              </div>
+              <select id="syncUnidadePluggy">
+                <option value="dias">dia(s)</option>
+                <option value="meses">mês(es)</option>
+                <option value="anos">ano(s)</option>
+              </select>
+            </div>
+            <div class="pluggy-toolbar-item pluggy-rendimentos" role="group" aria-label="Rendimentos">
+              <span class="pluggy-toolbar-label">Rendimentos</span>
+              <button type="button" class="pluggy-toggle-opt active" id="btnRendimentosAgrupar" data-rendimentos="agrupar">Agrupar</button>
+              <button type="button" class="pluggy-toggle-opt" id="btnRendimentosIgnorar" data-rendimentos="ignorar">Ignorar</button>
+            </div>
+            <button type="button" class="btn-submit pluggy-toolbar-btn" id="btnSincronizarPluggy">↻ Sincronizar</button>
+            <button type="button" class="mini-btn pluggy-toolbar-btn" id="btnLimparRevisaoPluggy">🧹 Limpar</button>
           </div>
           <div id="pluggyRevisaoLista" class="transacoes-lista"></div>
         </div>

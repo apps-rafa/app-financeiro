@@ -140,6 +140,7 @@ create table if not exists public.pluggy_contas (
   banco_origem      text,
   metodo_id         bigint references public.menu_itens(id) on delete set null,
   status            text not null default 'ativo' check (status in ('ativo','erro','desconectado')),
+  sincronizar       boolean not null default true, -- desmarcada: fica conectada mas fora do "Sincronizar agora"
   ultimo_sync       timestamptz,
   user_id           uuid not null default auth.uid() references auth.users(id) on delete cascade,
   criado_em         timestamptz default now(),

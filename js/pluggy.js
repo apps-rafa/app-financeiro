@@ -18,6 +18,10 @@ const PLUGGY_INCLUDE_SANDBOX = true;
 const PLUGGY_CONNECTOR_IDS = [2, 200];
 
 let _PluggyConnectCtor = null;
+// Estado aberto/fechado dos 2 grupos de contas — sobrevive a re-renders
+// (ex.: depois de (des)conectar uma conta). "Conectadas" começa aberto,
+// "Desconectadas" começa fechado.
+const _abertosPluggyContas = { conectadas: true, desconectadas: false };
 
 /** Título de exibição de uma conta Pluggy — nunca o nome do conector (ex.:
  *  "MeuPluggy" agrega várias instituições reais e não diz nada sozinho). */
@@ -151,59 +155,84 @@ async function carregarContasConectadas() {
         return;
     }
 
-    const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
-    container.innerHTML = data.map(c => {
-        const statusTag = c.status === 'erro'
-            ? '<span class="pendente-badge">erro na conexão</span>'
-            : c.status === 'desconectado'
-                ? '<span class="chip chip--neutro">desconectada</span>' : '';
-        const opcoesMetodo = metodos.map(m =>
-            `<option value="${m.id}" ${c.metodo_id === m.id ? 'selected' : ''}>${rotuloMetodo(m)}</option>`
-        ).join('');
-        const ultimoSync = c.ultimo_sync
-            ? `último sync: ${new Date(c.ultimo_sync).toLocaleString('pt-BR')}`
-            : 'ainda não sincronizada';
+    const conectadas = data.filter(c => c.status !== 'desconectado');
+    const desconectadas = data.filter(c => c.status === 'desconectado');
 
-        const detalhesConta = [
-            c.nome_conta,
-            c.numero_mascarado ? `final ${c.numero_mascarado}` : null,
-            c.marca_cartao,
-        ].filter(Boolean).join(' · ');
-        const saldoTxt = c.tipo_conta === 'BANK' && typeof c.saldo === 'number'
-            ? `saldo: ${formatarMoeda(c.saldo)}` : '';
+    const grupo = (id, titulo, lista, aberto) => !lista.length ? '' : `
+        <details class="pluggy-contas-grupo" data-grupo-id="${id}" ${aberto ? 'open' : ''}>
+            <summary class="pluggy-contas-grupo-titulo">${titulo} (${lista.length})</summary>
+            ${lista.map(gerarHTMLContaPluggy).join('')}
+        </details>`;
 
-        return `
-        <div class="menu-item ativo" data-conta-id="${c.id}">
-            <div class="item-info">
-                <div class="item-nome">${tituloContaPluggy(c)}
-                    ${c.banco_origem && c.banco_origem !== tituloContaPluggy(c)
-                        ? `<span class="chip chip--neutro">${c.banco_origem}</span>` : ''}
-                    ${statusTag}
-                </div>
-                ${detalhesConta ? `<div class="item-descricao">${detalhesConta}</div>` : ''}
-                <div class="item-descricao">${ultimoSync}${saldoTxt ? ' · ' + saldoTxt : ''}</div>
-                <div class="item-descricao campo-metodo-conta">
-                    <label for="metodo-conta-${c.id}">Método do app:</label>
-                    <div class="campo-com-add campo-com-add--mini">
-                        <select id="metodo-conta-${c.id}" data-act="metodo-conta" data-id="${c.id}">
-                            <option value="">Selecione...</option>
-                            ${opcoesMetodo}
-                        </select>
-                        <button type="button" class="btn-mini-add" data-act="add-metodo" title="Novo método">+</button>
-                    </div>
-                </div>
-            </div>
-            <div class="item-actions">
-                ${c.status !== 'desconectado'
-                    ? `<button class="btn-icon btn-danger" data-act="desconectar-conta" data-id="${c.id}" title="Desconectar">🔌</button>`
-                    : ''}
-                <button class="btn-icon btn-danger" data-act="apagar-conta" data-id="${c.id}" title="Apagar">🗑️</button>
-            </div>
-        </div>`;
-    }).join('');
+    container.innerHTML =
+        grupo('conectadas', 'Conectadas', conectadas, _abertosPluggyContas.conectadas) +
+        grupo('desconectadas', 'Desconectadas', desconectadas, _abertosPluggyContas.desconectadas);
+
+    container.querySelectorAll('details.pluggy-contas-grupo').forEach(det => {
+        det.addEventListener('toggle', () => {
+            _abertosPluggyContas[det.dataset.grupoId] = det.open;
+        });
+    });
 
     container.onclick = onContasConectadasClick;
     container.onchange = onContasConectadasChange;
+}
+
+/** Card de uma conta conectada (grupo "Conectadas"/"Desconectadas"). */
+function gerarHTMLContaPluggy(c) {
+    const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
+    const desconectada = c.status === 'desconectado';
+    const statusTag = c.status === 'erro' ? '<span class="pendente-badge">erro na conexão</span>' : '';
+    const opcoesMetodo = metodos.map(m =>
+        `<option value="${m.id}" ${c.metodo_id === m.id ? 'selected' : ''}>${rotuloMetodo(m)}</option>`
+    ).join('');
+    const ultimoSync = c.ultimo_sync
+        ? `último sync: ${new Date(c.ultimo_sync).toLocaleString('pt-BR')}`
+        : 'ainda não sincronizada';
+
+    const detalhesConta = [
+        c.nome_conta,
+        c.numero_mascarado ? `final ${c.numero_mascarado}` : null,
+        c.marca_cartao,
+    ].filter(Boolean).join(' · ');
+    const saldoTxt = c.tipo_conta === 'BANK' && typeof c.saldo === 'number'
+        ? `saldo: ${formatarMoeda(c.saldo)}` : '';
+
+    return `
+    <div class="menu-item ativo" data-conta-id="${c.id}">
+        <div class="item-info">
+            <div class="item-nome">${tituloContaPluggy(c)}
+                ${c.banco_origem && c.banco_origem !== tituloContaPluggy(c)
+                    ? `<span class="chip chip--neutro">${c.banco_origem}</span>` : ''}
+                ${statusTag}
+            </div>
+            ${detalhesConta ? `<div class="item-descricao">${detalhesConta}</div>` : ''}
+            <div class="item-descricao">${ultimoSync}${saldoTxt ? ' · ' + saldoTxt : ''}</div>
+            <div class="item-descricao campo-metodo-conta">
+                <label for="metodo-conta-${c.id}">Método do app:</label>
+                <div class="campo-com-add campo-com-add--mini">
+                    <select id="metodo-conta-${c.id}" data-act="metodo-conta" data-id="${c.id}">
+                        <option value="">Selecione...</option>
+                        ${opcoesMetodo}
+                    </select>
+                    <button type="button" class="btn-mini-add" data-act="add-metodo" title="Novo método">+</button>
+                </div>
+            </div>
+            ${!desconectada ? `
+            <div class="item-descricao">
+                <button type="button" class="pluggy-toggle-opt ${c.sincronizar ? 'active' : ''}"
+                    data-act="sincronizar-conta" data-id="${c.id}" data-sincronizar="${c.sincronizar ? '1' : '0'}">
+                    Incluir na sincronização
+                </button>
+            </div>` : ''}
+        </div>
+        <div class="item-actions">
+            ${desconectada
+                ? `<button class="btn-icon" data-act="reconectar-conta" data-id="${c.id}" title="Reconectar">🔌</button>`
+                : `<button class="btn-icon btn-danger" data-act="desconectar-conta" data-id="${c.id}" title="Desconectar">🔌</button>`}
+            <button class="btn-icon btn-danger" data-act="apagar-conta" data-id="${c.id}" title="Apagar">🗑️</button>
+        </div>
+    </div>`;
 }
 
 function onContasConectadasClick(e) {
@@ -217,6 +246,19 @@ function onContasConectadasClick(e) {
         desconectarConta(Number(btnDesconectar.dataset.id));
         return;
     }
+    const btnReconectar = e.target.closest('[data-act="reconectar-conta"]');
+    if (btnReconectar) {
+        reconectarConta(Number(btnReconectar.dataset.id));
+        return;
+    }
+    const btnSync = e.target.closest('[data-act="sincronizar-conta"]');
+    if (btnSync) {
+        const ligar = btnSync.dataset.sincronizar !== '1';
+        btnSync.classList.toggle('active', ligar);
+        btnSync.dataset.sincronizar = ligar ? '1' : '0';
+        associarSincronizarConta(Number(btnSync.dataset.id), ligar);
+        return;
+    }
     const btnApagar = e.target.closest('[data-act="apagar-conta"]');
     if (btnApagar) {
         apagarConta(Number(btnApagar.dataset.id));
@@ -227,6 +269,14 @@ function onContasConectadasChange(e) {
     const sel = e.target.closest('select[data-act="metodo-conta"]');
     if (sel) {
         associarMetodoConta(Number(sel.dataset.id), sel.value ? Number(sel.value) : null);
+    }
+}
+
+async function associarSincronizarConta(contaId, sincronizar) {
+    const { error } = await sb.from('pluggy_contas').update({ sincronizar }).eq('id', contaId);
+    if (error) {
+        console.error(error);
+        mostrarNotificacao('Erro ao atualizar', 'erro');
     }
 }
 
@@ -249,6 +299,19 @@ async function desconectarConta(contaId) {
         return;
     }
     mostrarNotificacao('Conta desconectada', 'sucesso');
+    await carregarContasConectadas();
+}
+
+/** "Reconectar": volta a conta pro grupo "Conectadas" — mesmo botão de
+ *  "Desconectar", que agora funciona como toggle em vez de sumir. */
+async function reconectarConta(contaId) {
+    const { error } = await sb.from('pluggy_contas').update({ status: 'ativo' }).eq('id', contaId);
+    if (error) {
+        console.error(error);
+        mostrarNotificacao('Erro ao reconectar', 'erro');
+        return;
+    }
+    mostrarNotificacao('Conta reconectada', 'sucesso');
     await carregarContasConectadas();
 }
 
@@ -290,6 +353,29 @@ let _revisaoPluggyCache = {};
 // re-renders (ex.: depois de confirmar uma linha) igual ao resto do app.
 const _abertosPluggy = { duplicatas: true, pendentes: true };
 
+/** Toggle "Rendimentos": Agrupar/Ignorar, um ativo por vez (não checkbox). */
+function _modoRendimentosPluggy() {
+    return document.querySelector('.pluggy-toggle-opt.active')?.dataset.rendimentos || 'agrupar';
+}
+
+function onClickRendimentosPluggy(e) {
+    const btn = e.target.closest('.pluggy-toggle-opt');
+    if (!btn) return;
+    document.querySelectorAll('.pluggy-toggle-opt').forEach(b => b.classList.toggle('active', b === btn));
+}
+
+/** Setas ▲▼ do campo "Buscar últimos N" — nativas do <input type=number>
+ *  ficavam ilegíveis (some em claro, some em escuro). */
+function onClickStepperPluggy(e) {
+    const btn = e.target.closest('.pluggy-stepper-btn');
+    if (!btn) return;
+    const input = btn.closest('.pluggy-stepper')?.querySelector('input');
+    if (!input) return;
+    const min = parseInt(input.min, 10) || 1;
+    const atual = parseInt(input.value, 10) || min;
+    input.value = Math.max(min, atual + Number(btn.dataset.step));
+}
+
 function calcularDateFromSyncPluggy() {
     const qtdEl = document.getElementById('syncQtdPluggy');
     const unidadeEl = document.getElementById('syncUnidadePluggy');
@@ -310,10 +396,8 @@ async function sincronizarPluggyAgora() {
     if (btn) { btn.disabled = true; btn.textContent = 'Sincronizando...'; }
     try {
         const dateFrom = calcularDateFromSyncPluggy();
-        const agruparRendimentos = document.getElementById('syncAgruparRendimentosPluggy')?.checked || false;
-        const body = {};
+        const body = { modoRendimentos: _modoRendimentosPluggy() };
         if (dateFrom) body.dateFrom = dateFrom;
-        if (agruparRendimentos) body.agruparRendimentos = true;
         const { data, error } = await sb.functions.invoke('pluggy-sync', { body });
         if (error) throw error;
         const novas = data?.novas || 0;
@@ -577,6 +661,8 @@ function iniciarPluggy() {
     document.getElementById('btnSincronizarPluggy')?.addEventListener('click', sincronizarPluggyAgora);
     const btnLimpar = document.getElementById('btnLimparRevisaoPluggy');
     if (btnLimpar) btnLimpar.addEventListener('click', onClickLimparRevisaoPluggy);
+    document.querySelector('.pluggy-rendimentos')?.addEventListener('click', onClickRendimentosPluggy);
+    document.querySelector('.pluggy-sync-periodo')?.addEventListener('click', onClickStepperPluggy);
     carregarContasConectadas();
     carregarRevisaoPluggy();
 }
