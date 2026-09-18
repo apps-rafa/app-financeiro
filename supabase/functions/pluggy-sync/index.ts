@@ -284,6 +284,24 @@ Deno.serve(async (req: Request) => {
       .eq("status", "Ativo");
 
     const apiKey = await getPluggyApiKey();
+
+    // "Sincronizar agora" pede pra Pluggy buscar dados novos na instituição
+    // NA HORA (PATCH /items/{id}), em vez de só ler o que ela já tinha
+    // coletado no ciclo automático dela — sem isso, uma compra/PIX feita há
+    // poucos minutos podia não aparecer mesmo clicando em sincronizar. É
+    // assíncrono do lado da Pluggy, por isso a pequena espera antes de
+    // buscar as transações; itemIds repetidos (várias contas da mesma
+    // conexão) só disparam uma vez.
+    const itemIds = [...new Set(contas.map((c: { item_id: string }) => c.item_id))];
+    await Promise.all(itemIds.map((itemId) =>
+      fetch(`${PLUGGY_API_URL}/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }).catch((e) => console.error(`Falha ao forçar atualização do item ${itemId}:`, e))
+    ));
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+
     let novasNoTotal = 0;
     let erroConta: string | null = null;
 
