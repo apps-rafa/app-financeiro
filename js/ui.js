@@ -1616,8 +1616,6 @@ function atualizarLabelsPorTipo() {
         const compGrp = document.getElementById('competenciaGroup');
         if (compGrp) compGrp.hidden = true;
     } else {
-        const linhaMetodo = document.getElementById('linhaMetodo');
-        if (linhaMetodo) linhaMetodo.hidden = false;
         const blocoMetodo = document.getElementById('metodoBloco');
         if (blocoMetodo) blocoMetodo.hidden = false;
         if (metodoSel) metodoSel.required = true;
@@ -1819,8 +1817,6 @@ function atualizarCampoMetodoReceita() {
     const ehReembolso = categoriaAtual === CATEGORIA_REEMBOLSO;
     const comMetodo = ehEstorno || ehReembolso;
 
-    const linhaMetodo = document.getElementById('linhaMetodo');
-    if (linhaMetodo) linhaMetodo.hidden = !comMetodo;
     const blocoMetodo = document.getElementById('metodoBloco');
     if (blocoMetodo) blocoMetodo.hidden = !comMetodo;
     const metodoSel = document.querySelector(SELECTORS.metodo);

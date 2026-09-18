@@ -198,21 +198,20 @@
 
                     <input type="hidden" id="tipoTransacao" value="saidas">
 
-                    <!-- Linha 1: Data (bem pequena, só dd/mm) + Valor -->
-                    <div class="form-row" id="linhaDataValor">
-                        <div class="form-group" id="dataGroup">
-                            <label for="data">Data</label>
-                            <input type="text" id="data" inputmode="numeric" placeholder="dd/mm" maxlength="5" autocomplete="off" required>
+                    <!-- Linha 1 (larga o bastante): Data + Valor + Forma de pgto. (+ Mês e
+                         Parcelas/"à vista" em Crédito) — em telas estreitas quebra em 2
+                         blocos (Data+Valor / Forma+Mês+Parcelas), cada um sem se partir. -->
+                    <div class="form-row" id="linhaPrincipal">
+                        <div id="dataValorBloco">
+                            <div class="form-group" id="dataGroup">
+                                <label for="data">Data</label>
+                                <input type="text" id="data" inputmode="numeric" placeholder="dd/mm" maxlength="5" autocomplete="off" required>
+                            </div>
+                            <div class="form-group" id="valorGroup">
+                                <label for="valor">Valor</label>
+                                <input type="number" id="valor" step="0.01" placeholder="0,00" required>
+                            </div>
                         </div>
-                        <div class="form-group" id="valorGroup">
-                            <label for="valor">Valor</label>
-                            <input type="number" id="valor" step="0.01" placeholder="0,00" required>
-                        </div>
-                    </div>
-
-                    <!-- Linha 2: Forma de pgto. (despesa sempre; receita só Estorno/Reembolso) —
-                         em Crédito, ganha "Comp." e "Parcelas" (ou "à vista" com 1x) ao lado. -->
-                    <div class="form-row" id="linhaMetodo">
                         <div id="metodoBloco">
                             <div class="form-group" id="metodoGroup">
                                 <label for="metodo">Forma de pgto.</label>
@@ -251,7 +250,7 @@
                         </div>
                     </div>
 
-                    <!-- Linha 3: Categoria + Descrição -->
+                    <!-- Linha 2: Categoria + Descrição -->
                     <div class="form-row" id="linhaCampos">
                         <div class="form-group">
                             <label for="categoria">Categoria</label>
