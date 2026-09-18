@@ -10,7 +10,6 @@
 // Ver plano da integração: memória "app-financeiro-pluggy-integracao".
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { notificarTelegramNovas } from "../_shared/telegram.ts";
 
 const PLUGGY_API_URL = "https://api.pluggy.ai";
 const DIAS_HISTORICO_PRIMEIRA_SYNC = 30;
@@ -397,7 +396,10 @@ Deno.serve(async (req: Request) => {
             .select("id, tipo, valor, data, descricao_banco, categoria_sugerida, metodo_sugerido");
           if (upsertError) throw upsertError;
           novasNoTotal += inseridas?.length ?? 0;
-          await notificarTelegramNovas(supabaseClient, user.id, inseridas ?? []);
+          // Sem aviso no Telegram aqui de propósito — "Sincronizar agora" é
+          // um clique do usuário DENTRO do app (ele já está olhando a tela);
+          // o Telegram é só pro caso oposto, quando a Pluggy avisa sozinha
+          // via pluggy-webhook enquanto o usuário está fora do app.
         }
 
         await supabaseClient
