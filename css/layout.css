@@ -29,6 +29,16 @@
     position: sticky;
     top: 0;
     z-index: 50;
+    /* main.main tem a própria barra de rolagem (overflow-y:auto — ver
+       abaixo) e essa barra consome uns 15-17px de largura SÓ dela, num
+       navegador com scrollbar clássica (Windows/Linux). O .topo nunca
+       rola, então sem isto sua borda direita (header/barra de mês) ficava
+       sempre mais pra fora que o conteúdo abaixo, que é encolhido por
+       essa barra. overflow-y:hidden é só pra "scrollbar-gutter" valer
+       (não se aplica a quem não é container de scroll) — nunca corta nada
+       aqui, porque o header/barra de mês não crescem verticalmente. */
+    overflow-y: hidden;
+    scrollbar-gutter: stable;
 }
 
 header.header {
@@ -370,6 +380,7 @@ main.main {
     flex: 1;
     padding: var(--pad-main);
     overflow-y: auto;
+    scrollbar-gutter: stable;
 }
 
 /* A partir das abas, o fundo é branco ocupando 100% da largura */

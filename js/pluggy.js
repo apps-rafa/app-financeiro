@@ -386,8 +386,8 @@ async function onClickConectarTelegram() {
             <div class="pluggy-telegram-acoes">
                 <a class="btn-submit pluggy-telegram-link" href="${data.link}" target="_blank" rel="noopener">Abrir no Telegram</a>
                 <button type="button" class="mini-btn" id="btnJaVincleiTelegram">Já vinculei, atualizar</button>
-            </div>
-            <button type="button" class="mini-btn" id="btnConectarTelegram">🔁 Gerar outro código</button>`;
+                <button type="button" class="mini-btn" id="btnConectarTelegram">🔁 Gerar outro código</button>
+            </div>`;
     } catch (e) {
         console.error(e);
         box.innerHTML = '<p class="empty-text">Erro ao gerar o link — tenta de novo</p>';
