@@ -862,55 +862,24 @@
   color: var(--text-muted);
   white-space: nowrap;
 }
-/* Campo "Buscar últimos N" com setas próprias (▲▼) no lugar das nativas
-   do <input type=number>, que ficavam praticamente invisíveis tanto no
-   tema claro quanto no escuro (spinner do navegador não segue as cores
-   do app). */
-.pluggy-stepper { display: flex; align-items: center; }
+/* Campo "Buscar últimos N" — só dias (sem unidade pra escolher), o
+   usuário digita direto (sem setas: o spinner nativo do <input
+   type=number> ficava praticamente invisível tanto no tema claro quanto
+   no escuro, e não valia a pena manter um stepper só pra isso). */
 .pluggy-sync-periodo input {
-  width: 1.6rem;
-  padding: 0;
-  border: none;
-  background: transparent;
-  font-size: var(--pluggy-toolbar-fs);
-  font-weight: 700;
-  color: var(--text);
-  text-align: right;
-  -moz-appearance: textfield;
-}
-.pluggy-sync-periodo input:focus { outline: none; }
-.pluggy-sync-periodo input::-webkit-outer-spin-button,
-.pluggy-sync-periodo input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-.pluggy-stepper-btns {
-  display: inline-flex;
-  flex-direction: column;
-  margin-left: .2rem;
-}
-.pluggy-stepper-btn {
-  width: 1rem;
-  height: .78rem;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: .55rem;
-  line-height: 1;
-  cursor: pointer;
-}
-.pluggy-stepper-btn:hover { color: var(--primary); }
-.pluggy-sync-periodo select {
   box-sizing: border-box;
-  height: 100%;
-  border: none;
-  background: transparent;
+  width: 2.4rem;
+  height: calc(var(--pluggy-toolbar-h) - .9rem);
+  padding: 0 .3rem;
+  border: 1px solid var(--border-strong, #D1D5DB);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
   font-size: var(--pluggy-toolbar-fs);
   font-weight: 700;
   color: var(--text);
-  padding: 0;
+  text-align: center;
 }
+.pluggy-sync-periodo input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
 .pluggy-rendimentos { justify-content: space-between; }
 .pluggy-toggle-opt {
   box-sizing: border-box;
