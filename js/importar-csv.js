@@ -648,7 +648,17 @@ async function onImportCsvConfirmar() {
                 diaSemana: '',
                 semanas: [],
                 competencia: _competenciaAtualISO(),
-                origem: 'csv'
+                origem: 'csv',
+                // Como veio na linha do arquivo, antes de resolver método/
+                // categoria pro vocabulário do app.
+                dadosOriginais: {
+                    dia: l.dia,
+                    dataCompletaISO: l.dataCompletaISO || null,
+                    valorBruto: l.valorBruto,
+                    metodoCSV: l.metodoCSV,
+                    categoriaCSV: l.categoriaCSV,
+                    descricao: l.descricao,
+                },
             });
             ok++;
         } catch (err) {

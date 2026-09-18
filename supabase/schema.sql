@@ -177,6 +177,13 @@ create index if not exists transacoes_importadas_status_idx on public.transacoes
 -- futura detecção de "já lançado" ao reimportar uma janela. null = manual.
 alter table public.transacoes add column if not exists origem text check (origem in ('csv','pdf','pluggy'));
 
+-- Snapshot "cru" capturado no momento da importação (csv/pdf/pluggy), antes
+-- de qualquer edição do usuário — migração "transacoes_dados_originais".
+-- Não aparece na UI. Gravado só na criação (adicionarTransacaoAPI); editar
+-- pelo formulário normal (editarTransacaoAPI) nunca sobrescreve isto nem
+-- `origem` — ver comentário em js/api.js.
+alter table public.transacoes add column if not exists dados_originais jsonb;
+
 -- ============================================================
 -- Telegram (bot de notificações) — migração "telegram_bot_integracao"
 -- Aviso quase em tempo real de lançamentos novos via Pluggy, com botões

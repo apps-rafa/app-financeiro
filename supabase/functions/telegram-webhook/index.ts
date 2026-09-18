@@ -83,6 +83,17 @@ Deno.serve(async (req: Request) => {
       const texto = String(update.message.text).trim();
 
       if (texto.startsWith("/start")) {
+        // Já vinculado antes (ex.: clicou o link de novo, ou mandou o mesmo
+        // código 2x — o código é apagado assim que usado com sucesso, então
+        // a 2ª tentativa achava "código inválido ou expirado" mesmo tendo
+        // acabado de funcionar segundos antes, o que é confuso).
+        const { data: jaVinculado } = await supabaseAdmin
+          .from("telegram_users").select("user_id").eq("chat_id", chatId).maybeSingle();
+        if (jaVinculado) {
+          await tg(token, "sendMessage", { chat_id: chatId, text: "✅ Você já está vinculado — não precisa fazer de novo." });
+          return json({ ok: true });
+        }
+
         const codigo = texto.split(/\s+/)[1]?.toUpperCase();
         if (!codigo) {
           await tg(token, "sendMessage", { chat_id: chatId, text: "Gere um código em Configurações > Importar > Pluggy no app e toque no link de novo." });
@@ -193,6 +204,15 @@ Deno.serve(async (req: Request) => {
           competencia,
           status: "Ativa",
           origem: "pluggy",
+          dados_originais: {
+            pluggy_transaction_id: item.pluggy_transaction_id,
+            data: item.data,
+            valor: item.valor,
+            tipo: item.tipo,
+            descricao_banco: item.descricao_banco,
+            categoria_pluggy: item.categoria_pluggy,
+            categoria_sugerida: item.categoria_sugerida,
+          },
           user_id: tgUser.user_id,
         })
         .select("id")

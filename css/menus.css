@@ -967,6 +967,7 @@
   text-decoration: none;
 }
 .pluggy-telegram-acoes .mini-btn { flex: 0 0 auto; }
+#pluggyTelegramBox > #btnConectarTelegram { margin-top: .4rem; }
 
 /* Campos "soltos" (sem .form-group/.dialogo-corpo em volta) usados nos
    cards da revisão do Pluggy — sem essa regra caíam no estilo nativo do
