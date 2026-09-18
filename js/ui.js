@@ -372,11 +372,9 @@ function _detectarDuplicatas(transacoes) {
  *  clicável: não é um <details>, é uma linha estática). */
 function _renderGrupoDuplicatas(transacoes, tipoUI, aberto) {
     const duplicatas = _detectarDuplicatas(transacoes);
-    if (!duplicatas.length) {
-        return `<div class="rec-grupo rec-grupo--vazio">
-            <span class="rec-grupo-nome">🎉 Sem duplicatas</span>
-        </div>`;
-    }
+    // Sem duplicata nenhuma: nada pra mostrar — some o grupo inteiro em vez
+    // de deixar uma caixa vazia "🎉 Sem duplicatas" ocupando espaço à toa.
+    if (!duplicatas.length) return '';
     const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
     const total = duplicatas.reduce((s, t) => s + valorDe(t), 0);
     return `
@@ -405,7 +403,6 @@ function _renderGrupoDuplicatas(transacoes, tipoUI, aberto) {
  *  não dentro da lista — ver #duplicatasEntradas/#duplicatasSaidas. */
 function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
     if (!container) return;
-    _destacarCampoBusca(tipoUI);
     const dupContainer = document.getElementById(tipoUI === 'entrada' ? 'duplicatasEntradas' : 'duplicatasSaidas');
     let abertoDuplicatas = dupContainer?.querySelector('details.rec-grupo[data-nome="__duplicatas__"]')?.open;
     if (_forcarAbrirDuplicatas[tipoUI]) {
@@ -485,7 +482,6 @@ function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
             ? _renderGrupoDuplicatas(transacoes, tipoUI, abertoDuplicatas) : '';
         dupContainer.onclick = onListaTransacaoClick;
     }
-    _posicionarCampoBusca(container, tipoUI);
 }
 
 // 'categoria' | 'cronologica' (padrão) — visão da aba Receitas
@@ -613,7 +609,6 @@ function atualizarSaidasLista() {
  *  renderizadores. */
 function _renderListaBusca(container, transacoes, tipoUI, termo) {
     if (!container) return;
-    _destacarCampoBusca(tipoUI);
     const abertos = _lerAbertosRecGrupo(container);
     const encontrados = _filtrarPorBusca(transacoes, termo).sort(_porDataDesc);
 
@@ -623,7 +618,6 @@ function _renderListaBusca(container, transacoes, tipoUI, termo) {
             <span class="rec-grupo-nome">🔎 Nada encontrado pra "${termo}"</span>
         </div>`;
         container.onclick = null;
-        _posicionarCampoBusca(container, tipoUI);
         return;
     }
 
@@ -644,50 +638,6 @@ function _renderListaBusca(container, transacoes, tipoUI, termo) {
       </div>
     </details>`;
     container.onclick = onListaTransacaoClick;
-    _posicionarCampoBusca(container, tipoUI);
-}
-
-/** Move o campo de busca (nó persistente, nunca recriado — pra não perder
- *  foco/cursor a cada tecla digitada) pra logo abaixo do gráfico/barra
- *  proporcional do modo atual. Sem gráfico (lista vazia, ou já em modo de
- *  busca — que não mostra gráfico), fica no topo do container. */
-/** Tira o campo de busca de dentro do container ANTES de qualquer
- *  `container.innerHTML = ...` — sem isso, um 2º render em cima do 1º
- *  (ex.: trocar de submodo logo depois de abrir a aba) apagaria o nó do
- *  campo de vez, já que ele tinha ficado como filho do container no render
- *  anterior. Move pro <body> (ainda "conectado" ao documento, então
- *  document.getElementById continua achando) só até o render terminar. */
-function _destacarCampoBusca(tipoUI) {
-    const input = document.getElementById(tipoUI === 'entrada' ? 'buscaEntradas' : 'buscaSaidas');
-    const wrapper = input?.closest('.busca-lista-linha');
-    if (!wrapper) return;
-    // Se o usuário está digitando (campo com foco) nesse exato momento, guarda
-    // onde estava o cursor — mover o nó pro <body> e de volta tira o foco
-    // (mesmo sendo o MESMO nó), então sem isso cada tecla digitada obrigava
-    // clicar de novo no campo pra continuar.
-    if (document.activeElement === input) {
-        wrapper._focoSalvo = { selStart: input.selectionStart, selEnd: input.selectionEnd };
-    }
-    document.body.appendChild(wrapper);
-}
-
-function _posicionarCampoBusca(container, tipoUI) {
-    if (!container) return;
-    const input = document.getElementById(tipoUI === 'entrada' ? 'buscaEntradas' : 'buscaSaidas');
-    const wrapper = input?.closest('.busca-lista-linha');
-    if (!wrapper) return;
-    const grafico = container.querySelector('.cron-barra');
-    if (grafico) {
-        grafico.insertAdjacentElement('beforebegin', wrapper);
-    } else {
-        container.insertAdjacentElement('afterbegin', wrapper);
-    }
-    if (wrapper._focoSalvo) {
-        const { selStart, selEnd } = wrapper._focoSalvo;
-        delete wrapper._focoSalvo;
-        input.focus();
-        try { input.setSelectionRange(selStart, selEnd); } catch (_) {}
-    }
 }
 
 /** Agrupa e renderiza `transacoes` por `chaveDe(t)`, ordenado por total (maior primeiro).

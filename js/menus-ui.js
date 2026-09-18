@@ -111,6 +111,7 @@ async function carregarAbaMenus() {
         <div class="modo-lista importar-toggle" role="tablist">
           <button type="button" class="modo-btn importar-toggle-btn active" data-importar-modo="csv">CSV</button>
           <button type="button" class="modo-btn importar-toggle-btn" data-importar-modo="pdf">PDF</button>
+          <button type="button" class="modo-btn importar-toggle-btn" data-importar-modo="pluggy">Pluggy</button>
           <button type="button" class="modo-btn importar-toggle-btn" data-importar-modo="backup">Backup</button>
         </div>
 
@@ -137,6 +138,42 @@ async function carregarAbaMenus() {
             </select>
           </div>
           <div id="importPdfConteudo"></div>
+        </div>
+
+        <div data-importar-modo="pluggy" hidden>
+          <p class="menu-hint">
+            Conecta suas contas via <a href="https://pluggy.ai" target="_blank" rel="noopener">Pluggy</a> (open finance)
+            e importa os lançamentos automaticamente — mesma ideia do CSV/PDF: você confirma cada um antes de virar
+            um lançamento de verdade, e possíveis duplicatas ficam avisadas à parte.
+          </p>
+          <div class="menu-acoes-linha">
+            <button type="button" class="h3-add" id="btnConectarPluggy" title="Conectar nova conta">+</button>
+          </div>
+          <div class="menu-list" id="pluggyContasList"></div>
+
+          <h3 class="dados-selecao-titulo">Revisão</h3>
+          <div class="import-csv-contexto">
+            <label class="pluggy-sync-periodo">
+              <span class="import-csv-label-linha">Buscar últimos</span>
+              <span class="pluggy-sync-periodo-campos">
+                <input type="number" id="syncQtdPluggy" min="1" value="30">
+                <select id="syncUnidadePluggy">
+                  <option value="dias">dia(s)</option>
+                  <option value="meses">mês(es)</option>
+                  <option value="anos">ano(s)</option>
+                </select>
+              </span>
+            </label>
+            <label class="pluggy-check">
+              <input type="checkbox" id="syncAgruparRendimentosPluggy">
+              <span>Agrupar rendimentos</span>
+            </label>
+          </div>
+          <div class="import-csv-acoes">
+            <button type="button" class="btn-submit" id="btnSincronizarPluggy">↻ Sincronizar agora</button>
+            <button type="button" class="mini-btn" id="btnLimparRevisaoPluggy">🧹 Limpar tudo</button>
+          </div>
+          <div id="pluggyRevisaoLista" class="transacoes-lista"></div>
         </div>
 
         <div id="secImportarBackup" data-importar-modo="backup" hidden></div>
@@ -171,6 +208,7 @@ async function carregarAbaMenus() {
 
   if (typeof iniciarImportarUnificado === 'function') iniciarImportarUnificado();
   if (typeof iniciarImportarBackup === 'function') iniciarImportarBackup();
+  if (typeof iniciarPluggy === 'function') iniciarPluggy();
   if (typeof iniciarDados === 'function') iniciarDados();
 
   // Sub-toggle "CSV" / "PDF" dentro da sub-aba "Importar"
