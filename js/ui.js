@@ -1581,11 +1581,11 @@ function ajustarCamposSozinhos() {
 }
 
 /**
- * Mostra/esconde "Comp." e "Parcelas" — só existem pra despesa em Crédito.
- * 1 parcela = lançamento avulso (Pontual) de sempre, mostrado como "à vista"
- * no lugar do campo Parcelas; mais que isso = compra parcelada. O dia de
- * vencimento de cada parcela não é mais perguntado aqui — usa direto o dia
- * já cadastrado no cartão (ver metodoSelecionado().diaVencimento).
+ * Mostra/esconde "Mês" e "Parcelas" — só existem pra despesa em Crédito.
+ * O campo de parcelas fica sempre visível junto (setinha ▲▼, começando em
+ * 1x) — só o RÓTULO acima dele muda: "à vista" com 1x, "Parcelas" com 2x
+ * ou mais. O dia de vencimento de cada parcela não é mais perguntado aqui —
+ * usa direto o dia já cadastrado no cartão (ver metodoSelecionado().diaVencimento).
  */
 function atualizarCampoParcelas() {
     const ehReceita = document.querySelector(SELECTORS.tipoTransacao)?.value === 'entradas';
@@ -1593,7 +1593,7 @@ function atualizarCampoParcelas() {
     const ehCredito = !ehReceita && !!metodoAtual && metodoAtual.metodoKind === 'Crédito';
 
     const set = (id, mostrar) => { const el = document.getElementById(id); if (el) el.hidden = !mostrar; };
-    // "Comp." (competência): preview de qual mês esse lançamento vai cair,
+    // "Mês" (competência): preview de qual mês esse lançamento vai cair,
     // calculado a partir da data da compra + fechamento do cartão — só faz
     // sentido pra Crédito (outros métodos usam o mês da própria data).
     set('competenciaGroup', ehCredito);
@@ -1603,8 +1603,9 @@ function atualizarCampoParcelas() {
     const parcelas = Math.max(1, parseInt(parcelasInput?.value, 10) || 1);
     const comParcelamento = ehCredito && parcelas > 1;
 
-    set('parceleGroup', comParcelamento);
-    set('avistaGroup', ehCredito && !comParcelamento);
+    set('parceleGroup', ehCredito);
+    const labelParcelas = document.querySelector('label[for="parcelas"]');
+    if (labelParcelas) labelParcelas.textContent = comParcelamento ? 'Parcelas' : 'à vista';
 
     if (ehCredito && typeof recalcularCompetencia === 'function') recalcularCompetencia();
 
@@ -1851,11 +1852,9 @@ function atualizarCampoMetodoReceita() {
         }
     }
     const compGrp = document.getElementById('competenciaGroup');
-    if (compGrp) compGrp.hidden = true; // receita nunca mostra o select "Comp."
+    if (compGrp) compGrp.hidden = true; // receita nunca mostra o select "Mês"
     const parceleGrp = document.getElementById('parceleGroup');
     if (parceleGrp) parceleGrp.hidden = true;
-    const avistaGrp = document.getElementById('avistaGroup');
-    if (avistaGrp) avistaGrp.hidden = true;
     ajustarCamposSozinhos();
 }
 

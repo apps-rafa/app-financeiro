@@ -148,16 +148,15 @@
 }
 #metodoBloco > .form-group { margin: 0; min-width: 0; }
 #metodoBloco > #metodoGroup { flex: 1 1 8rem; }
-/* Select "Comp." — só o número (1 a 12), caixa pequena */
+/* Select "Mês" — tricode (Jan, Fev...), caixa pequena */
 #competenciaGroup select {
     width: auto;
     padding-right: 1.5rem;
     background-position: right .45rem center;
     text-align: center;
 }
-#metodoBloco > #competenciaGroup { flex: 0 0 3.6rem; }
+#metodoBloco > #competenciaGroup { flex: 0 0 4.6rem; }
 #metodoBloco > #parceleGroup { flex: 0 0 4.9rem; }
-#metodoBloco > #avistaGroup { flex: 0 0 4.4rem; }
 
 .campo-mini--xs input {
     padding-left: .3rem;
@@ -192,23 +191,6 @@
     flex: 1 1 0;
     min-height: 0;
     font-size: 7px;
-}
-
-/* "à vista": ocupa o lugar de "Parcelas" quando parcelas = 1 — sem label
-   (a reserva de altura do label vazio abaixo mantém o texto alinhado com
-   os outros inputs da linha). */
-.campo-avista {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-}
-.campo-avista .avista-label-vazio { visibility: hidden; }
-.avista-texto {
-    font-style: italic;
-    color: var(--text-muted);
-    font-size: .82rem;
-    padding: 0.5rem 0;
-    white-space: nowrap;
 }
 
 .form-group.full-width {
