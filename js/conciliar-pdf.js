@@ -758,7 +758,15 @@ function _abrirLancarConciliar(secId, modo, pId, idx) {
                     const dados = {
                         tipo: l.tipo, data: l.dataISO, valor: l.valor, metodo: p.metodoEscolhido,
                         categoria, descricao, formaPagamento: tipoRecorrencia === 'Parcelada' ? 'Parcelada' : 'À vista',
-                        tipoRecorrencia, diaRecorrencia, parcelas, competencia, origem: 'pdf'
+                        tipoRecorrencia, diaRecorrencia, parcelas, competencia, origem: 'pdf',
+                        // Como veio extraído do PDF, antes do usuário escolher
+                        // categoria/descrição neste popup.
+                        dadosOriginais: {
+                            dataISO: l.dataISO,
+                            descricao: l.descricao,
+                            valorBruto: l.valorBruto,
+                            tipo: l.tipo,
+                        },
                     };
                     if (existente) {
                         existente.dados = dados;

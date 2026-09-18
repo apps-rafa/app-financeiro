@@ -386,7 +386,8 @@ async function onClickConectarTelegram() {
             <div class="pluggy-telegram-acoes">
                 <a class="btn-submit pluggy-telegram-link" href="${data.link}" target="_blank" rel="noopener">Abrir no Telegram</a>
                 <button type="button" class="mini-btn" id="btnJaVincleiTelegram">Já vinculei, atualizar</button>
-            </div>`;
+            </div>
+            <button type="button" class="mini-btn" id="btnConectarTelegram">🔁 Gerar outro código</button>`;
     } catch (e) {
         console.error(e);
         box.innerHTML = '<p class="empty-text">Erro ao gerar o link — tenta de novo</p>';
@@ -824,6 +825,18 @@ async function importarProntasPluggy() {
                 tipoRecorrencia: 'Pontual',
                 competencia,
                 origem: 'pluggy',
+                // Snapshot de como a Pluggy mandou, antes de qualquer ajuste
+                // feito aqui na revisão (categoria/descrição escolhidas acima
+                // podem já ser diferentes do que veio sugerido).
+                dadosOriginais: {
+                    pluggy_transaction_id: item.pluggy_transaction_id,
+                    data: item.data,
+                    valor: item.valor,
+                    tipo: item.tipo,
+                    descricao_banco: item.descricao_banco,
+                    categoria_pluggy: item.categoria_pluggy,
+                    categoria_sugerida: item.categoria_sugerida,
+                },
             });
             const { error } = await sb.from('transacoes_importadas').update({ status: 'confirmada', transacao_id: nova.id }).eq('id', item.id);
             if (error) throw error;

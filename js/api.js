@@ -220,7 +220,11 @@ function montarRegistro(dados) {
         status: dados.status || 'Ativa',
         // De onde veio (csv/pdf/pluggy) quando importado — não aparece na UI,
         // null pra lançamento manual. Ver schema.sql:transacoes.origem.
-        origem: dados.origem || null
+        origem: dados.origem || null,
+        // Snapshot "cru" (como veio da fonte, antes do usuário editar
+        // categoria/descrição/etc. na revisão) — mesma ideia do origem,
+        // invisível na UI. Ver schema.sql:transacoes.dados_originais.
+        dados_originais: dados.dadosOriginais || null
     };
 }
 
@@ -358,6 +362,11 @@ async function editarTransacaoAPI(dados) {
 
     const registro = montarRegistro(dados);
     delete registro.tipo;
+    // origem/dados_originais são gravados só na criação (import) — editar um
+    // lançamento pelo formulário normal nunca passa esses campos em `dados`,
+    // então sem isto cada edição apagava o registro de origem/snapshot cru.
+    delete registro.origem;
+    delete registro.dados_originais;
 
     const { data, error } = await sb.from('transacoes')
         .update(registro).eq('id', dados.id).select().single();
