@@ -122,6 +122,10 @@
   gap: 0.4rem;
   margin: 0.5rem 0 0.7rem;
 }
+/* "+ Novo feriado" fica à esquerda (não é uma ação "de canto" como A→Z/+
+   das outras seções — é o único botão da linha, faz mais sentido junto
+   do texto de ajuda acima dele do que solto lá na ponta direita). */
+.menu-section[data-sub="fer"] .menu-acoes-linha { justify-content: flex-start; }
 
 /* Texto de ajuda + ações (A→Z / +) lado a lado, em vez de cada um numa
    linha — quebra pra 2 linhas só se o espaço apertar de verdade. */
@@ -130,6 +134,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 0.8rem;
+  margin-bottom: 0.7rem;
 }
 .menu-secao-topo .menu-hint { flex: 1 1 12rem; margin: 0; }
 .menu-secao-topo .menu-acoes-linha { margin: 0; flex: none; }
@@ -502,7 +507,6 @@
   margin: .2rem 0 .5rem;
 }
 #feriadosAno { font-weight: 700; min-width: 3ch; text-align: center; }
-.feriados-barra .feriados-sync { margin-left: auto; }
 
 /* Grupos colapsáveis (Nacionais / Estaduais / Municipais) */
 .fer-grupo {
