@@ -591,11 +591,34 @@ async function carregarRevisaoPluggy() {
         return;
     }
 
-    const grupo = (id, titulo, lista, aberto, gerador = gerarHTMLImportadaPluggy) => !lista.length ? '' : `
-        <details class="import-csv-grupo" data-grupo-id="${id}" ${aberto ? 'open' : ''}>
-          <summary class="import-csv-grupo-titulo">${titulo} (${lista.length})</summary>
-          ${lista.map(gerador).join('')}
-        </details>`;
+    // Mesma tabela do CSV/PDF (import-csv-tabela) — colunas Data/Valor/Tipo/
+    // Categoria/Descrição, sem "Forma de pgto." (o método já vem fixado
+    // pela conta em "Método do app", não faz sentido escolher de novo aqui).
+    const tabela = (id, titulo, lista, aberto, comIgnorar = true) => !lista.length ? '' : _grupoColapsavelConciliar({
+        id, abertos: _abertosPluggy, padraoAberto: aberto, titulo: `${titulo} (${lista.length})`,
+        corpo: `
+    <div class="import-csv-tabela-wrap">
+        <table class="import-csv-tabela">
+            <thead><tr>
+                ${comIgnorar ? '<th>Ignorar?</th>' : ''}
+                <th>Data</th><th>Valor</th><th>Tipo</th><th>Categoria</th><th>Descrição</th>
+            </tr></thead>
+            <tbody>${lista.map(item => gerarHTMLImportadaPluggy(item, comIgnorar)).join('')}</tbody>
+        </table>
+    </div>`
+    });
+
+    const tabelaHistorico = !( historico || []).length ? '' : _grupoColapsavelConciliar({
+        id: 'pluggy-historico', abertos: _abertosPluggy, padraoAberto: false,
+        titulo: `📜 Já lançados (histórico) (${historico.length})`,
+        corpo: `
+    <div class="import-csv-tabela-wrap">
+        <table class="import-csv-tabela">
+            <thead><tr><th>Data</th><th>Valor</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th></th></tr></thead>
+            <tbody>${historico.map(gerarHTMLHistoricoPluggy).join('')}</tbody>
+        </table>
+    </div>`
+    });
 
     container.innerHTML = [
         `<p class="import-csv-resumo">
@@ -607,9 +630,9 @@ async function carregarRevisaoPluggy() {
         duplicatas.length
             ? `<p class="import-csv-nota">🔁 Mesmo tipo, data (± 2 dias) e valor de algo já lançado no app — escolha uma categoria pra liberar, ou ignore pra não duplicar.</p>`
             : '',
-        grupo('pluggy-duplicatas', '🔁 Possíveis duplicatas', duplicatas, _abertosPluggy.duplicatas),
-        grupo('pluggy-pendentes', '⚠️ Pendentes para revisar', pendentes, _abertosPluggy.pendentes),
-        grupo('pluggy-prontas', '✓ Prontas', prontas, _abertosPluggy.prontas),
+        tabela('pluggy-duplicatas', '🔁 Possíveis duplicatas', duplicatas, _abertosPluggy.duplicatas),
+        tabela('pluggy-pendentes', '⚠️ Pendentes para revisar', pendentes, _abertosPluggy.pendentes),
+        tabela('pluggy-prontas', '✓ Prontas', prontas, _abertosPluggy.prontas, false),
         `<div class="import-csv-acoes">
             <button type="button" class="btn-submit" id="btnImportarProntasPluggy" ${prontas.length ? '' : 'disabled'}>
                 Importar ${prontas.length} lançamento${prontas.length === 1 ? '' : 's'}
@@ -617,7 +640,7 @@ async function carregarRevisaoPluggy() {
             <button type="button" class="mini-btn" id="btnCancelarProntasPluggy" ${prontas.length ? '' : 'disabled'}>Cancelar</button>
         </div>
         <div id="pluggyImportProgresso" class="import-csv-progresso" hidden></div>`,
-        grupo('pluggy-historico', '📜 Já lançados (histórico)', historico || [], _abertosPluggy.historico, gerarHTMLHistoricoPluggy),
+        tabelaHistorico,
     ].join('');
 
     container.querySelectorAll('details.import-csv-grupo').forEach(det => {
@@ -634,19 +657,14 @@ async function carregarRevisaoPluggy() {
     container.onchange = onRevisaoPluggyChange;
 }
 
-/** Card de uma transação importada: categoria (ajustável — escolher move
- *  pra "Prontas" na hora) + descrição. Sem seletor de método: esse já vem
- *  fixado pela conta em "Método do app" (ver carregarContasConectadas). */
-function gerarHTMLImportadaPluggy(item) {
-    const _dowTri = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
-    const dt = item.data ? parseDataLocal(item.data) : null;
-    const dia = dt ? String(dt.getDate()).padStart(2, '0') : '--';
-    const dow = dt ? _dowTri[dt.getDay()] : '';
+/** Linha da tabela de revisão: categoria (ajustável — escolher move pra
+ *  "Prontas" na hora) + descrição + checkbox pra ignorar. Sem coluna de
+ *  forma de pagamento: esse já vem fixado pela conta em "Método do app"
+ *  (ver carregarContasConectadas). Mesmo layout de tabela do CSV/PDF. */
+function gerarHTMLImportadaPluggy(item, comIgnorar = true) {
+    const dataFmt = item.data ? item.data.split('-').reverse().join('/') : '?';
     const sinal = item.tipo === 'entradas' ? '+' : '-';
-
     const descEscapada = _descricaoAoVivoPluggy(item).replace(/"/g, '&quot;');
-    const desc = `<input type="text" class="input-mini despesa-desc-input" data-campo="descricao"
-        value="${descEscapada}" placeholder="Descrição" title="Descrição">`;
 
     const categoriasApp = (estadoApp.menus &&
         (item.tipo === 'entradas' ? estadoApp.menus.categoriasReceita : estadoApp.menus.categoriasDespesa)) || [];
@@ -656,21 +674,19 @@ function gerarHTMLImportadaPluggy(item) {
     ).join('');
 
     return `
-        <div class="despesa-item ${item.tipo === 'entradas' ? 'entrada' : 'saida'}" data-importada-id="${item.id}">
-            <span class="despesa-data"><span class="despesa-dia">${dia}</span><span class="despesa-dow">${dow}</span></span>
-            <span class="despesa-valor">${sinal} ${formatarMoeda(item.valor)}</span>
-            <div class="campo-com-add">
-                <select class="select-mini" data-campo="categoria" title="Categoria">
-                    <option value="">Categoria...</option>
-                    ${opcoesCategoria}
-                </select>
-                <button type="button" class="btn-mini-add" data-act="add-categoria" data-tipo="${item.tipo}" title="Nova categoria">+</button>
-            </div>
-            ${desc}
-            <div class="despesa-actions">
-                <button class="btn-icon btn-danger" data-act="ignorar-importada" data-id="${item.id}" title="Ignorar">✕</button>
-            </div>
-        </div>`;
+    <tr data-importada-id="${item.id}">
+        ${comIgnorar ? `<td><input type="checkbox" data-act="ignorar-importada" data-id="${item.id}" title="Não importar esta linha"></td>` : ''}
+        <td>${dataFmt}</td>
+        <td>${sinal} ${formatarMoeda(item.valor)}</td>
+        <td><span class="chip-tipo chip-tipo--${item.tipo}">${item.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
+        <td>
+            <select data-campo="categoria" title="Categoria">
+                <option value="">Selecione...</option>
+                ${opcoesCategoria}
+            </select>
+        </td>
+        <td class="import-csv-desc" title="${descEscapada}">${descEscapada}</td>
+    </tr>`;
 }
 
 /** Linha do histórico (já confirmado) — categoria/descrição/data vêm da
@@ -682,27 +698,22 @@ function gerarHTMLHistoricoPluggy(item) {
     if (!t) {
         // Lançamento apagado depois de importado — a linha da fila continua
         // só pra registro; sem transação de verdade não tem o que mostrar.
-        return `
-        <div class="despesa-item">
-            <span class="item-descricao">Lançamento apagado — ${item.descricao_banco || 'sem descrição'}</span>
-        </div>`;
+        return `<tr><td colspan="6">Lançamento apagado — ${item.descricao_banco || 'sem descrição'}</td></tr>`;
     }
-    const _dowTri = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
-    const dt = t.data ? parseDataLocal(t.data) : null;
-    const dia = dt ? String(dt.getDate()).padStart(2, '0') : '--';
-    const dow = dt ? _dowTri[dt.getDay()] : '';
+    const dataFmt = t.data ? t.data.split('-').reverse().join('/') : '?';
     const sinal = t.tipo === 'entradas' ? '+' : '-';
     return `
-        <div class="despesa-item ${t.tipo === 'entradas' ? 'entrada' : 'saida'}" data-historico-id="${item.id}">
-            <span class="despesa-data"><span class="despesa-dia">${dia}</span><span class="despesa-dow">${dow}</span></span>
-            <span class="despesa-valor">${sinal} ${formatarMoeda(t.valor)}</span>
-            <span class="item-descricao pluggy-historico-categoria">${t.categoria || 'Sem categoria'}</span>
-            <span class="item-descricao">${t.descricao || ''}</span>
-            <div class="despesa-actions">
-                <button class="btn-icon" data-act="editar-historico" data-id="${item.id}" title="Editar">✏️</button>
-                <button class="btn-icon btn-danger" data-act="excluir-historico" data-id="${item.id}" title="Excluir">🗑️</button>
-            </div>
-        </div>`;
+    <tr data-historico-id="${item.id}">
+        <td>${dataFmt}</td>
+        <td>${sinal} ${formatarMoeda(t.valor)}</td>
+        <td><span class="chip-tipo chip-tipo--${t.tipo}">${t.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
+        <td>${t.categoria || 'Sem categoria'}</td>
+        <td class="import-csv-desc" title="${t.descricao || ''}">${t.descricao || ''}</td>
+        <td>
+            <button class="btn-icon" data-act="editar-historico" data-id="${item.id}" title="Editar">✏️</button>
+            <button class="btn-icon btn-danger" data-act="excluir-historico" data-id="${item.id}" title="Excluir">🗑️</button>
+        </td>
+    </tr>`;
 }
 
 /** Leva pro mês da transação e abre o formulário de edição — mesma tela
@@ -772,14 +783,12 @@ function onRevisaoPluggyClick(e) {
 }
 
 function onRevisaoPluggyChange(e) {
-    const card = e.target.closest('[data-importada-id]');
-    if (!card) return;
-    const id = Number(card.dataset.importadaId);
+    const linha = e.target.closest('[data-importada-id]');
+    if (!linha) return;
+    const id = Number(linha.dataset.importadaId);
     if (e.target.dataset.campo === 'categoria') {
         _categoriaEscolhidaPluggy[id] = e.target.value || '';
         _renderRevisaoPluggyPreservandoScroll();
-    } else if (e.target.dataset.campo === 'descricao') {
-        _descricaoEditadaPluggy[id] = e.target.value;
     }
 }
 
