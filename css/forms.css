@@ -134,7 +134,9 @@
     flex: 1 1 11rem;
     min-width: 11rem;
 }
-#dataValorBloco > #dataGroup { flex: 0 0 4.6rem; min-width: 0; margin: 0; }
+/* Largura calculada pro conteúdo mais largo que a caixa precisa mostrar
+   ("00/00", medido) + padding — só o suficiente, sobra tudo pra "Valor". */
+#dataValorBloco > #dataGroup { flex: 0 0 3.9rem; min-width: 0; margin: 0; }
 /* "Valor" e "Total" ficam sempre colados, dividindo 50/50 o espaço que
    sobrar (nunca quebram um pro outro lado nem soltam do "Data") — quando
    "Total" está escondido, "Valor" ocupa os 100% sozinho. */
@@ -168,7 +170,9 @@
     background-position: right .45rem center;
     text-align: center;
 }
-#metodoBloco > #competenciaGroup { flex: 0 0 4.6rem; }
+/* Largura calculada pro tricode mais largo ("Ago", medido) + padding do
+   select (inclui a seta) — só o suficiente, sobra tudo pra "Forma de pgto.". */
+#metodoBloco > #competenciaGroup { flex: 0 0 3.9rem; }
 #metodoBloco > #parceleGroup { flex: 0 0 4.9rem; }
 
 .campo-mini--xs input {
