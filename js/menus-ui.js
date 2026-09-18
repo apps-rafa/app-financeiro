@@ -151,6 +151,9 @@ async function carregarAbaMenus() {
           </div>
           <div class="menu-list" id="pluggyContasList"></div>
 
+          <h3 class="dados-selecao-titulo">Notificações</h3>
+          <div id="pluggyTelegramBox" class="pluggy-telegram"></div>
+
           <h3 class="dados-selecao-titulo">Revisão</h3>
           <div class="pluggy-toolbar">
             <div class="pluggy-toolbar-item pluggy-sync-periodo">

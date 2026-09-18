@@ -171,3 +171,36 @@ alter table public.transacoes_importadas enable row level security;
 create policy "own transacoes_importadas" on public.transacoes_importadas for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 create index if not exists transacoes_importadas_status_idx on public.transacoes_importadas (user_id, status);
+
+-- Origem de um lançamento quando veio de uma importação (csv/pdf/pluggy) —
+-- migração "transacoes_origem_importacao". Não aparece na UI; usado pra
+-- futura detecção de "já lançado" ao reimportar uma janela. null = manual.
+alter table public.transacoes add column if not exists origem text check (origem in ('csv','pdf','pluggy'));
+
+-- ============================================================
+-- Telegram (bot de notificações) — migração "telegram_bot_integracao"
+-- Aviso quase em tempo real de lançamentos novos via Pluggy, com botões
+-- Confirmar/Ignorar direto no chat. Edge Functions em
+-- supabase/functions/telegram-* (segredos TELEGRAM_BOT_TOKEN/
+-- TELEGRAM_WEBHOOK_SECRET, configurados nos secrets do projeto).
+-- ============================================================
+create table if not exists public.telegram_users (
+  user_id     uuid primary key references auth.users(id) on delete cascade,
+  chat_id     bigint not null unique,
+  criado_em   timestamptz not null default now()
+);
+alter table public.telegram_users enable row level security;
+create policy "own telegram_users" on public.telegram_users for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- Códigos de vínculo de curta duração (10 min): gerados no app (usuário
+-- logado, telegram-gerar-codigo), consumidos pelo bot quando o usuário
+-- manda "/start CODIGO" no Telegram (telegram-webhook, sem sessão Supabase).
+create table if not exists public.telegram_link_codes (
+  code        text primary key,
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  criado_em   timestamptz not null default now()
+);
+alter table public.telegram_link_codes enable row level security;
+create policy "own telegram_link_codes" on public.telegram_link_codes for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());

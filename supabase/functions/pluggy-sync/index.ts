@@ -10,6 +10,7 @@
 // Ver plano da integração: memória "app-financeiro-pluggy-integracao".
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { notificarTelegramNovas } from "../_shared/telegram.ts";
 
 const PLUGGY_API_URL = "https://api.pluggy.ai";
 const DIAS_HISTORICO_PRIMEIRA_SYNC = 30;
@@ -375,9 +376,10 @@ Deno.serve(async (req: Request) => {
           const { data: inseridas, error: upsertError } = await supabaseClient
             .from("transacoes_importadas")
             .upsert(linhas, { onConflict: "user_id,pluggy_transaction_id", ignoreDuplicates: true })
-            .select("id");
+            .select("id, tipo, valor, data, descricao_banco, categoria_sugerida, metodo_sugerido");
           if (upsertError) throw upsertError;
           novasNoTotal += inseridas?.length ?? 0;
+          await notificarTelegramNovas(supabaseClient, user.id, inseridas ?? []);
         }
 
         await supabaseClient

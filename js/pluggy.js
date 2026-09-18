@@ -343,15 +343,88 @@ function apagarConta(contaId) {
 }
 
 /**
+ * TELEGRAM — vínculo de conta pra receber avisos de lançamentos novos
+ * (Importar > Pluggy > "Notificações"). O vínculo em si acontece do lado
+ * do bot (usuário manda "/start CODIGO" no Telegram — ver
+ * supabase/functions/telegram-webhook); aqui só geramos o código/link e
+ * mostramos o status atual.
+ */
+
+async function carregarTelegramStatus() {
+    const box = document.getElementById('pluggyTelegramBox');
+    if (!box) return;
+
+    const { data, error } = await sb.from('telegram_users').select('criado_em').maybeSingle();
+    if (error) {
+        console.error(error);
+        box.innerHTML = '<p class="empty-text">Erro ao verificar o Telegram</p>';
+        return;
+    }
+
+    if (data) {
+        box.innerHTML = `
+            <p class="item-descricao">✅ Vinculado ao Telegram desde ${new Date(data.criado_em).toLocaleDateString('pt-BR')}</p>
+            <button type="button" class="mini-btn" id="btnDesvincularTelegram">Desvincular</button>`;
+    } else {
+        box.innerHTML = `
+            <p class="menu-hint">Receba avisos de lançamentos novos no Telegram, com botões pra confirmar ou ignorar na hora.</p>
+            <button type="button" class="btn-submit" id="btnConectarTelegram">Conectar Telegram</button>`;
+    }
+}
+
+async function onClickConectarTelegram() {
+    const box = document.getElementById('pluggyTelegramBox');
+    if (!box) return;
+    box.innerHTML = '<p class="empty-text">Gerando link...</p>';
+    try {
+        const { data, error } = await sb.functions.invoke('telegram-gerar-codigo', { body: {} });
+        if (error || !data?.link) throw error || new Error('Resposta sem link');
+        box.innerHTML = `
+            <p class="menu-hint">Abra esse link no Telegram (ou mande <b>/start ${data.codigo}</b> pro
+                <a href="https://t.me/${data.botUsername}" target="_blank" rel="noopener">@${data.botUsername}</a>) —
+                o código vale por 10 minutos.</p>
+            <a class="btn-submit pluggy-telegram-link" href="${data.link}" target="_blank" rel="noopener">Abrir no Telegram</a>
+            <button type="button" class="mini-btn" id="btnJaVincleiTelegram">Já vinculei, atualizar</button>`;
+    } catch (e) {
+        console.error(e);
+        box.innerHTML = '<p class="empty-text">Erro ao gerar o link — tenta de novo</p>';
+    }
+}
+
+async function onClickDesvincularTelegram() {
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return;
+    const { error } = await sb.from('telegram_users').delete().eq('user_id', user.id);
+    if (error) {
+        console.error(error);
+        mostrarNotificacao('Erro ao desvincular', 'erro');
+        return;
+    }
+    mostrarNotificacao('Telegram desvinculado', 'sucesso');
+    carregarTelegramStatus();
+}
+
+function onClickTelegramBox(e) {
+    if (e.target.closest('#btnConectarTelegram')) { onClickConectarTelegram(); return; }
+    if (e.target.closest('#btnDesvincularTelegram')) { onClickDesvincularTelegram(); return; }
+    if (e.target.closest('#btnJaVincleiTelegram')) { carregarTelegramStatus(); }
+}
+
+/**
  * FILA DE REVISÃO — transações vindas do banco, aguardando confirmação.
  * Confirmar grava um lançamento de verdade (via adicionarTransacaoAPI);
  * ignorar só marca a linha, sem apagar nada.
  */
 
 let _revisaoPluggyCache = {};
-// Estado aberto/fechado dos 2 grupos (duplicatas/pendentes) — sobrevive a
-// re-renders (ex.: depois de confirmar uma linha) igual ao resto do app.
-const _abertosPluggy = { duplicatas: true, pendentes: true };
+// Escolhas do usuário ainda não gravadas no banco — sobrevivem a
+// re-renders (selecionar categoria move a linha de "Para revisar" pra
+// "Prontas" na hora, igual ao CSV/PDF; só grava de verdade quando aperta
+// "Importar N lançamentos"). Chave = id da transacoes_importadas.
+const _categoriaEscolhidaPluggy = {};
+const _descricaoEditadaPluggy = {};
+// Estado aberto/fechado dos grupos — sobrevive a re-renders.
+const _abertosPluggy = { duplicatas: true, pendentes: true, prontas: true, historico: false };
 
 /** Toggle "Rendimentos": Agrupar/Ignorar, um ativo por vez (não checkbox). */
 function _modoRendimentosPluggy() {
@@ -470,60 +543,99 @@ function _marcarDuplicatasPluggy(itens) {
     });
 }
 
-/** Carrega e renderiza a fila de revisão (Importar > Pluggy). */
+/** Categoria "ao vivo" de um item: o que o usuário escolheu na revisão
+ *  (ainda não gravado), senão a sugestão vinda do servidor/cliente. */
+function _categoriaAoVivoPluggy(item) {
+    if (item.id in _categoriaEscolhidaPluggy) return _categoriaEscolhidaPluggy[item.id];
+    const categoriasApp = (estadoApp.menus &&
+        (item.tipo === 'entradas' ? estadoApp.menus.categoriasReceita : estadoApp.menus.categoriasDespesa)) || [];
+    return item.categoria_sugerida || sugerirCategoriaClientePluggy(item, categoriasApp) || '';
+}
+
+function _descricaoAoVivoPluggy(item) {
+    return item.id in _descricaoEditadaPluggy ? _descricaoEditadaPluggy[item.id] : (item.descricao_banco || '');
+}
+
+/** Carrega e renderiza a fila de revisão (Importar > Pluggy): pendentes
+ *  (divididos em duplicatas/a revisar/prontas, igual CSV/PDF) + um
+ *  histórico do que já foi confirmado (revisável, não editável aqui). */
 async function carregarRevisaoPluggy() {
     const container = document.getElementById('pluggyRevisaoLista');
     if (!container) return;
 
-    const { data, error } = await sb
-        .from('transacoes_importadas')
-        .select('*, conta:conta_id(nome_instituicao, tipo_conta, nome_conta, marketing_name, banco_origem, metodo_id)')
-        .eq('status', 'pendente')
-        .order('data', { ascending: false });
+    const [{ data, error }, { data: historico }] = await Promise.all([
+        sb.from('transacoes_importadas').select('*').eq('status', 'pendente').order('data', { ascending: false }),
+        sb.from('transacoes_importadas').select('*').eq('status', 'confirmada').order('criado_em', { ascending: false }).limit(20),
+    ]);
 
     if (error) {
         console.error(error);
         container.innerHTML = '<p class="empty-message">Erro ao carregar a fila de revisão</p>';
         return;
     }
-    if (!data || !data.length) {
-        _revisaoPluggyCache = {};
+
+    const pendentesBrutos = data || [];
+    const marcados = _marcarDuplicatasPluggy(pendentesBrutos);
+    _revisaoPluggyCache = Object.fromEntries(marcados.map(item => [item.id, item]));
+
+    const temCategoria = item => !!_categoriaAoVivoPluggy(item);
+    const duplicatas = marcados.filter(i => i._duplicataSuspeita && !temCategoria(i));
+    const pendentes = marcados.filter(i => !i._duplicataSuspeita && !temCategoria(i));
+    const prontas = marcados.filter(temCategoria);
+
+    if (!pendentesBrutos.length && !(historico || []).length) {
         container.innerHTML = '<p class="empty-message">Nada pendente — toque em "Sincronizar agora" pra buscar transações novas</p>';
         container.onclick = null;
+        container.onchange = null;
         return;
     }
 
-    const marcados = _marcarDuplicatasPluggy(data);
-    _revisaoPluggyCache = Object.fromEntries(marcados.map(item => [item.id, item]));
-    const duplicatas = marcados.filter(i => i._duplicataSuspeita);
-    const pendentes = marcados.filter(i => !i._duplicataSuspeita);
-
-    const grupo = (id, titulo, lista, aberto) => !lista.length ? '' : `
+    const grupo = (id, titulo, lista, aberto, gerador = gerarHTMLImportadaPluggy) => !lista.length ? '' : `
         <details class="import-csv-grupo" data-grupo-id="${id}" ${aberto ? 'open' : ''}>
           <summary class="import-csv-grupo-titulo">${titulo} (${lista.length})</summary>
-          ${lista.map(gerarHTMLImportadaPluggy).join('')}
+          ${lista.map(gerador).join('')}
         </details>`;
 
     container.innerHTML = [
+        `<p class="import-csv-resumo">
+            ${pendentesBrutos.length ? `<b>${pendentesBrutos.length}</b> pendente${pendentesBrutos.length === 1 ? '' : 's'} —` : ''}
+            <span class="ok">${prontas.length} pronta${prontas.length === 1 ? '' : 's'}</span>
+            ${duplicatas.length ? ` · <span class="alerta">${duplicatas.length} possível${duplicatas.length === 1 ? '' : 'is'} duplicata${duplicatas.length === 1 ? '' : 's'}</span>` : ''}
+            ${pendentes.length ? ` · <span class="alerta">${pendentes.length} pra revisar</span>` : ''}
+        </p>`,
         duplicatas.length
-            ? `<p class="import-csv-nota">🔁 Mesmo tipo, data (± 2 dias) e valor de algo já lançado no app — confira antes de confirmar pra não duplicar.</p>`
+            ? `<p class="import-csv-nota">🔁 Mesmo tipo, data (± 2 dias) e valor de algo já lançado no app — escolha uma categoria pra liberar, ou ignore pra não duplicar.</p>`
             : '',
         grupo('pluggy-duplicatas', '🔁 Possíveis duplicatas', duplicatas, _abertosPluggy.duplicatas),
-        grupo('pluggy-pendentes', 'Pendentes para revisar', pendentes, _abertosPluggy.pendentes),
+        grupo('pluggy-pendentes', '⚠️ Pendentes para revisar', pendentes, _abertosPluggy.pendentes),
+        grupo('pluggy-prontas', '✓ Prontas', prontas, _abertosPluggy.prontas),
+        `<div class="import-csv-acoes">
+            <button type="button" class="btn-submit" id="btnImportarProntasPluggy" ${prontas.length ? '' : 'disabled'}>
+                Importar ${prontas.length} lançamento${prontas.length === 1 ? '' : 's'}
+            </button>
+            <button type="button" class="mini-btn" id="btnCancelarProntasPluggy" ${prontas.length ? '' : 'disabled'}>Cancelar</button>
+        </div>
+        <div id="pluggyImportProgresso" class="import-csv-progresso" hidden></div>`,
+        grupo('pluggy-historico', '📜 Já lançados (histórico)', historico || [], _abertosPluggy.historico, gerarHTMLHistoricoPluggy),
     ].join('');
 
     container.querySelectorAll('details.import-csv-grupo').forEach(det => {
         det.addEventListener('toggle', () => {
-            const chave = det.dataset.grupoId === 'pluggy-duplicatas' ? 'duplicatas' : 'pendentes';
-            _abertosPluggy[chave] = det.open;
+            const chave = { 'pluggy-duplicatas': 'duplicatas', 'pluggy-pendentes': 'pendentes', 'pluggy-prontas': 'prontas', 'pluggy-historico': 'historico' }[det.dataset.grupoId];
+            if (chave) _abertosPluggy[chave] = det.open;
         });
     });
 
+    document.getElementById('btnImportarProntasPluggy')?.addEventListener('click', importarProntasPluggy);
+    document.getElementById('btnCancelarProntasPluggy')?.addEventListener('click', cancelarProntasPluggy);
+
     container.onclick = onRevisaoPluggyClick;
+    container.onchange = onRevisaoPluggyChange;
 }
 
-/** Card de uma transação importada: dados da Pluggy + categoria/método
- *  ajustáveis antes de confirmar. */
+/** Card de uma transação importada: categoria (ajustável — escolher move
+ *  pra "Prontas" na hora) + descrição. Sem seletor de método: esse já vem
+ *  fixado pela conta em "Método do app" (ver carregarContasConectadas). */
 function gerarHTMLImportadaPluggy(item) {
     const _dowTri = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
     const dt = item.data ? parseDataLocal(item.data) : null;
@@ -531,24 +643,15 @@ function gerarHTMLImportadaPluggy(item) {
     const dow = dt ? _dowTri[dt.getDay()] : '';
     const sinal = item.tipo === 'entradas' ? '+' : '-';
 
-    const contaTag = item.conta
-        ? `<span class="chip chip--neutro">${item.conta.banco_origem || tituloContaPluggy(item.conta)}</span>`
-        : '';
-    const descEscapada = (item.descricao_banco || '').replace(/"/g, '&quot;');
+    const descEscapada = _descricaoAoVivoPluggy(item).replace(/"/g, '&quot;');
     const desc = `<input type="text" class="input-mini despesa-desc-input" data-campo="descricao"
         value="${descEscapada}" placeholder="Descrição" title="Descrição">`;
 
     const categoriasApp = (estadoApp.menus &&
         (item.tipo === 'entradas' ? estadoApp.menus.categoriasReceita : estadoApp.menus.categoriasDespesa)) || [];
-    const categoriaPreSelecionada = item.categoria_sugerida || sugerirCategoriaClientePluggy(item, categoriasApp);
+    const categoriaAoVivo = _categoriaAoVivoPluggy(item);
     const opcoesCategoria = categoriasApp.map(nome =>
-        `<option value="${nome}" ${nome === categoriaPreSelecionada ? 'selected' : ''}>${nome}</option>`
-    ).join('');
-
-    const metodoPreSelecionado = item.metodo_sugerido ?? item.conta?.metodo_id ?? null;
-    const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
-    const opcoesMetodo = metodos.map(m =>
-        `<option value="${m.id}" ${m.id === metodoPreSelecionado ? 'selected' : ''}>${rotuloMetodo(m)}</option>`
+        `<option value="${nome}" ${nome === categoriaAoVivo ? 'selected' : ''}>${nome}</option>`
     ).join('');
 
     return `
@@ -562,85 +665,115 @@ function gerarHTMLImportadaPluggy(item) {
                 </select>
                 <button type="button" class="btn-mini-add" data-act="add-categoria" data-tipo="${item.tipo}" title="Nova categoria">+</button>
             </div>
-            <div class="campo-com-add">
-                <select class="select-mini" data-campo="metodo" title="Método">
-                    <option value="">Método...</option>
-                    ${opcoesMetodo}
-                </select>
-                <button type="button" class="btn-mini-add" data-act="add-metodo" title="Novo método">+</button>
-            </div>
-            ${contaTag}
             ${desc}
             <div class="despesa-actions">
-                <button class="btn-ok" data-act="confirmar-importada" data-id="${item.id}" title="Confirmar">✓</button>
                 <button class="btn-icon btn-danger" data-act="ignorar-importada" data-id="${item.id}" title="Ignorar">✕</button>
             </div>
         </div>`;
+}
+
+/** Linha do histórico (já confirmado) — só leitura, pra conferência. */
+function gerarHTMLHistoricoPluggy(item) {
+    const _dowTri = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+    const dt = item.data ? parseDataLocal(item.data) : null;
+    const dia = dt ? String(dt.getDate()).padStart(2, '0') : '--';
+    const dow = dt ? _dowTri[dt.getDay()] : '';
+    const sinal = item.tipo === 'entradas' ? '+' : '-';
+    return `
+        <div class="despesa-item ${item.tipo === 'entradas' ? 'entrada' : 'saida'}">
+            <span class="despesa-data"><span class="despesa-dia">${dia}</span><span class="despesa-dow">${dow}</span></span>
+            <span class="despesa-valor">${sinal} ${formatarMoeda(item.valor)}</span>
+            <span class="item-descricao">${item.categoria_sugerida || 'Sem categoria'}</span>
+            <span class="item-descricao">${item.descricao_banco || ''}</span>
+        </div>`;
+}
+
+function _renderRevisaoPluggyPreservandoScroll() {
+    const y = window.scrollY;
+    carregarRevisaoPluggy();
+    window.scrollTo(0, y);
 }
 
 function onRevisaoPluggyClick(e) {
     const btn = e.target.closest('[data-act]');
     if (!btn) return;
     if (btn.dataset.act === 'add-categoria') { abrirNovaCategoria(btn.dataset.tipo); return; }
-    if (btn.dataset.act === 'add-metodo') { abrirNovoMetodo(); return; }
-    const id = Number(btn.dataset.id);
-    if (btn.dataset.act === 'confirmar-importada') confirmarImportadaPluggy(id);
-    else if (btn.dataset.act === 'ignorar-importada') ignorarImportadaPluggy(id);
+    if (btn.dataset.act === 'ignorar-importada') ignorarImportadaPluggy(Number(btn.dataset.id));
 }
 
-/** Confirma uma importada: grava a transação de verdade e marca a fila. */
-async function confirmarImportadaPluggy(id) {
-    const item = _revisaoPluggyCache[id];
-    const card = document.querySelector(`[data-importada-id="${id}"]`);
-    if (!item || !card) return;
-
-    const categoria = card.querySelector('select[data-campo="categoria"]')?.value || '';
-    const metodoId = card.querySelector('select[data-campo="metodo"]')?.value;
-    if (!categoria) {
-        mostrarNotificacao('Escolhe uma categoria antes de confirmar', 'erro');
-        return;
+function onRevisaoPluggyChange(e) {
+    const card = e.target.closest('[data-importada-id]');
+    if (!card) return;
+    const id = Number(card.dataset.importadaId);
+    if (e.target.dataset.campo === 'categoria') {
+        _categoriaEscolhidaPluggy[id] = e.target.value || '';
+        _renderRevisaoPluggyPreservandoScroll();
+    } else if (e.target.dataset.campo === 'descricao') {
+        _descricaoEditadaPluggy[id] = e.target.value;
     }
+}
+
+/** Grava de vez todas as "Prontas" (via adicionarTransacaoAPI, uma de cada
+ *  vez, igual CSV/PDF) e marca cada uma como confirmada na fila. */
+async function importarProntasPluggy() {
+    const prontas = Object.values(_revisaoPluggyCache).filter(item => _categoriaAoVivoPluggy(item));
+    if (!prontas.length) return;
+
+    const btn = document.getElementById('btnImportarProntasPluggy');
+    const barra = document.getElementById('pluggyImportProgresso');
+    if (btn) btn.disabled = true;
+    if (barra) { barra.hidden = false; }
 
     const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
-    const metodoObj = metodoId ? metodos.find(m => m.id === Number(metodoId)) : null;
-    const metodoRotulo = metodoObj ? rotuloMetodo(metodoObj) : null;
-    // Crédito: competência vem da data da compra + fechamento do cartão
-    // (mesma regra do formulário manual); os demais casos usam o mês da
-    // própria data (competenciaDe sem diaFechamento não rola o mês).
-    const competencia = competenciaDe(
-        item.data,
-        metodoObj && metodoObj.metodoKind === 'Crédito' ? metodoObj.diaFechamento : null
-    );
-
-    const descricao = card.querySelector('input[data-campo="descricao"]')?.value.trim() || '';
-
-    const dados = {
-        tipo: item.tipo,
-        data: item.data,
-        valor: item.valor,
-        metodo: metodoRotulo,
-        categoria,
-        descricao,
-        formaPagamento: 'À vista',
-        tipoRecorrencia: 'Pontual',
-        competencia,
-    };
-
-    try {
-        const nova = await adicionarTransacaoAPI(dados);
-        const { error } = await sb
-            .from('transacoes_importadas')
-            .update({ status: 'confirmada', transacao_id: nova.id })
-            .eq('id', id);
-        if (error) throw error;
-        mostrarNotificacao('Lançamento confirmado', 'sucesso');
-        await carregarRevisaoPluggy();
-        if (typeof recarregarDados === 'function') await recarregarDados();
-        if (typeof atualizarUI === 'function') atualizarUI();
-    } catch (e) {
-        console.error(e);
-        mostrarNotificacao('Erro ao confirmar — o lançamento pode já ter sido criado, confira antes de tentar de novo', 'erro');
+    let ok = 0, falhas = 0;
+    for (let i = 0; i < prontas.length; i++) {
+        const item = prontas[i];
+        if (barra) barra.textContent = `Importando ${i + 1} de ${prontas.length}...`;
+        try {
+            const metodoObj = item.metodo_sugerido ? metodos.find(m => m.id === item.metodo_sugerido) : null;
+            // Crédito: competência vem da data da compra + fechamento do cartão
+            // (mesma regra do formulário manual); os demais casos usam o mês
+            // da própria data (competenciaDe sem diaFechamento não rola o mês).
+            const competencia = competenciaDe(item.data, metodoObj && metodoObj.metodoKind === 'Crédito' ? metodoObj.diaFechamento : null);
+            const nova = await adicionarTransacaoAPI({
+                tipo: item.tipo,
+                data: item.data,
+                valor: item.valor,
+                metodo: metodoObj ? rotuloMetodo(metodoObj) : null,
+                categoria: _categoriaAoVivoPluggy(item),
+                descricao: _descricaoAoVivoPluggy(item),
+                formaPagamento: 'À vista',
+                tipoRecorrencia: 'Pontual',
+                competencia,
+                origem: 'pluggy',
+            });
+            const { error } = await sb.from('transacoes_importadas').update({ status: 'confirmada', transacao_id: nova.id }).eq('id', item.id);
+            if (error) throw error;
+            delete _categoriaEscolhidaPluggy[item.id];
+            delete _descricaoEditadaPluggy[item.id];
+            ok++;
+        } catch (err) {
+            console.error('Erro ao importar lançamento Pluggy', item, err);
+            falhas++;
+        }
     }
+
+    if (barra) barra.hidden = true;
+    mostrarNotificacao(
+        falhas ? `${ok} importado(s), ${falhas} com erro` : `${ok} lançamento${ok === 1 ? '' : 's'} importado${ok === 1 ? '' : 's'}`,
+        falhas ? 'erro' : 'sucesso'
+    );
+    await carregarRevisaoPluggy();
+    if (typeof recarregarDados === 'function') await recarregarDados();
+    if (typeof atualizarUI === 'function') atualizarUI();
+}
+
+/** "Cancelar": desfaz as categorias escolhidas ainda não importadas —
+ *  volta tudo pra "Pendentes para revisar"/"Duplicatas", sem mexer no banco. */
+function cancelarProntasPluggy() {
+    for (const key of Object.keys(_categoriaEscolhidaPluggy)) delete _categoriaEscolhidaPluggy[key];
+    for (const key of Object.keys(_descricaoEditadaPluggy)) delete _descricaoEditadaPluggy[key];
+    carregarRevisaoPluggy();
 }
 
 /** Ignora uma importada: não vira lançamento, só sai da fila. */
@@ -651,6 +784,8 @@ async function ignorarImportadaPluggy(id) {
         mostrarNotificacao('Erro ao ignorar', 'erro');
         return;
     }
+    delete _categoriaEscolhidaPluggy[id];
+    delete _descricaoEditadaPluggy[id];
     mostrarNotificacao('Ignorado', 'sucesso');
     await carregarRevisaoPluggy();
 }
@@ -663,6 +798,8 @@ function iniciarPluggy() {
     if (btnLimpar) btnLimpar.addEventListener('click', onClickLimparRevisaoPluggy);
     document.querySelector('.pluggy-rendimentos')?.addEventListener('click', onClickRendimentosPluggy);
     document.querySelector('.pluggy-sync-periodo')?.addEventListener('click', onClickStepperPluggy);
+    document.getElementById('pluggyTelegramBox')?.addEventListener('click', onClickTelegramBox);
     carregarContasConectadas();
+    carregarTelegramStatus();
     carregarRevisaoPluggy();
 }
