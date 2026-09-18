@@ -967,6 +967,34 @@
   text-decoration: none;
 }
 .pluggy-telegram-acoes .mini-btn { flex: 0 0 auto; }
+
+/* Campos "soltos" (sem .form-group/.dialogo-corpo em volta) usados nos
+   cards da revisão do Pluggy — sem essa regra caíam no estilo nativo do
+   navegador (fundo branco), destoando de todo o resto do app. */
+.select-mini, .input-mini {
+  box-sizing: border-box;
+  height: 2rem;
+  padding: .3rem .5rem;
+  font-size: .78rem;
+  border: 1px solid var(--border-strong, #D1D5DB);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.select-mini:focus, .input-mini:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+.input-mini::placeholder { color: var(--text-muted); }
+
+/* Colunas de largura fixa na revisão do Pluggy — data/valor/categoria
+   com o mesmo tamanho em toda linha, alinhadas verticalmente entre si
+   (antes cada select/valor tinha a largura do próprio conteúdo). */
+#pluggyRevisaoLista .despesa-item { flex-wrap: nowrap; }
+#pluggyRevisaoLista .despesa-data { flex: 0 0 2.8rem; }
+#pluggyRevisaoLista .despesa-valor { flex: 0 0 4.4rem; text-align: right; }
+#pluggyRevisaoLista .campo-com-add { flex: 0 0 9.5rem; }
+#pluggyRevisaoLista .select-mini { width: 100%; }
+#pluggyRevisaoLista .despesa-desc-input { flex: 1 1 auto; min-width: 0; }
+#pluggyRevisaoLista .pluggy-historico-categoria { flex: 0 0 9.5rem; }
+
 .campo-metodo-conta { display: flex; align-items: center; gap: .4rem; margin-top: .3rem; }
 .campo-metodo-conta label { font-size: .78rem; color: var(--text-muted); white-space: nowrap; }
 .campo-com-add--mini select { font-size: .78rem; padding: .3rem .5rem; }

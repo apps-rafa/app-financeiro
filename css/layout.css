@@ -34,7 +34,11 @@
 header.header {
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     color: white;
-    padding: var(--spacing-lg) var(--spacing-xl);
+    /* Padding horizontal precisa ser --pad-main (não --spacing-xl fixo):
+       em telas ≥1024px --pad-main sobe pra 2.5rem (ver responsive.css) e o
+       header, preso no valor fixo de 2rem, ficava com a borda direita
+       ("Sair") saindo mais pra fora que o resto do conteúdo abaixo. */
+    padding: var(--spacing-lg) var(--pad-main);
     border-bottom: 4px solid var(--primary-dark);
 }
 

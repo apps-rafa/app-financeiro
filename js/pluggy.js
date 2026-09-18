@@ -419,6 +419,7 @@ function onClickTelegramBox(e) {
  */
 
 let _revisaoPluggyCache = {};
+let _historicoPluggyCache = {};
 // Escolhas do usuário ainda não gravadas no banco — sobrevivem a
 // re-renders (selecionar categoria move a linha de "Para revisar" pra
 // "Prontas" na hora, igual ao CSV/PDF; só grava de verdade quando aperta
@@ -567,7 +568,12 @@ async function carregarRevisaoPluggy() {
 
     const [{ data, error }, { data: historico }] = await Promise.all([
         sb.from('transacoes_importadas').select('*').eq('status', 'pendente').order('data', { ascending: false }),
-        sb.from('transacoes_importadas').select('*').eq('status', 'confirmada').order('criado_em', { ascending: false }).limit(20),
+        // Junta com a transação de verdade — categoria/descrição podem ter
+        // sido ajustadas na revisão antes de importar, diferentes do que a
+        // Pluggy sugeriu originalmente (categoria_sugerida fica "congelada").
+        sb.from('transacoes_importadas')
+            .select('*, transacao:transacao_id(id, data, valor, tipo, categoria, descricao, metodo, competencia)')
+            .eq('status', 'confirmada').order('criado_em', { ascending: false }).limit(20),
     ]);
 
     if (error) {
@@ -579,6 +585,7 @@ async function carregarRevisaoPluggy() {
     const pendentesBrutos = data || [];
     const marcados = _marcarDuplicatasPluggy(pendentesBrutos);
     _revisaoPluggyCache = Object.fromEntries(marcados.map(item => [item.id, item]));
+    _historicoPluggyCache = Object.fromEntries((historico || []).map(item => [item.id, item]));
 
     const temCategoria = item => !!_categoriaAoVivoPluggy(item);
     const duplicatas = marcados.filter(i => i._duplicataSuspeita && !temCategoria(i));
@@ -674,20 +681,84 @@ function gerarHTMLImportadaPluggy(item) {
         </div>`;
 }
 
-/** Linha do histórico (já confirmado) — só leitura, pra conferência. */
+/** Linha do histórico (já confirmado) — categoria/descrição/data vêm da
+ *  transação de verdade (transacao_id), não da sugestão original da
+ *  Pluggy, que pode ter sido trocada na revisão antes de importar. Dá pra
+ *  editar/excluir o lançamento direto daqui. */
 function gerarHTMLHistoricoPluggy(item) {
+    const t = item.transacao;
+    if (!t) {
+        // Lançamento apagado depois de importado — a linha da fila continua
+        // só pra registro; sem transação de verdade não tem o que mostrar.
+        return `
+        <div class="despesa-item">
+            <span class="item-descricao">Lançamento apagado — ${item.descricao_banco || 'sem descrição'}</span>
+        </div>`;
+    }
     const _dowTri = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
-    const dt = item.data ? parseDataLocal(item.data) : null;
+    const dt = t.data ? parseDataLocal(t.data) : null;
     const dia = dt ? String(dt.getDate()).padStart(2, '0') : '--';
     const dow = dt ? _dowTri[dt.getDay()] : '';
-    const sinal = item.tipo === 'entradas' ? '+' : '-';
+    const sinal = t.tipo === 'entradas' ? '+' : '-';
     return `
-        <div class="despesa-item ${item.tipo === 'entradas' ? 'entrada' : 'saida'}">
+        <div class="despesa-item ${t.tipo === 'entradas' ? 'entrada' : 'saida'}" data-historico-id="${item.id}">
             <span class="despesa-data"><span class="despesa-dia">${dia}</span><span class="despesa-dow">${dow}</span></span>
-            <span class="despesa-valor">${sinal} ${formatarMoeda(item.valor)}</span>
-            <span class="item-descricao">${item.categoria_sugerida || 'Sem categoria'}</span>
-            <span class="item-descricao">${item.descricao_banco || ''}</span>
+            <span class="despesa-valor">${sinal} ${formatarMoeda(t.valor)}</span>
+            <span class="item-descricao pluggy-historico-categoria">${t.categoria || 'Sem categoria'}</span>
+            <span class="item-descricao">${t.descricao || ''}</span>
+            <div class="despesa-actions">
+                <button class="btn-icon" data-act="editar-historico" data-id="${item.id}" title="Editar">✏️</button>
+                <button class="btn-icon btn-danger" data-act="excluir-historico" data-id="${item.id}" title="Excluir">🗑️</button>
+            </div>
         </div>`;
+}
+
+/** Leva pro mês da transação e abre o formulário de edição — mesma tela
+ *  usada pra editar qualquer lançamento, só que a partir do histórico
+ *  do Pluggy (que pode estar mostrando um mês diferente do atual). */
+async function editarHistoricoPluggy(id) {
+    const item = _historicoPluggyCache[id];
+    const t = item?.transacao;
+    if (!t) return;
+    const mesAtualISO = `${estadoApp.mesAtual.getFullYear()}-${String(estadoApp.mesAtual.getMonth() + 1).padStart(2, '0')}-01`;
+    if (t.competencia && t.competencia !== mesAtualISO) {
+        estadoApp.mesAtual = parseDataLocal(t.competencia);
+        await recarregarDados();
+    }
+    const trans = [...estadoApp.transacoes.entradas, ...estadoApp.transacoes.saidas].find(x => x.id === t.id);
+    if (!trans) {
+        mostrarNotificacao('Não achei o lançamento — talvez tenha sido apagado', 'erro');
+        return;
+    }
+    iniciarEdicaoTransacao(trans, t.tipo);
+}
+
+function excluirHistoricoPluggy(id) {
+    const item = _historicoPluggyCache[id];
+    const t = item?.transacao;
+    if (!t) return;
+    mostrarDialogo({
+        titulo: 'Excluir lançamento?',
+        texto: `Remove <strong>${t.descricao || t.categoria || 'este lançamento'}</strong>. Não dá para desfazer.`,
+        acoes: [
+            { label: 'Cancelar' },
+            { label: 'Excluir', primario: true, perigo: true, onClick: async () => {
+                try {
+                    await deletarTransacaoAPI(t.id);
+                    // Some do histórico junto — sem isso a linha ficaria
+                    // "confirmada" apontando pra uma transação que não existe mais.
+                    await sb.from('transacoes_importadas').update({ status: 'ignorada' }).eq('id', id);
+                    mostrarNotificacao('Lançamento excluído', 'sucesso');
+                    await recarregarDados();
+                    atualizarUI();
+                    await carregarRevisaoPluggy();
+                } catch (e) {
+                    console.error(e);
+                    mostrarNotificacao('Erro ao excluir', 'erro');
+                }
+            } }
+        ]
+    });
 }
 
 function _renderRevisaoPluggyPreservandoScroll() {
@@ -699,8 +770,13 @@ function _renderRevisaoPluggyPreservandoScroll() {
 function onRevisaoPluggyClick(e) {
     const btn = e.target.closest('[data-act]');
     if (!btn) return;
-    if (btn.dataset.act === 'add-categoria') { abrirNovaCategoria(btn.dataset.tipo); return; }
-    if (btn.dataset.act === 'ignorar-importada') ignorarImportadaPluggy(Number(btn.dataset.id));
+    const id = Number(btn.dataset.id);
+    switch (btn.dataset.act) {
+        case 'add-categoria': abrirNovaCategoria(btn.dataset.tipo); break;
+        case 'ignorar-importada': ignorarImportadaPluggy(id); break;
+        case 'editar-historico': editarHistoricoPluggy(id); break;
+        case 'excluir-historico': excluirHistoricoPluggy(id); break;
+    }
 }
 
 function onRevisaoPluggyChange(e) {
