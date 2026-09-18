@@ -675,6 +675,22 @@
   gap: .5rem;
   padding: .6rem 0;
 }
+/* "Escolher arquivo" ao lado de "Formato": esse campo tem um rótulo
+   ACIMA do select ("Formato"), then o botão de upload (sem rótulo
+   próprio) ficava mais alto que o select, flutuando fora de alinhamento
+   — mesmo com align-items:flex-end no container pai, os dois "campos"
+   não tinham a mesma altura total pra alinhar pela base. Um espaçador
+   invisível do tamanho exato do rótulo força a quebra de linha (via
+   flex-basis:100% num container flex-wrap) e empurra o botão pra baixo,
+   alinhando com o select. Só nos painéis CSV/PDF (onde há um Formato ao
+   lado) — o upload de Backup, sozinho na própria seção, não precisa
+   disso e ficaria com um vão vazio em cima à toa. */
+.menu-section[data-sub="importar"] div[data-importar-modo="csv"] .import-csv-upload::before,
+.menu-section[data-sub="importar"] div[data-importar-modo="pdf"] .import-csv-upload::before {
+  content: "";
+  flex-basis: 100%;
+  height: 1.47rem;
+}
 /* O <input type="file"> nativo fica escondido (acessível — só fora da
    tela, não display:none) e vira um <label class="import-csv-upload-label">
    com a cara dos outros botões do app: o texto nativo "Nenhum arquivo
