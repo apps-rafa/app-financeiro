@@ -58,7 +58,7 @@
 .modo-lista-linha .modo-lista { flex: 1 1 auto; margin: 0; min-width: 0; }
 
 /* Busca em tempo real (descrição/categoria/forma de pagamento) — mesma
-   largura da lista, logo abaixo do filtro de modo. */
+   largura da lista, logo acima do filtro de modo. */
 .busca-lista-linha { margin: 0 0 var(--spacing-sm); }
 .busca-lista {
     width: 100%;
