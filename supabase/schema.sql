@@ -117,3 +117,56 @@ alter table public.feriados add constraint feriados_origem_check
 alter table public.feriados alter column origem set default 'municipal';
 -- oficial = true: calculado/sincronizado (não apagável, só desativável)
 -- oficial = false: criado pelo usuário (apagável)
+
+-- ============================================================
+-- Pluggy (open finance) — migração "pluggy_integracao"
+-- Contas conectadas via Pluggy Connect + fila de revisão das transações
+-- importadas (confirmar grava um lançamento de verdade em transacoes;
+-- ignorar só marca a linha). Edge Functions em supabase/functions/pluggy-*
+-- (segredos PLUGGY_CLIENT_ID/PLUGGY_CLIENT_SECRET/PLUGGY_WEBHOOK_SECRET,
+-- configurados nos secrets do projeto — não neste repo).
+-- ============================================================
+create table if not exists public.pluggy_contas (
+  id                bigint generated always as identity primary key,
+  item_id           uuid not null,
+  account_id        uuid not null,
+  nome_instituicao  text not null,
+  tipo_conta        text not null check (tipo_conta in ('BANK','CREDIT')),
+  nome_conta        text,
+  marketing_name    text,
+  numero_mascarado  text,
+  marca_cartao      text,
+  saldo             numeric(12,2),
+  banco_origem      text,
+  metodo_id         bigint references public.menu_itens(id) on delete set null,
+  status            text not null default 'ativo' check (status in ('ativo','erro','desconectado')),
+  ultimo_sync       timestamptz,
+  user_id           uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  criado_em         timestamptz default now(),
+  unique (user_id, account_id)
+);
+alter table public.pluggy_contas enable row level security;
+create policy "own pluggy_contas" on public.pluggy_contas for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+create table if not exists public.transacoes_importadas (
+  id                    bigint generated always as identity primary key,
+  pluggy_transaction_id uuid not null,
+  conta_id              bigint references public.pluggy_contas(id) on delete cascade,
+  data                  date not null,
+  valor                 numeric(12,2) not null check (valor >= 0),
+  tipo                  text not null check (tipo in ('entradas','saidas')),
+  descricao_banco       text default '',
+  categoria_pluggy      text,
+  categoria_sugerida    text,
+  metodo_sugerido       bigint references public.menu_itens(id) on delete set null,
+  status                text not null default 'pendente' check (status in ('pendente','confirmada','ignorada')),
+  transacao_id          bigint references public.transacoes(id) on delete set null,
+  user_id               uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  criado_em             timestamptz default now(),
+  unique (user_id, pluggy_transaction_id)
+);
+alter table public.transacoes_importadas enable row level security;
+create policy "own transacoes_importadas" on public.transacoes_importadas for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+create index if not exists transacoes_importadas_status_idx on public.transacoes_importadas (user_id, status);
