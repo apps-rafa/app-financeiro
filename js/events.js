@@ -150,23 +150,6 @@ function configurarEventListeners() {
     const excluirEdicao = document.getElementById('excluirEdicao');
     if (excluirEdicao) excluirEdicao.addEventListener('click', excluirEdicaoTransacao);
 
-    // Botão "×" do formulário: em edição volta para a origem; senão, só fecha
-    const btnLimparForm = document.getElementById('btnLimparForm');
-    if (btnLimparForm) btnLimparForm.addEventListener('click', () => {
-        if (estadoApp.editandoId) {
-            cancelarEdicaoTransacao();            // volta para a aba de origem
-        } else {
-            limparFormulario();
-            fecharAbas();
-        }
-    });
-
-    // Botão "×" ao lado dos filtros de Receitas/Despesas/Próximas/Configurações:
-    // só fecha. Delegado no document (não em cada botão) porque a de
-    // Configurações é recriada do zero a cada carregarAbaMenus().
-    document.addEventListener('click', e => {
-        if (e.target.closest('.btn-fechar-aba')) fecharAbas();
-    });
 
     // Campo Data: máscara dd/mm/aaaa + recalcular competência
     const dataInput = document.querySelector(SELECTORS.data);
@@ -342,6 +325,7 @@ function mudarTipoTransacao(tipo) {
  */
 /** Desativa todas as abas (nenhum conteúdo aberto) */
 function fecharAbas() {
+    if (typeof _sairDoModoEdicaoSeAtivo === 'function') _sairDoModoEdicaoSeAtivo();
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('[data-tab], #btnConfig').forEach(b => b.classList.remove('active'));
     document.getElementById('btnConfig')?.setAttribute('aria-pressed', 'false');
@@ -357,6 +341,10 @@ function mudarAba(novaAba) {
         return;
     }
     console.log(`📑 Mudando para aba: ${novaAba}`);
+
+    // Trocar pra outra aba com uma edição em andamento em "Adicionar"
+    // cancela essa edição sozinho (sem "×" dedicado, ver _sairDoModoEdicaoSeAtivo).
+    if (ativa === 'adicionar' && typeof _sairDoModoEdicaoSeAtivo === 'function') _sairDoModoEdicaoSeAtivo();
 
     // Abrir a nova aba fecha automaticamente qualquer outra.
     document.querySelectorAll('.tab-content').forEach(tab => {

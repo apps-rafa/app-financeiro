@@ -400,12 +400,14 @@ function _renderGrupoDuplicatas(transacoes, tipoUI, aberto) {
  *  Cronológica, prepend uma barra com 1 segmento por grupo (recorrência/
  *  método/categoria, conforme o modo) cujo clique filtra a lista pra só
  *  aquele grupo (Cronológica já tem sua própria barra + grupos abrindo/
- *  fechando, em vez de filtrar). O grupo "Duplicatas" vem sempre no topo,
- *  antes de tudo isso, independente do modo escolhido. */
+ *  fechando, em vez de filtrar). O grupo "Duplicatas" vem sempre no topo
+ *  de VERDADE — num container fixo próprio, ACIMA dos filtros (modo-lista),
+ *  não dentro da lista — ver #duplicatasEntradas/#duplicatasSaidas. */
 function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
     if (!container) return;
     _destacarCampoBusca(tipoUI);
-    let abertoDuplicatas = container.querySelector('details.rec-grupo[data-nome="__duplicatas__"]')?.open;
+    const dupContainer = document.getElementById(tipoUI === 'entrada' ? 'duplicatasEntradas' : 'duplicatasSaidas');
+    let abertoDuplicatas = dupContainer?.querySelector('details.rec-grupo[data-nome="__duplicatas__"]')?.open;
     if (_forcarAbrirDuplicatas[tipoUI]) {
         abertoDuplicatas = true;
         _forcarAbrirDuplicatas[tipoUI] = false;
@@ -478,8 +480,10 @@ function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
         };
     }
 
-    if (transacoes && transacoes.length) {
-        container.insertAdjacentHTML('afterbegin', _renderGrupoDuplicatas(transacoes, tipoUI, abertoDuplicatas));
+    if (dupContainer) {
+        dupContainer.innerHTML = (transacoes && transacoes.length)
+            ? _renderGrupoDuplicatas(transacoes, tipoUI, abertoDuplicatas) : '';
+        dupContainer.onclick = onListaTransacaoClick;
     }
     _posicionarCampoBusca(container, tipoUI);
 }
@@ -674,7 +678,7 @@ function _posicionarCampoBusca(container, tipoUI) {
     if (!wrapper) return;
     const grafico = container.querySelector('.cron-barra');
     if (grafico) {
-        grafico.insertAdjacentElement('afterend', wrapper);
+        grafico.insertAdjacentElement('beforebegin', wrapper);
     } else {
         container.insertAdjacentElement('afterbegin', wrapper);
     }
@@ -928,7 +932,7 @@ function _renderOrdemCriacaoToggle(chave) {
     return `<button type="button" class="ordem-criacao-btn${ativo ? ' active' : ''}"
                     data-ordem-criacao-toggle="${String(chave).replace(/"/g, '&quot;')}"
                     title="Ordenar pela ordem em que os lançamentos foram criados, em vez de cronológica">
-              <span class="ordcri-emoji">🕓</span><span class="ordcri-full">Ordenar por criação</span><span class="ordcri-media">Ord. por criação</span><span class="ordcri-curto">Por criação</span><span class="ordcri-min">Criação</span>
+              <span class="ordcri-emoji">🕓</span><span class="ordcri-full">Ordem de criação</span><span class="ordcri-media">Ordem de criação</span><span class="ordcri-curto">Por criação</span><span class="ordcri-min">Criação</span>
             </button>`;
 }
 
@@ -1292,6 +1296,14 @@ function cancelarEdicaoTransacao(voltarParaOrigem = true) {
     if (excluir) excluir.hidden = true;
     // Cancelar pelo botão: volta para a tela onde o usuário estava
     if (voltarParaOrigem && origem && typeof mudarAba === 'function') mudarAba(origem);
+}
+
+/** Sem "×" dedicado no formulário: sair da aba "Adicionar" (fechar ou trocar
+ *  de aba) enquanto uma edição está em andamento cancela essa edição sozinho
+ *  — sem isto, o estado "editando" ficava travado (form preso em modo
+ *  edição na próxima vez que o usuário abrisse "+ Lançamento"). */
+function _sairDoModoEdicaoSeAtivo() {
+    if (estadoApp.editandoId) cancelarEdicaoTransacao(false);
 }
 
 /** Botão "Apagar" dentro do formulário de edição — confirmação nativa (confirm) */

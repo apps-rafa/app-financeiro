@@ -48,25 +48,6 @@
 }
 
 
-/* Botão "×" para limpar / fechar o formulário.
-   O X é uma imagem SVG (não usa transform, que o reset de animações zera no hover) */
-.btn-fechar-form {
-    flex: none;
-    width: 1.9rem;
-    height: 1.9rem;
-    border: 1px solid var(--border-strong);
-    border-radius: 50%;
-    background-color: var(--surface-2);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 2.5l7 7M9.5 2.5l-7 7' stroke='%236B7280' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: .8rem;
-    font-size: 0;
-    cursor: pointer;
-    padding: 0;
-}
-.btn-fechar-form:hover { background-color: var(--surface-3); }
-
 /* Seletor de tipo: ao lado do título, dividindo o espaço que sobrar */
 .tipo-selector {
     display: flex;

@@ -394,11 +394,13 @@ function renderizarItemsMenu(tipo, containerId, itens, grupo) {
 
     // Dinheiro é método fixo: nunca pode ser removido nem editado (não tem
     // campo pra configurar mesmo), mas pode ser desativado como qualquer um.
-    // "Reembolso/Estorno" é categoria de receita fixa (liga o campo Método
-    // no formulário — ver atualizarCampoMetodoReceita), então também não
-    // pode ser removida (editar o nome ainda é permitido).
+    // "Estorno"/"Reembolso"/"Dinheiro" são categorias de receita fixas
+    // ("Estorno"/"Reembolso" ligam o campo Método no formulário — ver
+    // atualizarCampoMetodoReceita), então também não podem ser removidas
+    // (editar o nome ainda é permitido).
     const semRemocao = (tipo === 'Método' && (item.metodoKind === 'Dinheiro' || item.nome === 'Dinheiro'))
-        || (tipo === 'Categoria' && item.categoriaTipo === 'entradas' && (item.nome === CATEGORIA_ESTORNO || item.nome === CATEGORIA_REEMBOLSO));
+        || (tipo === 'Categoria' && item.categoriaTipo === 'entradas'
+            && (item.nome === CATEGORIA_ESTORNO || item.nome === CATEGORIA_REEMBOLSO || item.nome === CATEGORIA_DINHEIRO_RECEITA));
 
     const swatch = `<button class="cor-swatch" style="background:${corDoItemMenu(item)}"
         data-act="cor" data-tipo="${tipo}" data-id="${item.linha}" data-nome="${item.nome}" title="Cor do chip"></button>`;
