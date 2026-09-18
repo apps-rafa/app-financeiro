@@ -1209,6 +1209,14 @@
   font-weight: var(--font-weight-semibold);
 }
 .dados-incluir .modo-btn.active .dados-incluir-check { display: inline; }
+/* Lista de meses (toggle "Lançamentos") — quantidade variável, então
+   precisa quebrar linha (diferente da linha fixa de 4 toggles acima,
+   que sempre cabe numa linha só por causa do nowrap). */
+.dados-meses {
+  flex-wrap: wrap;
+  margin-bottom: .8rem;
+}
+.dados-meses .modo-btn { flex: 0 1 auto; }
 #dadosContagem { margin: 0 0 .8rem; }
 .dados-acoes {
   display: flex;
