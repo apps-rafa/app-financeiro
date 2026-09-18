@@ -311,7 +311,10 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: .35rem;
-  padding: .45rem .55rem;
+  /* Padding horizontal precisa ser --pad-main (mesmo do header/main) —
+     o valor fixo antigo (.55rem) deixava essa barra bem mais larga que
+     o dashboard/cards abaixo dela, que recuam por --pad-main. */
+  padding: .45rem var(--pad-main);
   background: var(--surface);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
