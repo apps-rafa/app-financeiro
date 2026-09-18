@@ -10,7 +10,7 @@
 const CATEGORIAS_DESPESA_SEED = ['Alimentação', 'Alimentação app', 'Assinaturas', 'Contas',
     'Compras', 'Compras online', 'Lazer', 'Mercado', 'Saúde', 'Serviços',
     'Transporte app', 'Transporte'];
-const CATEGORIAS_RECEITA_SEED = ['Salário', 'Bônus', '13º', 'PL', 'Freelance', CATEGORIA_REEMBOLSO_ESTORNO];
+const CATEGORIAS_RECEITA_SEED = ['Salário', 'Bônus', '13º', 'PL', 'Freelance', CATEGORIA_ESTORNO, CATEGORIA_REEMBOLSO];
 
 /**
  * Se o usuário atual ainda não tem nenhum item de menu, cria o conjunto padrão.
@@ -43,25 +43,28 @@ async function semearMenusPadraoSeVazio() {
 
 let _categoriaReembolsoGarantida = false;
 /**
- * Garante que existe a categoria de receita fixa "Reembolso/Estorno". Para
- * usuários antigos que já tinham a lista de categorias antes dela existir.
+ * Garante que existem as categorias de receita fixas "Estorno" e
+ * "Reembolso". Para usuários antigos que já tinham a lista de categorias
+ * antes delas existirem (ou que só tinham a antiga "Reembolso/Estorno").
  */
 async function garantirCategoriaReembolsoNoBanco() {
     if (_categoriaReembolsoGarantida) return;
     try {
         const { data, error } = await sb.from('menu_itens')
-            .select('id').eq('tipo', 'Categoria').eq('categoria_tipo', 'entradas')
-            .eq('nome', CATEGORIA_REEMBOLSO_ESTORNO).limit(1);
+            .select('nome').eq('tipo', 'Categoria').eq('categoria_tipo', 'entradas')
+            .in('nome', [CATEGORIA_ESTORNO, CATEGORIA_REEMBOLSO]);
         if (error) throw error;
-        if (!data || !data.length) {
-            const cor = typeof corPadraoChip === 'function' ? corPadraoChip(CATEGORIA_REEMBOLSO_ESTORNO) : null;
-            await sb.from('menu_itens').insert({
-                tipo: 'Categoria', nome: CATEGORIA_REEMBOLSO_ESTORNO, categoria_tipo: 'entradas', cor
-            });
+        const existentes = new Set((data || []).map(r => r.nome));
+        const faltando = [CATEGORIA_ESTORNO, CATEGORIA_REEMBOLSO].filter(n => !existentes.has(n));
+        if (faltando.length) {
+            const cor = n => (typeof corPadraoChip === 'function' ? corPadraoChip(n) : null);
+            await sb.from('menu_itens').insert(
+                faltando.map(nome => ({ tipo: 'Categoria', nome, categoria_tipo: 'entradas', cor: cor(nome) }))
+            );
         }
         _categoriaReembolsoGarantida = true;
     } catch (e) {
-        console.error('Erro ao garantir categoria de reembolso no banco:', e);
+        console.error('Erro ao garantir categorias de estorno/reembolso no banco:', e);
     }
 }
 

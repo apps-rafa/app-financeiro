@@ -135,84 +135,38 @@
     position: relative;
 }
 
-/* Linha 1: "Valor" + "Método" (Método só aparece em despesa; escondido
-   ele, o Valor ocupa os 100% da linha sozinho — ver atualizarLabelsPorTipo). */
-#linhaValorMetodo {
+/* Linha 1: "Data" (bem pequena, só cabe dd/mm) + "Valor" (ocupa o resto). */
+#linhaDataValor {
     display: flex;
-    flex-wrap: wrap;
     align-items: flex-start;
     gap: .5rem;
     margin-bottom: 0.85rem;
 }
-#linhaValorMetodo > #valorBloco,
-#linhaValorMetodo > #metodoBloco {
-    flex: 1 1 0;
-    min-width: 8rem;
-}
+#linhaDataValor > #dataGroup { flex: 0 0 4.6rem; min-width: 0; margin: 0; }
+#linhaDataValor > #valorGroup { flex: 1 1 0; min-width: 0; margin: 0; }
 
-/* Linha 2: duas metades — "Data" (largura fixa, sempre a mesma) e
-   "Recorrência" (dividida com o campo auxiliar, se houver). */
-#linhaRecorrencia {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: .5rem;
-    margin-bottom: 0.85rem;
-}
-#recorrenciaBloco,
-#dataBloco {
-    flex: 1 1 0;
-    min-width: 8rem;
-}
-#dataBloco {
-    position: relative;
+/* Linha 2: "Forma de pgto." — despesa sempre, receita só em Estorno/
+   Reembolso. Em Crédito, ganha "Comp." e "Parcelas" (ou "à vista") ao lado. */
+#linhaMetodo { margin-bottom: 0.85rem; }
+#metodoBloco {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
     gap: .4rem;
 }
-#dataBloco > .form-group { margin: 0; }
-#dataBloco > #dataGroup { flex: 1 1 6rem; min-width: 0; }
-#dataBloco > #dataCalculadaGroup,
-#dataBloco > #semanasChipsGroup { flex: 1 1 100%; }
-/* Select "Comp." — largura do conteúdo (3 letras) */
+#metodoBloco > .form-group { margin: 0; min-width: 0; }
+#metodoBloco > #metodoGroup { flex: 1 1 8rem; }
+/* Select "Comp." — só o número (1 a 12), caixa pequena */
 #competenciaGroup select {
     width: auto;
     padding-right: 1.5rem;
     background-position: right .45rem center;
+    text-align: center;
 }
+#metodoBloco > #competenciaGroup { flex: 0 0 3.6rem; }
+#metodoBloco > #parceleGroup { flex: 0 0 4.9rem; }
+#metodoBloco > #avistaGroup { flex: 0 0 4.4rem; }
 
-/* Label "Pagamento" + chip "pagar no vcto." na mesma linha.
-   Altura travada = altura de um label normal, para o input de baixo ficar
-   alinhado com o dos outros campos (o chip transborda sem empurrar). */
-#dataGroup .label-linha {
-    display: flex;
-    align-items: center;
-    gap: .45rem;
-    height: 1.22rem;   /* = altura real de um label normal (.form-group label);
-                          medido via getBoundingClientRect — 1.15rem estava
-                          ~1px menor, jogando a "Data" pra cima da "Recorrência" */
-    margin-bottom: .25rem;
-}
-#dataGroup .label-linha > * { margin: 0 !important; }
-#dataGroup .label-linha > #pagarVencimentoWrap { flex: none; }
-
-/* Metade da Recorrência: dropdown + (opcional) campo auxiliar lado a lado,
-   sempre na mesma linha (Recorrência + Qtd. + Vencimento/Dia pg.) */
-#recorrenciaBloco {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: flex-start;
-    gap: .4rem;
-}
-#recorrenciaBloco > .form-group { margin: 0; min-width: 0; }
-#recorrenciaBloco > #recorrenciaGroup { flex: 1 1 5rem; }
-#recorrenciaBloco > .campo-mini { flex: 0 1 5rem; }
-/* Boxes de 2 dígitos: menor largura possível (Vcto., Qtd., Dia pg., Mês de ref.)
-   — um pouco mais largos que antes pra caber a setinha ▲▼ ao lado. */
-#recorrenciaBloco > .campo-mini--xs { flex: 0 0 3.3rem; }
-/* "Dia pgto." (receita) precisa de um pouco mais de largura que "Vcto." */
-#recorrenciaBloco > .campo-mini--wide { flex: 0 0 4.1rem; }
 .campo-mini--xs input {
     padding-left: .3rem;
     padding-right: .3rem;
@@ -222,8 +176,8 @@
 #parcelas::-webkit-inner-spin-button,
 #parcelas::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
-/* "Qtd." e "vcto.": input + setinhas ▲▼ empilhadas (aumentar/diminuir),
-   mesmo desenho da setinha de reordenar em Configurações. */
+/* "Parcelas": input + setinhas ▲▼ empilhadas (aumentar/diminuir), mesmo
+   desenho da setinha de reordenar em Configurações. */
 .campo-com-stepper {
     display: flex;
     align-items: stretch;
@@ -247,25 +201,23 @@
     min-height: 0;
     font-size: 7px;
 }
-#recorrenciaBloco > #diaSemanaGroup { flex: 0 1 5.5rem; }  /* "s/ dia fixo" */
 
-/* Campo "Valor" que se divide em 2 (valor informado + total calculado) */
-#valorBloco { display: flex; gap: .5rem; }
-#valorBloco > .form-group { flex: 1 1 0; min-width: 0; margin: 0; }
-
-/* Método divide espaço com "Comp." */
-#metodoBloco {
+/* "à vista": ocupa o lugar de "Parcelas" quando parcelas = 1 — sem label
+   (a reserva de altura do label vazio abaixo mantém o texto alinhado com
+   os outros inputs da linha). */
+.campo-avista {
     display: flex;
-    align-items: flex-start;
-    gap: .4rem;
+    flex-direction: column;
+    justify-content: flex-end;
 }
-#metodoBloco > .form-group { margin: 0; }
-#metodoBloco > #metodoGroup { flex: 1 1 0; min-width: 0; }
-#metodoBloco > #competenciaGroup { flex: 0 0 auto; }   /* só "SET" */
-
-/* Semanas do mês ocupam a metade da "Data" quando a recorrência é Semanal */
-#dataBloco > #semanasChipsGroup { margin: 0; }
-#dataBloco > #semanasChipsGroup .semanas-chips { gap: .25rem; }
+.campo-avista .avista-label-vazio { visibility: hidden; }
+.avista-texto {
+    font-style: italic;
+    color: var(--text-muted);
+    font-size: .82rem;
+    padding: 0.5rem 0;
+    white-space: nowrap;
+}
 
 .form-group.full-width {
     grid-column: 1 / -1;
@@ -505,26 +457,7 @@
     }
 }
 
-/* ===== Cartões / recorrência (migração Supabase) ===== */
 [hidden] { display: none !important; }
-
-.dia-row {
-    display: flex;
-    align-items: center;
-    gap: .75rem;
-}
-.dia-row #diaRecorrencia { width: 5rem; }
-
-.inline-check {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-    font-size: .9rem;
-    white-space: nowrap;
-    margin: 0;
-}
-.inline-check input { width: auto; }
-.inline-check span { font-size: inherit; font-style: inherit; }
 
 /* "pagar no vcto." como chip toggle (não selecionado por default) */
 /* ".form-group label.chip-toggle" (2 classes + elemento) pra vencer
@@ -692,16 +625,11 @@
 .dialogo-corpo .dialogo-linha { display: flex; gap: .4rem; flex-wrap: wrap; }
 .dialogo-corpo .dialogo-linha input { flex: 1 1 6rem; }
 
-/* Telas estreitas: cada linha do formulário vira 1 campo por linha —
-   cada "bloco" (ex.: Valor, Método) continua podendo ter seus próprios
-   sub-campos lado a lado (ex.: Valor + Total), só as linhas de fora que
-   deixam de dividir espaço entre os dois blocos. Precisa vir DEPOIS das
-   regras base de #linhaValorMetodo/#linhaRecorrencia no arquivo — mesma
-   especificidade (ID), então quem vier por último no CSS que decide, e
-   isto tem que ganhar delas quando a media query estiver ativa. */
+/* Telas estreitas: "Categoria"/"Descrição" viram 1 campo por linha (cada um
+   100% de largura) em vez de dividir espaço. "Data"+"Valor" e a linha da
+   Forma de pgto. continuam lado a lado — a caixa da Data é pequena de
+   propósito, feita pra nunca precisar quebrar. */
 @media (max-width: 560px) {
-    #linhaValorMetodo,
-    #linhaRecorrencia,
     #linhaCampos {
         flex-direction: column;
         /* em coluna, align-items controla a largura (eixo cruzado agora é

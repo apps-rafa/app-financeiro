@@ -66,10 +66,11 @@ function validarFormularioTransacao(dados) {
         return { valido: false, erro: 'O valor precisa ser maior que zero' };
     }
 
-    // Parcelada: dia do vencimento (o campo já vem pré-preenchido) + nº de parcelas
+    // Parcelada: dia do vencimento vem do cadastro do cartão (não é mais
+    // perguntado no formulário) — só confere se o cartão tem um cadastrado.
     if (dados.tipoRecorrencia === 'Parcelada') {
         if (!(parseInt(dados.diaRecorrencia, 10) >= 1 && parseInt(dados.diaRecorrencia, 10) <= 31)) {
-            return { valido: false, erro: 'Informe o dia do vencimento (1 a 31)' };
+            return { valido: false, erro: 'Esse cartão não tem um dia de vencimento cadastrado — edite-o em Configurações > Formas de pagamento' };
         }
         if (!(parseInt(dados.parcelas, 10) >= 1)) {
             return { valido: false, erro: 'Informe em quantas parcelas' };
@@ -138,14 +139,11 @@ function dataCampoParaISO(valor) {
     return parseDataBR(s);
 }
 
-/** Data padrão do formulário: dia de hoje + MÊS EM EXIBIÇÃO, como 'dd/mm'
- *  (o ano fica no seletor de mês do topo). */
+/** Data padrão do formulário: SEMPRE o dia de hoje, como 'dd/mm' — independe
+ *  do mês selecionado na navegação do calendário no topo. */
 function dataPadraoDiaMes() {
     const hoje = new Date();
-    const ref = (typeof estadoApp !== 'undefined' && estadoApp.mesAtual) ? estadoApp.mesAtual : hoje;
-    const ultimo = new Date(ref.getFullYear(), ref.getMonth() + 1, 0).getDate();
-    const dia = Math.min(hoje.getDate(), ultimo);
-    return `${String(dia).padStart(2, '0')}/${String(ref.getMonth() + 1).padStart(2, '0')}`;
+    return `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}`;
 }
 
 /**
@@ -421,12 +419,14 @@ function obterDadosFormulario() {
         ? formatarDataISO(estadoApp.mesAtual) : hojeISO();
 
     const dataISO = dataCampoParaISO(document.querySelector(SELECTORS.data).value);
-    const diaRecorrencia = document.getElementById('diaRecorrencia')?.value || '';
     const parcelas = parseInt(document.getElementById('parcelas')?.value, 10) || 1;
 
     const _met = typeof metodoSelecionado === 'function' ? metodoSelecionado() : null;
     const ehMetodoCredito = !ehEntrada && !!_met && _met.metodoKind === 'Crédito';
     const tipoRecorrencia = (ehMetodoCredito && parcelas > 1) ? 'Parcelada' : 'Pontual';
+    // Dia de vencimento de cada parcela: não se pergunta mais no formulário —
+    // usa direto o dia já cadastrado no cartão (Método > Vencimento).
+    const diaRecorrencia = ehMetodoCredito ? (_met.diaVencimento || '') : '';
 
     let compISO = (ehMetodoCredito && dataISO) ? competenciaDe(dataISO, _met.diaFechamento || null) : '';
     if (!compISO) compISO = mesExib.slice(0, 8) + '01';
