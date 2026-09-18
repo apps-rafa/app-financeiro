@@ -839,10 +839,12 @@
   flex: 1 1 0;
   min-width: 8rem;
 }
-/* "Buscar últimos"/"Rendimentos" carregam mais conteúdo (rótulo + campos)
-   que os botões — crescem um pouco mais pra não truncar o texto das
-   opções de Rendimentos (Agrupar/Ignorar). */
-.pluggy-sync-periodo, .pluggy-rendimentos { flex-grow: 1.3; }
+/* "Buscar últimos" agora é só "Buscar últimos [N] dia(s)" (sem select de
+   unidade) — conteúdo bem mais enxuto, não precisa crescer tanto quanto
+   "Rendimentos" (rótulo + 2 opções), que ainda se beneficia de um pouco
+   mais de espaço pra não ficar apertado. */
+.pluggy-sync-periodo { flex-grow: 1; }
+.pluggy-rendimentos { flex-grow: 1.15; }
 .pluggy-toolbar-btn { flex-grow: .85; }
 .pluggy-toolbar-item {
   box-sizing: border-box;
@@ -880,7 +882,11 @@
   text-align: center;
 }
 .pluggy-sync-periodo input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
-.pluggy-rendimentos { justify-content: space-between; }
+/* Sem "space-between": isso jogava o último botão ("Ignorar") encostado
+   na borda arredondada da caixa — um retângulo reto colado bem na curva
+   do canto sempre parece "sangrar" pra fora dela. Com gap normal (herdado
+   de .pluggy-toolbar-item) o conteúdo fica alinhado à esquerda, com folga
+   à direita antes da borda. */
 .pluggy-toggle-opt {
   box-sizing: border-box;
   height: calc(var(--pluggy-toolbar-h) - .7rem);
@@ -891,7 +897,10 @@
   border-radius: var(--radius-xs);
   background: transparent;
   color: var(--text-muted);
-  font-size: var(--pluggy-toolbar-fs);
+  /* Mesmo tamanho do rótulo "Rendimentos" ao lado — antes usava a escala
+     "de valor" (--pluggy-toolbar-fs, .8rem), maior que o rótulo (.72rem),
+     inconsistente dentro da mesma caixa. */
+  font-size: .72rem;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
