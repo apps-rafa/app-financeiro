@@ -1625,10 +1625,23 @@ function atualizarCampoParcelas() {
     }
 
     set('parceleGroup', ehCredito);
+    set('valorTotalGroup', parcelas > 1);
+    atualizarValorTotal();
 
     if (ehCredito && typeof recalcularCompetencia === 'function') recalcularCompetencia();
 
     ajustarCamposSozinhos();
+}
+
+/** Preenche o campo "Total" (readonly) ao lado do Valor quando parcelado —
+ *  "Valor" é o valor de CADA parcela (ver adicionarParceladoAPI em api.js),
+ *  então o total é ele vezes o nº de parcelas. */
+function atualizarValorTotal() {
+    const tot = document.getElementById('valorTotal');
+    if (!tot) return;
+    const v = parseFloat(document.querySelector(SELECTORS.valor)?.value) || 0;
+    const mult = typeof _parcelasNumero === 'function' ? _parcelasNumero(document.getElementById('parcelas')) : 1;
+    tot.value = formatarMoeda(v * mult);
 }
 
 /**

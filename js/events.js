@@ -195,6 +195,7 @@ function configurarEventListeners() {
             // Cobre o caso de colar "1e5" (válido pro <input type=number>, mas
             // sem sentido aqui) — se sobrou "e"/"+"/"-", zera o valor.
             if (/[eE+-]/.test(valorInput.value)) valorInput.value = '';
+            if (typeof atualizarValorTotal === 'function') atualizarValorTotal();
         });
     }
     // Parcelas: a caixa mostra "à vista"/"Nx" formatado; ao focar, some o
