@@ -647,7 +647,8 @@ async function onImportCsvConfirmar() {
                 diaRecorrencia: '',
                 diaSemana: '',
                 semanas: [],
-                competencia: _competenciaAtualISO()
+                competencia: _competenciaAtualISO(),
+                origem: 'csv'
             });
             ok++;
         } catch (err) {

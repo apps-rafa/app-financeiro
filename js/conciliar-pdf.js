@@ -758,7 +758,7 @@ function _abrirLancarConciliar(secId, modo, pId, idx) {
                     const dados = {
                         tipo: l.tipo, data: l.dataISO, valor: l.valor, metodo: p.metodoEscolhido,
                         categoria, descricao, formaPagamento: tipoRecorrencia === 'Parcelada' ? 'Parcelada' : 'À vista',
-                        tipoRecorrencia, diaRecorrencia, parcelas, competencia
+                        tipoRecorrencia, diaRecorrencia, parcelas, competencia, origem: 'pdf'
                     };
                     if (existente) {
                         existente.dados = dados;

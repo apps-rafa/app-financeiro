@@ -217,7 +217,10 @@ function montarRegistro(dados) {
         tipo_recorrencia: tipoRecorrencia,
         dia_recorrencia: parseInt(dados.diaRecorrencia, 10) || null,
         competencia: dados.competencia || competenciaDe(dados.data),
-        status: dados.status || 'Ativa'
+        status: dados.status || 'Ativa',
+        // De onde veio (csv/pdf/pluggy) quando importado — não aparece na UI,
+        // null pra lançamento manual. Ver schema.sql:transacoes.origem.
+        origem: dados.origem || null
     };
 }
 

@@ -930,7 +930,15 @@
   border-color: var(--border-strong, #D1D5DB);
   background: var(--surface);
 }
-.item-descricao > .pluggy-toggle-opt.active { border-color: var(--primary); }
+/* Precisa repetir background/color aqui (não só border-color): a regra
+   acima tem a mesma especificidade de ".pluggy-toggle-opt.active" e vem
+   depois no arquivo, então vencia e "apagava" o preenchimento roxo do
+   estado ativo — o botão ficava sempre com a cara de "desligado". */
+.item-descricao > .pluggy-toggle-opt.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
 .pluggy-toolbar-btn {
   box-sizing: border-box;
   height: var(--pluggy-toolbar-h);
@@ -939,6 +947,14 @@
   padding: 0 .9rem;
   font-size: var(--pluggy-toolbar-fs);
   white-space: nowrap;
+}
+.pluggy-telegram { margin-bottom: .8rem; }
+.pluggy-telegram-link {
+  display: block;
+  width: auto;
+  text-align: center;
+  text-decoration: none;
+  margin-top: .4rem;
 }
 .campo-metodo-conta { display: flex; align-items: center; gap: .4rem; margin-top: .3rem; }
 .campo-metodo-conta label { font-size: .78rem; color: var(--text-muted); white-space: nowrap; }
