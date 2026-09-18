@@ -146,13 +146,13 @@ async function carregarAbaMenus() {
             e importa os lançamentos automaticamente — mesma ideia do CSV/PDF: você confirma cada um antes de virar
             um lançamento de verdade, e possíveis duplicatas ficam avisadas à parte.
           </p>
+          <h3 class="dados-selecao-titulo">Notificações</h3>
+          <div id="pluggyTelegramBox" class="pluggy-telegram"></div>
+
           <div class="menu-acoes-linha">
             <button type="button" class="h3-add" id="btnConectarPluggy" title="Conectar nova conta">+</button>
           </div>
           <div class="menu-list" id="pluggyContasList"></div>
-
-          <h3 class="dados-selecao-titulo">Notificações</h3>
-          <div id="pluggyTelegramBox" class="pluggy-telegram"></div>
 
           <h3 class="dados-selecao-titulo">Revisão</h3>
           <div class="pluggy-toolbar">
