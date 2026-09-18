@@ -228,23 +228,26 @@ Deno.serve(async (req: Request) => {
     // Sem isso, apagar os lançamentos importados não adianta: o próximo
     // sync ainda parte do último ultimo_sync (recente) e não traz nada.
     let dateFromOverride: string | null = null;
-    // Checkbox "Agrupar rendimentos" na aba Revisão — em vez de uma linha
-    // por transação de rendimento/dividendo (ex.: descrição "Rendimentos"
-    // de conta remunerada, que credita quase todo dia e enche a fila com
-    // valores minúsculos), consolida tudo num único lançamento por conta,
-    // com a soma do período buscado nesta sincronização.
-    let agruparRendimentos = false;
+    // Botão "Rendimentos" na aba Revisão (Agrupar/Ignorar) — em vez de uma
+    // linha por transação de rendimento/dividendo (ex.: descrição
+    // "Rendimentos" de conta remunerada, que credita quase todo dia e enche
+    // a fila com valores minúsculos): "agrupar" consolida tudo num único
+    // lançamento por conta com a soma do período; "ignorar" nem traz essas
+    // transações pra fila.
+    let modoRendimentos: "agrupar" | "ignorar" = "agrupar";
     try {
       const body = await req.json();
       if (typeof body?.dateFrom === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.dateFrom)) {
         dateFromOverride = body.dateFrom;
       }
-      if (body?.agruparRendimentos === true) {
-        agruparRendimentos = true;
+      if (body?.modoRendimentos === "ignorar") {
+        modoRendimentos = "ignorar";
       }
     } catch {
       // corpo vazio ({}) — segue sem override, comportamento de sempre.
     }
+    const agruparRendimentos = modoRendimentos === "agrupar";
+    const ignorarRendimentos = modoRendimentos === "ignorar";
 
     // ID determinístico (SHA-256 formatado como uuid) pro lançamento
     // consolidado de rendimentos — mesma semente (conta + janela buscada)
@@ -258,11 +261,14 @@ Deno.serve(async (req: Request) => {
     }
 
     // Inclui contas com erro também — um sync manual deve tentar de novo,
-    // não travar pra sempre por causa de uma falha anterior.
+    // não travar pra sempre por causa de uma falha anterior. "sincronizar"
+    // é o toggle por conta em Importar > Pluggy (contas conectadas que o
+    // usuário optou por deixar de fora do "Sincronizar agora").
     const { data: contas, error: contasError } = await supabaseClient
       .from("pluggy_contas")
       .select("*")
-      .in("status", ["ativo", "erro"]);
+      .in("status", ["ativo", "erro"])
+      .eq("sincronizar", true);
     if (contasError) {
       return json({ error: "Falha ao carregar contas conectadas", detalhe: contasError.message }, 500);
     }
@@ -315,6 +321,9 @@ Deno.serve(async (req: Request) => {
             // já cadastrada) e usada na sugestão.
             const categoriaTraduzida = t.category ? traduzirCategoriaPluggy(t.category) : null;
             const dataTransacao = String(t.date ?? "").slice(0, 10);
+            if (ignorarRendimentos && categoriaTraduzida === "Rendimentos e dividendos") {
+              continue;
+            }
             if (agruparRendimentos && categoriaTraduzida === "Rendimentos e dividendos") {
               const valorAbs = Math.abs(Number(t.amount) || 0);
               if (!rendimentosAgrupados) {
