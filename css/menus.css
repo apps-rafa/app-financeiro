@@ -7,8 +7,8 @@
   padding: 0;
 }
 
-/* Sub-abas: Categorias / Formas de pagamento / Feriados / Importar / Dados —
-   ocupam 100% da largura disponível. */
+/* Sub-abas: Categorias / Formas de pagamento / Feriados / Importar /
+   Open Finance / Dados — ocupam 100% da largura disponível. */
 .subtabs {
   display: flex;
   align-items: flex-start;
@@ -16,16 +16,22 @@
   margin-bottom: var(--spacing-md);
 }
 /* Grid em vez de flex-wrap: toda linha tem o mesmo número de colunas, então
-   quebrar nunca sobra 1 botão sozinho esticado numa linha própria. */
+   quebrar nunca sobra 1 botão sozinho esticado numa linha própria (a
+   "viúva"). 6 itens hoje — 6, 3 e 2 colunas são todos divisores exatos de
+   6, então em qualquer largura as linhas saem com a mesma quantidade de
+   botões, nunca uma linha final mais curta. */
 .subtabs-itens {
   flex: 1 1 auto;
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.4rem;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.35rem;
 }
 @media (max-width: 700px) {
   .subtabs-itens { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 420px) {
+  .subtabs-itens { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* Rótulos longos ("Formas de pagamento", "Frequência") encolhem em níveis
@@ -48,20 +54,20 @@
 }
 .subtabs .subtab {
   min-width: 0;
-  padding: 0.45rem 0.5rem;
+  padding: 0.4rem 0.3rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text-muted);
   font-weight: 600;
-  font-size: 0.66rem;
+  font-size: 0.64rem;
   cursor: pointer;
   white-space: normal;
   line-height: 1.15;
   text-align: center;
 }
 @media (max-width: 480px) {
-  .subtabs .subtab { font-size: 0.6rem; padding: 0.4rem 0.3rem; }
+  .subtabs .subtab { font-size: 0.6rem; padding: 0.35rem 0.25rem; }
 }
 .subtabs .subtab.active {
   background: var(--primary);
