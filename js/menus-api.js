@@ -10,7 +10,7 @@
 const CATEGORIAS_DESPESA_SEED = ['Alimentação', 'Alimentação app', 'Assinaturas', 'Contas',
     'Compras', 'Compras online', 'Lazer', 'Mercado', 'Saúde', 'Serviços',
     'Transporte app', 'Transporte'];
-const CATEGORIAS_RECEITA_SEED = ['Salário', 'Bônus', '13º', 'PL', 'Freelance', CATEGORIA_ESTORNO, CATEGORIA_REEMBOLSO];
+const CATEGORIAS_RECEITA_SEED = ['Salário', 'Bônus', '13º', 'PL', 'Freelance', CATEGORIA_ESTORNO, CATEGORIA_REEMBOLSO, CATEGORIA_DINHEIRO_RECEITA];
 
 /**
  * Se o usuário atual ainda não tem nenhum item de menu, cria o conjunto padrão.
@@ -31,6 +31,22 @@ async function semearMenusPadraoSeVazio() {
             { tipo: 'Método', nome: 'Dinheiro', metodo_kind: 'Dinheiro', cor: cor('Dinheiro') },
             { tipo: 'Método', nome: 'PIX/Débito', metodo_kind: 'PIX/Débito', cor: cor('PIX/Débito') }
         ];
+
+        // Usuário de teste (login anônimo, "Testar sem cadastro"): já entra
+        // com um cartão de crédito genérico cadastrado, pra não precisar
+        // criar um na mão só pra testar o fluxo de Crédito/parcelamento.
+        let ehAnonimo = false;
+        try {
+            const { data } = await sb.auth.getUser();
+            ehAnonimo = !!data?.user?.is_anonymous;
+        } catch (_) {}
+        if (ehAnonimo) {
+            linhas.push({
+                tipo: 'Método', nome: 'Crédito — Genérico', metodo_kind: 'Crédito', banco: 'Genérico',
+                dia_fechamento: 20, dia_vencimento: 27, cor: cor('Crédito — Genérico')
+            });
+        }
+
         const { error: insErr } = await sb.from('menu_itens').insert(linhas);
         if (insErr) throw insErr;
         console.log('🌱 Menus padrão criados para o usuário');
@@ -43,19 +59,20 @@ async function semearMenusPadraoSeVazio() {
 
 let _categoriaReembolsoGarantida = false;
 /**
- * Garante que existem as categorias de receita fixas "Estorno" e
- * "Reembolso". Para usuários antigos que já tinham a lista de categorias
+ * Garante que existem as categorias de receita fixas "Estorno", "Reembolso"
+ * e "Dinheiro". Para usuários antigos que já tinham a lista de categorias
  * antes delas existirem (ou que só tinham a antiga "Reembolso/Estorno").
  */
 async function garantirCategoriaReembolsoNoBanco() {
     if (_categoriaReembolsoGarantida) return;
     try {
+        const fixas = [CATEGORIA_ESTORNO, CATEGORIA_REEMBOLSO, CATEGORIA_DINHEIRO_RECEITA];
         const { data, error } = await sb.from('menu_itens')
             .select('nome').eq('tipo', 'Categoria').eq('categoria_tipo', 'entradas')
-            .in('nome', [CATEGORIA_ESTORNO, CATEGORIA_REEMBOLSO]);
+            .in('nome', fixas);
         if (error) throw error;
         const existentes = new Set((data || []).map(r => r.nome));
-        const faltando = [CATEGORIA_ESTORNO, CATEGORIA_REEMBOLSO].filter(n => !existentes.has(n));
+        const faltando = fixas.filter(n => !existentes.has(n));
         if (faltando.length) {
             const cor = n => (typeof corPadraoChip === 'function' ? corPadraoChip(n) : null);
             await sb.from('menu_itens').insert(

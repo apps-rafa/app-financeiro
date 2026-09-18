@@ -48,25 +48,6 @@
 }
 
 
-/* Botão "×" para limpar / fechar o formulário.
-   O X é uma imagem SVG (não usa transform, que o reset de animações zera no hover) */
-.btn-fechar-form {
-    flex: none;
-    width: 1.9rem;
-    height: 1.9rem;
-    border: 1px solid var(--border-strong);
-    border-radius: 50%;
-    background-color: var(--surface-2);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 2.5l7 7M9.5 2.5l-7 7' stroke='%236B7280' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: .8rem;
-    font-size: 0;
-    cursor: pointer;
-    padding: 0;
-}
-.btn-fechar-form:hover { background-color: var(--surface-3); }
-
 /* Seletor de tipo: ao lado do título, dividindo o espaço que sobrar */
 .tipo-selector {
     display: flex;
@@ -135,37 +116,64 @@
     position: relative;
 }
 
-/* Linha 1: "Data" (bem pequena, só cabe dd/mm) + "Valor" (ocupa o resto). */
-#linhaDataValor {
+/* Linha principal: "Data"+"Valor" e "Forma de pgto." (+ Mês/Parcelas em
+   Crédito) tentam caber tudo numa linha só; sem espaço, quebra em 2 blocos
+   inteiros (nenhum dos dois se parte ao meio) — ver #dataValorBloco/
+   #metodoBloco logo abaixo. */
+#linhaPrincipal {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-start;
     gap: .5rem;
     margin-bottom: 0.85rem;
 }
-#linhaDataValor > #dataGroup { flex: 0 0 4.6rem; min-width: 0; margin: 0; }
-#linhaDataValor > #valorGroup { flex: 1 1 0; min-width: 0; margin: 0; }
+#dataValorBloco {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: .5rem;
+    flex: 1 1 11rem;
+    min-width: 11rem;
+}
+/* Largura calculada pro conteúdo mais largo que a caixa precisa mostrar
+   ("00/00", medido) + padding — só o suficiente, sobra tudo pra "Valor". */
+#dataValorBloco > #dataGroup { flex: 0 0 3.9rem; min-width: 0; margin: 0; }
+/* "Valor" e "Total" ficam sempre colados, dividindo 50/50 o espaço que
+   sobrar (nunca quebram um pro outro lado nem soltam do "Data") — quando
+   "Total" está escondido, "Valor" ocupa os 100% sozinho. */
+#dataValorBloco > #valorTotalWrap {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: .5rem;
+    flex: 1 1 0;
+    min-width: 0;
+}
+#valorTotalWrap > #valorGroup,
+#valorTotalWrap > #valorTotalGroup { flex: 1 1 0; min-width: 0; margin: 0; }
 
-/* Linha 2: "Forma de pgto." — despesa sempre, receita só em Estorno/
-   Reembolso. Em Crédito, ganha "Comp." e "Parcelas" (ou "à vista") ao lado. */
-#linhaMetodo { margin-bottom: 0.85rem; }
+/* "Forma de pgto." — despesa sempre, receita só em Estorno/Reembolso. Em
+   Crédito, ganha "Mês" e "Parcelas" (ou "à vista") ao lado. */
 #metodoBloco {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
     gap: .4rem;
+    flex: 2 1 18rem;
 }
 #metodoBloco > .form-group { margin: 0; min-width: 0; }
 #metodoBloco > #metodoGroup { flex: 1 1 8rem; }
-/* Select "Comp." — só o número (1 a 12), caixa pequena */
+/* Select "Mês" — tricode (Jan, Fev...), caixa pequena. width:100% (não
+   "auto") pra preencher toda a caixa reservada pelo flex-basis — sem isso
+   o <select> encolhia pro tamanho do texto ("Dez") e sobrava um vão vazio
+   dentro da própria caixa, parecendo um espaço "descolado" da Parcelas. */
 #competenciaGroup select {
-    width: auto;
     padding-right: 1.5rem;
     background-position: right .45rem center;
     text-align: center;
 }
-#metodoBloco > #competenciaGroup { flex: 0 0 3.6rem; }
+/* Largura calculada pro tricode mais largo ("Ago", medido) + padding do
+   select (inclui a seta) — só o suficiente, sobra tudo pra "Forma de pgto.". */
+#metodoBloco > #competenciaGroup { flex: 0 0 3.9rem; }
 #metodoBloco > #parceleGroup { flex: 0 0 4.9rem; }
-#metodoBloco > #avistaGroup { flex: 0 0 4.4rem; }
 
 .campo-mini--xs input {
     padding-left: .3rem;
@@ -200,23 +208,6 @@
     flex: 1 1 0;
     min-height: 0;
     font-size: 7px;
-}
-
-/* "à vista": ocupa o lugar de "Parcelas" quando parcelas = 1 — sem label
-   (a reserva de altura do label vazio abaixo mantém o texto alinhado com
-   os outros inputs da linha). */
-.campo-avista {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-}
-.campo-avista .avista-label-vazio { visibility: hidden; }
-.avista-texto {
-    font-style: italic;
-    color: var(--text-muted);
-    font-size: .82rem;
-    padding: 0.5rem 0;
-    white-space: nowrap;
 }
 
 .form-group.full-width {

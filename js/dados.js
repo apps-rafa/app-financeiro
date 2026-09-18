@@ -11,12 +11,29 @@ function iniciarDados() {
     renderDados();
 }
 
-// Categorias/formas de pagamento/feriados entram (ou não) no backup/apagar
-// junto com os lançamentos, conforme esses 3 botões-toggle. Persiste
+// Categorias/formas de pagamento/feriados: só entram no backup/apagar (e só
+// os lançamentos entram no apagar) conforme esses 3 botões-toggle — nada
+// marcado = nada pra fazer (botões de ação ficam desativados). Persiste
 // enquanto a aba fica aberta (module-local, não salva no banco).
 const _dadosIncluir = { categorias: false, formas: false, feriados: false };
 
-function renderDados() {
+/** Contagens pra mostrar junto de cada botão-toggle marcado. */
+async function _contagemDados() {
+    const [catReceita, catDespesa, formas, feriados] = await Promise.all([
+        sb.from('menu_itens').select('id', { count: 'exact', head: true }).eq('tipo', 'Categoria').eq('categoria_tipo', 'entradas'),
+        sb.from('menu_itens').select('id', { count: 'exact', head: true }).eq('tipo', 'Categoria').neq('categoria_tipo', 'entradas'),
+        sb.from('menu_itens').select('id', { count: 'exact', head: true }).eq('tipo', 'Método'),
+        sb.from('feriados').select('id', { count: 'exact', head: true })
+    ]);
+    return {
+        catReceita: catReceita.count || 0,
+        catDespesa: catDespesa.count || 0,
+        formas: formas.count || 0,
+        feriados: feriados.count || 0
+    };
+}
+
+async function renderDados() {
     const sec = document.getElementById('secDados');
     if (!sec) return;
     sec.innerHTML = `
@@ -24,24 +41,47 @@ function renderDados() {
         Baixe uma cópia de tudo que você já lançou num arquivo de backup — dá pra restaurar depois em Importar &gt; Backup.
     </p>
     <div class="modo-lista dados-incluir">
-        <button type="button" class="modo-btn" data-dados-incluir="categorias">Categorias</button>
-        <button type="button" class="modo-btn" data-dados-incluir="formas">Formas de pagamento</button>
-        <button type="button" class="modo-btn" data-dados-incluir="feriados">Feriados cadastrados</button>
+        <button type="button" class="modo-btn" data-dados-incluir="categorias"><span class="dados-incluir-check">✓</span> Categorias</button>
+        <button type="button" class="modo-btn" data-dados-incluir="formas"><span class="dados-incluir-check">✓</span> Formas de pagamento</button>
+        <button type="button" class="modo-btn" data-dados-incluir="feriados"><span class="dados-incluir-check">✓</span> Feriados cadastrados</button>
     </div>
+    <p class="menu-hint" id="dadosContagem"></p>
     <div class="dados-acoes">
         <button type="button" class="btn-submit" id="btnBaixarBackup">⬇️ Baixar backup</button>
         <button type="button" class="mini-btn armed" id="btnApagarDados">🗑 Apagar</button>
     </div>
     <div id="dadosStatus" class="import-csv-progresso" hidden></div>
     `;
+
+    const contagem = await _contagemDados();
+
+    const atualizar = () => {
+        sec.querySelectorAll('[data-dados-incluir]').forEach(btn => {
+            btn.classList.toggle('active', _dadosIncluir[btn.dataset.dadosIncluir]);
+        });
+        const algumaSelecionada = _dadosIncluir.categorias || _dadosIncluir.formas || _dadosIncluir.feriados;
+        const btnBackup = document.getElementById('btnBaixarBackup');
+        const btnApagar = document.getElementById('btnApagarDados');
+        if (btnBackup) btnBackup.disabled = !algumaSelecionada;
+        if (btnApagar) btnApagar.disabled = !algumaSelecionada;
+
+        const frases = [];
+        if (_dadosIncluir.categorias) frases.push(`${contagem.catReceita} categoria(s) de receita, ${contagem.catDespesa} categoria(s) de despesa`);
+        if (_dadosIncluir.formas) frases.push(`${contagem.formas} forma(s) de pagamento`);
+        if (_dadosIncluir.feriados) frases.push(`${contagem.feriados} feriado(s)`);
+        const contagemEl = document.getElementById('dadosContagem');
+        if (contagemEl) contagemEl.textContent = frases.length ? frases.join('. ') + '.' : 'Marque o que você quer baixar ou apagar.';
+    };
+
     sec.querySelectorAll('[data-dados-incluir]').forEach(btn => {
         const chave = btn.dataset.dadosIncluir;
-        btn.classList.toggle('active', _dadosIncluir[chave]);
         btn.addEventListener('click', () => {
             _dadosIncluir[chave] = !_dadosIncluir[chave];
-            btn.classList.toggle('active', _dadosIncluir[chave]);
+            atualizar();
         });
     });
+    atualizar();
+
     document.getElementById('btnBaixarBackup')?.addEventListener('click', baixarBackup);
     document.getElementById('btnApagarDados')?.addEventListener('click', confirmarApagarDados);
 }
@@ -96,7 +136,8 @@ async function baixarBackup() {
 
 function confirmarApagarDados() {
     const { categorias, formas, feriados } = _dadosIncluir;
-    const partes = ['todos os seus lançamentos'];
+    if (!categorias && !formas && !feriados) return;
+    const partes = [];
     if (categorias) partes.push('categorias');
     if (formas) partes.push('formas de pagamento');
     if (feriados) partes.push('feriados cadastrados');
@@ -108,7 +149,6 @@ function confirmarApagarDados() {
             { label: 'Cancelar' },
             { label: 'Apagar', primario: true, perigo: true, onClick: async () => {
                 try {
-                    await sb.from('transacoes').delete().gte('id', 0);
                     if (categorias) await sb.from('menu_itens').delete().eq('tipo', 'Categoria');
                     if (formas) await sb.from('menu_itens').delete().eq('tipo', 'Método');
                     if (feriados) await sb.from('feriados').delete().gte('id', 0);

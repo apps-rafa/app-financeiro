@@ -115,25 +115,27 @@ async function carregarAbaMenus() {
         </div>
 
         <div data-importar-modo="csv">
-          <label class="import-formato-label">Formato
+          <div class="form-group import-formato-group">
+            <label for="importCsvFormato">Formato</label>
             <select id="importCsvFormato">
               <option value="">Selecione...</option>
               <option value="pessoal">Minha planilha (CSV pessoal)</option>
               <option value="nubank">Fatura Crédito Nubank</option>
               <option value="mp">Extrato Mercado Pago</option>
             </select>
-          </label>
+          </div>
           <div id="importCsvConteudo"></div>
         </div>
 
         <div data-importar-modo="pdf" hidden>
-          <label class="import-formato-label">Formato
+          <div class="form-group import-formato-group">
+            <label for="importPdfFormato">Formato</label>
             <select id="importPdfFormato">
               <option value="">Selecione...</option>
               <option value="bradesco">Fatura Crédito Bradesco</option>
               <option value="mp">Extrato Mercado Pago</option>
             </select>
-          </label>
+          </div>
           <div id="importPdfConteudo"></div>
         </div>
 
@@ -392,11 +394,13 @@ function renderizarItemsMenu(tipo, containerId, itens, grupo) {
 
     // Dinheiro é método fixo: nunca pode ser removido nem editado (não tem
     // campo pra configurar mesmo), mas pode ser desativado como qualquer um.
-    // "Reembolso/Estorno" é categoria de receita fixa (liga o campo Método
-    // no formulário — ver atualizarCampoMetodoReceita), então também não
-    // pode ser removida (editar o nome ainda é permitido).
+    // "Estorno"/"Reembolso"/"Dinheiro" são categorias de receita fixas
+    // ("Estorno"/"Reembolso" ligam o campo Método no formulário — ver
+    // atualizarCampoMetodoReceita), então também não podem ser removidas
+    // (editar o nome ainda é permitido).
     const semRemocao = (tipo === 'Método' && (item.metodoKind === 'Dinheiro' || item.nome === 'Dinheiro'))
-        || (tipo === 'Categoria' && item.categoriaTipo === 'entradas' && (item.nome === CATEGORIA_ESTORNO || item.nome === CATEGORIA_REEMBOLSO));
+        || (tipo === 'Categoria' && item.categoriaTipo === 'entradas'
+            && (item.nome === CATEGORIA_ESTORNO || item.nome === CATEGORIA_REEMBOLSO || item.nome === CATEGORIA_DINHEIRO_RECEITA));
 
     const swatch = `<button class="cor-swatch" style="background:${corDoItemMenu(item)}"
         data-act="cor" data-tipo="${tipo}" data-id="${item.linha}" data-nome="${item.nome}" title="Cor do chip"></button>`;

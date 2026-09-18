@@ -16,9 +16,11 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // Categorias de receita fixas (não podem ser removidas) — "Estorno" é um
 // valor que volta na fatura do cartão de crédito (daí só aceitar Método de
 // Crédito), "Reembolso" é um valor que volta via Pix/transferência (daí só
-// aceitar Método PIX/Débito).
+// aceitar Método PIX/Débito), "Dinheiro" é uma categoria fixa simples (sem
+// restrição de método).
 const CATEGORIA_ESTORNO = 'Estorno';
 const CATEGORIA_REEMBOLSO = 'Reembolso';
+const CATEGORIA_DINHEIRO_RECEITA = 'Dinheiro';
 
 // Categorias padrão (fallback)
 const CATEGORIAS_PADRAO = {
@@ -29,7 +31,8 @@ const CATEGORIAS_PADRAO = {
     'PL',
     'Freelance',
     CATEGORIA_ESTORNO,
-    CATEGORIA_REEMBOLSO
+    CATEGORIA_REEMBOLSO,
+    CATEGORIA_DINHEIRO_RECEITA
   ],
   saidas: [
     'Alimentação',

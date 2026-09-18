@@ -410,8 +410,10 @@ function limparFormulario() {
 /**
  * Obtém dados do formulário. Só existem 2 tipos: Pontual (padrão) e
  * Parcelada (crédito com mais de 1 parcela — ver atualizarCampoParcelas,
- * js/ui.js). Competência: sempre derivada da data + fechamento do cartão
- * pra qualquer lançamento em Crédito; pro resto, o mês em exibição.
+ * js/ui.js). Competência: pro Crédito é o que estiver no próprio select
+ * "Mês" (pré-preenchido a partir da data + fechamento do cartão, ver
+ * recalcularCompetencia em js/ui.js, mas editável pelo usuário — por isso
+ * lida daqui, não recalculada de novo); pro resto, o mês em exibição.
  */
 function obterDadosFormulario() {
     const ehEntrada = document.querySelector(SELECTORS.tipoTransacao).value === 'entradas';
@@ -428,7 +430,8 @@ function obterDadosFormulario() {
     // usa direto o dia já cadastrado no cartão (Método > Vencimento).
     const diaRecorrencia = ehMetodoCredito ? (_met.diaVencimento || '') : '';
 
-    let compISO = (ehMetodoCredito && dataISO) ? competenciaDe(dataISO, _met.diaFechamento || null) : '';
+    const mesSelecionado = document.getElementById('competencia')?.value;
+    let compISO = ehMetodoCredito ? competenciaDeMes(mesSelecionado) : '';
     if (!compISO) compISO = mesExib.slice(0, 8) + '01';
 
     return {

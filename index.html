@@ -125,12 +125,12 @@
             <!-- Tab: Entradas -->
             <section id="entradas" class="tab-content">
                 <div class="transacoes-container">
+                    <div id="duplicatasEntradas"></div>
                     <div class="modo-lista-linha">
                         <button type="button" class="modo-lista-icone" id="modoEntradasIcone" title="Tirar filtro (ordem cronológica)" aria-label="Tirar filtro"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 4h18v2.5l-7 8V19l-4 2v-6.5l-7-8V4z"/></svg></button>
                         <div class="modo-lista" id="modoEntradas">
                             <button type="button" class="modo-btn" data-modo="categoria" data-full="🏷️ Categoria" data-emoji="🏷️">🏷️ Categoria</button>
                         </div>
-                        <button type="button" class="btn-fechar-form btn-fechar-aba" data-fechar-aba="entradas" title="Fechar" aria-label="Fechar">&times;</button>
                     </div>
                     <div class="busca-lista-linha">
                         <input type="search" id="buscaEntradas" class="busca-lista" placeholder="🔎 Buscar por descrição, categoria, forma de pgto..." autocomplete="off">
@@ -144,13 +144,13 @@
             <!-- Tab: Saídas -->
             <section id="saidas" class="tab-content">
                 <div class="transacoes-container">
+                    <div id="duplicatasSaidas"></div>
                     <div class="modo-lista-linha">
                         <button type="button" class="modo-lista-icone" id="modoSaidasIcone" title="Tirar filtro (ordem cronológica)" aria-label="Tirar filtro"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 4h18v2.5l-7 8V19l-4 2v-6.5l-7-8V4z"/></svg></button>
                         <div class="modo-lista" id="modoSaidas">
                             <button type="button" class="modo-btn" data-modo="metodo" data-full="💳 Forma de pgto." data-emoji="💳">💳 Forma de pgto.</button>
                             <button type="button" class="modo-btn" data-modo="categoria" data-full="🏷️ Categoria" data-emoji="🏷️">🏷️ Categoria</button>
                         </div>
-                        <button type="button" class="btn-fechar-form btn-fechar-aba" data-fechar-aba="saidas" title="Fechar" aria-label="Fechar">&times;</button>
                     </div>
                     <div class="busca-lista-linha">
                         <input type="search" id="buscaSaidas" class="busca-lista" placeholder="🔎 Buscar por descrição, categoria, forma de pgto..." autocomplete="off">
@@ -171,10 +171,6 @@
             <!-- Tab: Próximas (faturas de cartão de crédito do mês) -->
             <section id="proximas" class="tab-content">
                 <div class="proximas-container">
-                    <div class="form-header proximas-header">
-                        <h2 class="proximas-titulo-fixo">Faturas de cartão de crédito</h2>
-                        <button type="button" class="btn-fechar-form btn-fechar-aba" data-fechar-aba="proximas" title="Fechar" aria-label="Fechar">&times;</button>
-                    </div>
                     <div id="proximasLista" class="transacoes-lista">
                         <!-- Faturas de cartão -->
                     </div>
@@ -193,26 +189,30 @@
                                 <svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg><span class="tipo-label">Receita</span>
                             </button>
                         </div>
-                        <button type="button" id="btnLimparForm" class="btn-fechar-form" title="Limpar formulário" aria-label="Limpar formulário">&times;</button>
                     </div>
 
                     <input type="hidden" id="tipoTransacao" value="saidas">
 
-                    <!-- Linha 1: Data (bem pequena, só dd/mm) + Valor -->
-                    <div class="form-row" id="linhaDataValor">
-                        <div class="form-group" id="dataGroup">
-                            <label for="data">Data</label>
-                            <input type="text" id="data" inputmode="numeric" placeholder="dd/mm" maxlength="5" autocomplete="off" required>
+                    <!-- Linha 1 (larga o bastante): Data + Valor + Forma de pgto. (+ Mês e
+                         Parcelas/"à vista" em Crédito) — em telas estreitas quebra em 2
+                         blocos (Data+Valor / Forma+Mês+Parcelas), cada um sem se partir. -->
+                    <div class="form-row" id="linhaPrincipal">
+                        <div id="dataValorBloco">
+                            <div class="form-group" id="dataGroup">
+                                <label for="data">Data</label>
+                                <input type="text" id="data" inputmode="numeric" placeholder="dd/mm" maxlength="5" autocomplete="off" required>
+                            </div>
+                            <div id="valorTotalWrap">
+                                <div class="form-group" id="valorGroup">
+                                    <label for="valor">Valor</label>
+                                    <input type="number" id="valor" step="0.01" placeholder="0,00" required>
+                                </div>
+                                <div class="form-group" id="valorTotalGroup" hidden>
+                                    <label for="valorTotal">Total</label>
+                                    <input type="text" id="valorTotal" class="campo-travado" readonly tabindex="-1">
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group" id="valorGroup">
-                            <label for="valor">Valor</label>
-                            <input type="number" id="valor" step="0.01" placeholder="0,00" required>
-                        </div>
-                    </div>
-
-                    <!-- Linha 2: Forma de pgto. (despesa sempre; receita só Estorno/Reembolso) —
-                         em Crédito, ganha "Comp." e "Parcelas" (ou "à vista" com 1x) ao lado. -->
-                    <div class="form-row" id="linhaMetodo">
                         <div id="metodoBloco">
                             <div class="form-group" id="metodoGroup">
                                 <label for="metodo">Forma de pgto.</label>
@@ -224,14 +224,14 @@
                                 </div>
                             </div>
                             <div class="form-group campo-mini" id="competenciaGroup" hidden>
-                                <label for="competencia">Comp.</label>
+                                <label for="competencia">Mês</label>
                                 <select id="competencia">
-                                    <option value="01">1</option><option value="02">2</option>
-                                    <option value="03">3</option><option value="04">4</option>
-                                    <option value="05">5</option><option value="06">6</option>
-                                    <option value="07">7</option><option value="08">8</option>
-                                    <option value="09">9</option><option value="10">10</option>
-                                    <option value="11">11</option><option value="12">12</option>
+                                    <option value="01">Jan</option><option value="02">Fev</option>
+                                    <option value="03">Mar</option><option value="04">Abr</option>
+                                    <option value="05">Mai</option><option value="06">Jun</option>
+                                    <option value="07">Jul</option><option value="08">Ago</option>
+                                    <option value="09">Set</option><option value="10">Out</option>
+                                    <option value="11">Nov</option><option value="12">Dez</option>
                                 </select>
                             </div>
                             <div class="form-group campo-mini" id="parceleGroup" hidden>
@@ -244,14 +244,10 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="form-group campo-mini campo-avista" id="avistaGroup" hidden>
-                                <label class="avista-label-vazio" aria-hidden="true">&nbsp;</label>
-                                <span class="avista-texto">à vista</span>
-                            </div>
                         </div>
                     </div>
 
-                    <!-- Linha 3: Categoria + Descrição -->
+                    <!-- Linha 2: Categoria + Descrição -->
                     <div class="form-row" id="linhaCampos">
                         <div class="form-group">
                             <label for="categoria">Categoria</label>

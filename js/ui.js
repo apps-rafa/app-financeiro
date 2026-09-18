@@ -400,12 +400,14 @@ function _renderGrupoDuplicatas(transacoes, tipoUI, aberto) {
  *  Cronológica, prepend uma barra com 1 segmento por grupo (recorrência/
  *  método/categoria, conforme o modo) cujo clique filtra a lista pra só
  *  aquele grupo (Cronológica já tem sua própria barra + grupos abrindo/
- *  fechando, em vez de filtrar). O grupo "Duplicatas" vem sempre no topo,
- *  antes de tudo isso, independente do modo escolhido. */
+ *  fechando, em vez de filtrar). O grupo "Duplicatas" vem sempre no topo
+ *  de VERDADE — num container fixo próprio, ACIMA dos filtros (modo-lista),
+ *  não dentro da lista — ver #duplicatasEntradas/#duplicatasSaidas. */
 function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
     if (!container) return;
     _destacarCampoBusca(tipoUI);
-    let abertoDuplicatas = container.querySelector('details.rec-grupo[data-nome="__duplicatas__"]')?.open;
+    const dupContainer = document.getElementById(tipoUI === 'entrada' ? 'duplicatasEntradas' : 'duplicatasSaidas');
+    let abertoDuplicatas = dupContainer?.querySelector('details.rec-grupo[data-nome="__duplicatas__"]')?.open;
     if (_forcarAbrirDuplicatas[tipoUI]) {
         abertoDuplicatas = true;
         _forcarAbrirDuplicatas[tipoUI] = false;
@@ -478,8 +480,10 @@ function renderListaPorModo(container, transacoes, tipoUI, modo, msgVazia) {
         };
     }
 
-    if (transacoes && transacoes.length) {
-        container.insertAdjacentHTML('afterbegin', _renderGrupoDuplicatas(transacoes, tipoUI, abertoDuplicatas));
+    if (dupContainer) {
+        dupContainer.innerHTML = (transacoes && transacoes.length)
+            ? _renderGrupoDuplicatas(transacoes, tipoUI, abertoDuplicatas) : '';
+        dupContainer.onclick = onListaTransacaoClick;
     }
     _posicionarCampoBusca(container, tipoUI);
 }
@@ -674,7 +678,7 @@ function _posicionarCampoBusca(container, tipoUI) {
     if (!wrapper) return;
     const grafico = container.querySelector('.cron-barra');
     if (grafico) {
-        grafico.insertAdjacentElement('afterend', wrapper);
+        grafico.insertAdjacentElement('beforebegin', wrapper);
     } else {
         container.insertAdjacentElement('afterbegin', wrapper);
     }
@@ -928,7 +932,7 @@ function _renderOrdemCriacaoToggle(chave) {
     return `<button type="button" class="ordem-criacao-btn${ativo ? ' active' : ''}"
                     data-ordem-criacao-toggle="${String(chave).replace(/"/g, '&quot;')}"
                     title="Ordenar pela ordem em que os lançamentos foram criados, em vez de cronológica">
-              <span class="ordcri-emoji">🕓</span><span class="ordcri-full">Ordenar por criação</span><span class="ordcri-media">Ord. por criação</span><span class="ordcri-curto">Por criação</span><span class="ordcri-min">Criação</span>
+              <span class="ordcri-emoji">🕓</span><span class="ordcri-full">Ordem de criação</span><span class="ordcri-media">Ordem de criação</span><span class="ordcri-curto">Por criação</span><span class="ordcri-min">Criação</span>
             </button>`;
 }
 
@@ -1294,6 +1298,14 @@ function cancelarEdicaoTransacao(voltarParaOrigem = true) {
     if (voltarParaOrigem && origem && typeof mudarAba === 'function') mudarAba(origem);
 }
 
+/** Sem "×" dedicado no formulário: sair da aba "Adicionar" (fechar ou trocar
+ *  de aba) enquanto uma edição está em andamento cancela essa edição sozinho
+ *  — sem isto, o estado "editando" ficava travado (form preso em modo
+ *  edição na próxima vez que o usuário abrisse "+ Lançamento"). */
+function _sairDoModoEdicaoSeAtivo() {
+    if (estadoApp.editandoId) cancelarEdicaoTransacao(false);
+}
+
 /** Botão "Apagar" dentro do formulário de edição — confirmação nativa (confirm) */
 async function excluirEdicaoTransacao() {
     const btn = document.getElementById('excluirEdicao');
@@ -1568,12 +1580,29 @@ function ajustarCamposSozinhos() {
     }
 }
 
+/** Texto mostrado DENTRO da caixa de parcelas: "à vista" pra 1x, "Nx" daí
+ *  pra cima (o rótulo "Parcelas" em cima é sempre fixo — só o conteúdo
+ *  da caixa muda). */
+function _parcelasTexto(n) {
+    return n > 1 ? `${n}x` : 'à vista';
+}
+
+/** Número de parcelas "de verdade" a partir do que estiver na caixa —
+ *  funciona tanto com o texto formatado ("à vista", "3x") quanto com
+ *  dígitos crus (campo em edição, ver foco/blur em events.js): parseInt
+ *  já para no primeiro caractere não-numérico ("3x" -> 3), e "à vista"
+ *  (começa com letra) vira NaN -> cai no padrão de 1. */
+function _parcelasNumero(input) {
+    return Math.max(1, parseInt(input?.value, 10) || 1);
+}
+
 /**
- * Mostra/esconde "Comp." e "Parcelas" — só existem pra despesa em Crédito.
- * 1 parcela = lançamento avulso (Pontual) de sempre, mostrado como "à vista"
- * no lugar do campo Parcelas; mais que isso = compra parcelada. O dia de
- * vencimento de cada parcela não é mais perguntado aqui — usa direto o dia
- * já cadastrado no cartão (ver metodoSelecionado().diaVencimento).
+ * Mostra/esconde "Mês" e "Parcelas" — só existem pra despesa em Crédito.
+ * O campo de parcelas fica sempre visível junto (setinha ▲▼, começando em
+ * "à vista") com o rótulo "Parcelas" fixo — só o CONTEÚDO da caixa muda
+ * ("à vista" com 1x, "Nx" com 2x ou mais). O dia de vencimento de cada
+ * parcela não é mais perguntado aqui — usa direto o dia já cadastrado no
+ * cartão (ver metodoSelecionado().diaVencimento).
  */
 function atualizarCampoParcelas() {
     const ehReceita = document.querySelector(SELECTORS.tipoTransacao)?.value === 'entradas';
@@ -1581,22 +1610,38 @@ function atualizarCampoParcelas() {
     const ehCredito = !ehReceita && !!metodoAtual && metodoAtual.metodoKind === 'Crédito';
 
     const set = (id, mostrar) => { const el = document.getElementById(id); if (el) el.hidden = !mostrar; };
-    // "Comp." (competência): preview de qual mês esse lançamento vai cair,
+    // "Mês" (competência): preview de qual mês esse lançamento vai cair,
     // calculado a partir da data da compra + fechamento do cartão — só faz
     // sentido pra Crédito (outros métodos usam o mês da própria data).
     set('competenciaGroup', ehCredito);
 
     const parcelasInput = document.getElementById('parcelas');
-    if (!ehCredito && parcelasInput) parcelasInput.value = 1;
-    const parcelas = Math.max(1, parseInt(parcelasInput?.value, 10) || 1);
-    const comParcelamento = ehCredito && parcelas > 1;
+    if (!ehCredito && parcelasInput) parcelasInput.value = _parcelasTexto(1);
+    const parcelas = _parcelasNumero(parcelasInput);
+    // Enquanto o campo está em edição (foco), mostra dígito cru — não
+    // reformata a cada tecla (ver focus/input/blur em events.js).
+    if (parcelasInput && document.activeElement !== parcelasInput) {
+        parcelasInput.value = _parcelasTexto(parcelas);
+    }
 
-    set('parceleGroup', comParcelamento);
-    set('avistaGroup', ehCredito && !comParcelamento);
+    set('parceleGroup', ehCredito);
+    set('valorTotalGroup', parcelas > 1);
+    atualizarValorTotal();
 
     if (ehCredito && typeof recalcularCompetencia === 'function') recalcularCompetencia();
 
     ajustarCamposSozinhos();
+}
+
+/** Preenche o campo "Total" (readonly) ao lado do Valor quando parcelado —
+ *  "Valor" é o valor de CADA parcela (ver adicionarParceladoAPI em api.js),
+ *  então o total é ele vezes o nº de parcelas. */
+function atualizarValorTotal() {
+    const tot = document.getElementById('valorTotal');
+    if (!tot) return;
+    const v = parseFloat(document.querySelector(SELECTORS.valor)?.value) || 0;
+    const mult = typeof _parcelasNumero === 'function' ? _parcelasNumero(document.getElementById('parcelas')) : 1;
+    tot.value = formatarMoeda(v * mult);
 }
 
 /**
@@ -1616,8 +1661,6 @@ function atualizarLabelsPorTipo() {
         const compGrp = document.getElementById('competenciaGroup');
         if (compGrp) compGrp.hidden = true;
     } else {
-        const linhaMetodo = document.getElementById('linhaMetodo');
-        if (linhaMetodo) linhaMetodo.hidden = false;
         const blocoMetodo = document.getElementById('metodoBloco');
         if (blocoMetodo) blocoMetodo.hidden = false;
         if (metodoSel) metodoSel.required = true;
@@ -1819,8 +1862,6 @@ function atualizarCampoMetodoReceita() {
     const ehReembolso = categoriaAtual === CATEGORIA_REEMBOLSO;
     const comMetodo = ehEstorno || ehReembolso;
 
-    const linhaMetodo = document.getElementById('linhaMetodo');
-    if (linhaMetodo) linhaMetodo.hidden = !comMetodo;
     const blocoMetodo = document.getElementById('metodoBloco');
     if (blocoMetodo) blocoMetodo.hidden = !comMetodo;
     const metodoSel = document.querySelector(SELECTORS.metodo);
@@ -1843,11 +1884,9 @@ function atualizarCampoMetodoReceita() {
         }
     }
     const compGrp = document.getElementById('competenciaGroup');
-    if (compGrp) compGrp.hidden = true; // receita nunca mostra o select "Comp."
+    if (compGrp) compGrp.hidden = true; // receita nunca mostra o select "Mês"
     const parceleGrp = document.getElementById('parceleGroup');
     if (parceleGrp) parceleGrp.hidden = true;
-    const avistaGrp = document.getElementById('avistaGroup');
-    if (avistaGrp) avistaGrp.hidden = true;
     ajustarCamposSozinhos();
 }
 

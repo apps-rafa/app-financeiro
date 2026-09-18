@@ -150,23 +150,6 @@ function configurarEventListeners() {
     const excluirEdicao = document.getElementById('excluirEdicao');
     if (excluirEdicao) excluirEdicao.addEventListener('click', excluirEdicaoTransacao);
 
-    // Botão "×" do formulário: em edição volta para a origem; senão, só fecha
-    const btnLimparForm = document.getElementById('btnLimparForm');
-    if (btnLimparForm) btnLimparForm.addEventListener('click', () => {
-        if (estadoApp.editandoId) {
-            cancelarEdicaoTransacao();            // volta para a aba de origem
-        } else {
-            limparFormulario();
-            fecharAbas();
-        }
-    });
-
-    // Botão "×" ao lado dos filtros de Receitas/Despesas/Próximas/Configurações:
-    // só fecha. Delegado no document (não em cada botão) porque a de
-    // Configurações é recriada do zero a cada carregarAbaMenus().
-    document.addEventListener('click', e => {
-        if (e.target.closest('.btn-fechar-aba')) fecharAbas();
-    });
 
     // Campo Data: máscara dd/mm/aaaa + recalcular competência
     const dataInput = document.querySelector(SELECTORS.data);
@@ -212,14 +195,25 @@ function configurarEventListeners() {
             // Cobre o caso de colar "1e5" (válido pro <input type=number>, mas
             // sem sentido aqui) — se sobrou "e"/"+"/"-", zera o valor.
             if (/[eE+-]/.test(valorInput.value)) valorInput.value = '';
+            if (typeof atualizarValorTotal === 'function') atualizarValorTotal();
         });
     }
-    // Parcelas: só números, 2 dígitos -> mostra/esconde "Parcelas" x "à vista"
+    // Parcelas: a caixa mostra "à vista"/"Nx" formatado; ao focar, some o
+    // texto formatado e vira dígito cru pra facilitar editar (o setter da
+    // setinha ▲▼ não passa por aqui focado, então já dispara formatado).
     const parcInput = document.getElementById('parcelas');
-    if (parcInput) parcInput.addEventListener('input', () => {
-        soNumeros(parcInput, 2);
-        if (typeof atualizarCampoParcelas === 'function') atualizarCampoParcelas();
-    });
+    if (parcInput) {
+        parcInput.addEventListener('focus', () => {
+            parcInput.value = String(typeof _parcelasNumero === 'function' ? _parcelasNumero(parcInput) : 1);
+        });
+        parcInput.addEventListener('input', () => {
+            soNumeros(parcInput, 2);
+            if (typeof atualizarCampoParcelas === 'function') atualizarCampoParcelas();
+        });
+        parcInput.addEventListener('blur', () => {
+            if (typeof atualizarCampoParcelas === 'function') atualizarCampoParcelas();
+        });
+    }
 
     // Setinhas ▲▼ de "Parcelas": aumentam/diminuem 1 e disparam o mesmo
     // "input" que digitar direto no campo dispararia.
@@ -230,10 +224,12 @@ function configurarEventListeners() {
             const min = parseInt(btn.dataset.min, 10) || 1;
             const max = parseInt(btn.dataset.max, 10) || 99;
             const dir = parseInt(btn.dataset.dir, 10) || 0;
+            // parseInt já ignora o "x"/"à vista" formatado (para no primeiro
+            // caractere não-numérico) — "à vista" vira NaN, tratado como min.
             let v = parseInt(input.value, 10);
-            if (Number.isNaN(v)) v = dir > 0 ? min - 1 : min + 1;
+            if (Number.isNaN(v)) v = min;
             v = Math.min(max, Math.max(min, v + dir));
-            input.value = String(v);
+            input.value = (input.id === 'parcelas' && typeof _parcelasTexto === 'function') ? _parcelasTexto(v) : String(v);
             input.dispatchEvent(new Event('input', { bubbles: true }));
         });
     });
@@ -342,6 +338,7 @@ function mudarTipoTransacao(tipo) {
  */
 /** Desativa todas as abas (nenhum conteúdo aberto) */
 function fecharAbas() {
+    if (typeof _sairDoModoEdicaoSeAtivo === 'function') _sairDoModoEdicaoSeAtivo();
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('[data-tab], #btnConfig').forEach(b => b.classList.remove('active'));
     document.getElementById('btnConfig')?.setAttribute('aria-pressed', 'false');
@@ -357,6 +354,10 @@ function mudarAba(novaAba) {
         return;
     }
     console.log(`📑 Mudando para aba: ${novaAba}`);
+
+    // Trocar pra outra aba com uma edição em andamento em "Adicionar"
+    // cancela essa edição sozinho (sem "×" dedicado, ver _sairDoModoEdicaoSeAtivo).
+    if (ativa === 'adicionar' && typeof _sairDoModoEdicaoSeAtivo === 'function') _sairDoModoEdicaoSeAtivo();
 
     // Abrir a nova aba fecha automaticamente qualquer outra.
     document.querySelectorAll('.tab-content').forEach(tab => {
