@@ -840,18 +840,26 @@
 .pluggy-contas-grupo[open] > .pluggy-contas-grupo-titulo::before { transform: rotate(90deg); }
 .pluggy-contas-grupo[open] > .pluggy-contas-grupo-titulo:hover::before { transform: rotate(90deg) !important; }
 
-/* Barra de ações da Revisão: "Buscar últimos N", "Rendimentos"
-   (Agrupar/Ignorar), "Sincronizar" e "Limpar" — uma linha só, ocupando
-   100% da largura, todos com a mesma altura e mesma escala de fonte. */
+/* Barra de ações da Revisão: "Desde" (mês/ano) numa linha só pra ela;
+   "Rendimentos" e o par "Sincronizar"/"Limpar" dividem a 2ª linha quando
+   cabem juntos, e quebram em linhas próprias quando não cabem — nunca uma
+   linha "viúva" com só 1 botão sozinho (o par sempre fica junto, 50/50). */
 .pluggy-toolbar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
+  flex-direction: column;
   gap: .6rem;
   margin: 0 0 .8rem;
 }
-.pluggy-toolbar-item,
-.pluggy-toolbar-btn {
+/* .pluggy-toolbar (pai) é column — cada linha tem altura pelo próprio
+   conteúdo, sem grow/shrink no eixo principal (senão o "flex-basis:0" das
+   regras de largura abaixo vira altura 0 e a linha desaparece). */
+.pluggy-toolbar > * { flex: 0 0 auto; }
+.pluggy-toolbar-row2 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+}
+.pluggy-toolbar-row2 > * {
   flex: 1 1 0;
   min-width: 8rem;
 }
@@ -859,14 +867,15 @@
    que dava antes: "Rendimentos" (rótulo + 2 chips, a mais larga) recebendo
    MENOS espaço que "Sincronizar"/"Limpar" (só um botão), o que cortava
    "Ignorar" e sobrava espaço vazio nos botões. */
-.pluggy-sync-periodo { flex-grow: 1.4; gap: .3rem; padding: 0 .5rem; min-width: 11rem; }
 .pluggy-rendimentos { flex-grow: 1.4; min-width: 13rem; }
-.pluggy-toolbar-btn { flex-grow: .6; min-width: 7rem; }
+.pluggy-toolbar-btns { flex-grow: 1; min-width: 13rem; display: flex; gap: .6rem; }
+.pluggy-toolbar-btns .pluggy-toolbar-btn { flex: 1 1 0; min-width: 0; }
 .pluggy-toolbar-item {
   box-sizing: border-box;
   height: var(--pluggy-toolbar-h);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: .4rem;
   padding: 0 .75rem;
   border: 1px solid var(--border-strong, #D1D5DB);
@@ -874,6 +883,7 @@
   background: var(--surface);
   overflow: hidden;
 }
+.pluggy-sync-periodo { gap: .3rem; padding: 0 .5rem; width: 100%; }
 .pluggy-toolbar-label {
   font-size: .72rem;
   font-weight: 600;

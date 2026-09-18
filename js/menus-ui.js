@@ -168,13 +168,17 @@ async function carregarAbaMenus() {
             <span id="syncAnoPluggy" class="pluggy-sync-ano-valor"></span>
             <button type="button" id="syncAnoMais" class="pluggy-sync-ano-seta" title="Próximo ano">▸</button>
           </div>
-          <div class="pluggy-toolbar-item pluggy-rendimentos" role="group" aria-label="Rendimentos">
-            <span class="pluggy-toolbar-label">Rendimentos</span>
-            <button type="button" class="pluggy-toggle-opt active" id="btnRendimentosAgrupar" data-rendimentos="agrupar">Agrupar</button>
-            <button type="button" class="pluggy-toggle-opt" id="btnRendimentosIgnorar" data-rendimentos="ignorar">Ignorar</button>
+          <div class="pluggy-toolbar-row2">
+            <div class="pluggy-toolbar-item pluggy-rendimentos" role="group" aria-label="Rendimentos">
+              <span class="pluggy-toolbar-label">Rendimentos</span>
+              <button type="button" class="pluggy-toggle-opt active" id="btnRendimentosAgrupar" data-rendimentos="agrupar">Agrupar</button>
+              <button type="button" class="pluggy-toggle-opt" id="btnRendimentosIgnorar" data-rendimentos="ignorar">Ignorar</button>
+            </div>
+            <div class="pluggy-toolbar-btns">
+              <button type="button" class="btn-submit pluggy-toolbar-btn" id="btnSincronizarPluggy">↻ Sincronizar</button>
+              <button type="button" class="mini-btn pluggy-toolbar-btn" id="btnLimparRevisaoPluggy">🧹 Limpar</button>
+            </div>
           </div>
-          <button type="button" class="btn-submit pluggy-toolbar-btn" id="btnSincronizarPluggy">↻ Sincronizar</button>
-          <button type="button" class="mini-btn pluggy-toolbar-btn" id="btnLimparRevisaoPluggy">🧹 Limpar</button>
         </div>
         <div id="pluggyRevisaoLista" class="transacoes-lista"></div>
       </div>
