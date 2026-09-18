@@ -840,35 +840,34 @@
 .pluggy-contas-grupo[open] > .pluggy-contas-grupo-titulo::before { transform: rotate(90deg); }
 .pluggy-contas-grupo[open] > .pluggy-contas-grupo-titulo:hover::before { transform: rotate(90deg) !important; }
 
-/* Barra de ações da Revisão: "Desde" (mês/ano) numa linha só pra ela;
-   "Rendimentos" e o par "Sincronizar"/"Limpar" dividem a 2ª linha quando
-   cabem juntos, e quebram em linhas próprias quando não cabem — nunca uma
-   linha "viúva" com só 1 botão sozinho (o par sempre fica junto, 50/50). */
+/* Barra de ações da Revisão: "Desde", "Rendimentos" e o par
+   "Sincronizar"/"Limpar" tentam caber numa linha só; só quebram quando o
+   espaço aperta de verdade (puro flex-wrap — nada de layout fixo em N
+   linhas, isso já se ajusta sozinho pra largura disponível). O par de
+   botões é UM item de flex só (.pluggy-toolbar-btns engloba os dois): por
+   isso nunca vira uma linha "viúva" com um botão sozinho — quando quebra,
+   quebra o par inteiro junto, sempre dividindo 50/50 entre si.
+   ".pluggy-toolbar-row2" existe só na marcação (agrupa Rendimentos + o
+   par no HTML por clareza) — aqui vira "display:contents" pra não formar
+   uma caixa própria: os 2 ficam como itens diretos do flex-wrap ao lado
+   de "Desde", podendo cair todos numa linha só quando cabem. */
 .pluggy-toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: .6rem;
-  margin: 0 0 .8rem;
-}
-/* .pluggy-toolbar (pai) é column — cada linha tem altura pelo próprio
-   conteúdo, sem grow/shrink no eixo principal (senão o "flex-basis:0" das
-   regras de largura abaixo vira altura 0 e a linha desaparece). */
-.pluggy-toolbar > * { flex: 0 0 auto; }
-.pluggy-toolbar-row2 {
   display: flex;
   flex-wrap: wrap;
   gap: .6rem;
+  margin: 0 0 .8rem;
 }
-.pluggy-toolbar-row2 > * {
+.pluggy-toolbar-row2 { display: contents; }
+.pluggy-toolbar-item,
+.pluggy-toolbar-btns {
   flex: 1 1 0;
-  min-width: 8rem;
 }
-/* Pesos proporcionais ao conteúdo real de cada caixa (medido) — evita o
-   que dava antes: "Rendimentos" (rótulo + 2 chips, a mais larga) recebendo
-   MENOS espaço que "Sincronizar"/"Limpar" (só um botão), o que cortava
-   "Ignorar" e sobrava espaço vazio nos botões. */
-.pluggy-rendimentos { flex-grow: 1.4; min-width: 13rem; }
-.pluggy-toolbar-btns { flex-grow: 1; min-width: 13rem; display: flex; gap: .6rem; }
+/* Larguras mínimas proporcionais ao conteúdo real de cada caixa (medido)
+   — evita o que dava antes: "Rendimentos" (rótulo + 2 chips, a mais
+   larga) recebendo MENOS espaço que os botões, cortando "Ignorar". */
+.pluggy-sync-periodo { min-width: 14rem; gap: .3rem; padding: 0 .5rem; }
+.pluggy-rendimentos { min-width: 13rem; }
+.pluggy-toolbar-btns { min-width: 13rem; display: flex; gap: .6rem; }
 .pluggy-toolbar-btns .pluggy-toolbar-btn { flex: 1 1 0; min-width: 0; }
 .pluggy-toolbar-item {
   box-sizing: border-box;
@@ -883,7 +882,6 @@
   background: var(--surface);
   overflow: hidden;
 }
-.pluggy-sync-periodo { gap: .3rem; padding: 0 .5rem; width: 100%; }
 .pluggy-toolbar-label {
   font-size: .72rem;
   font-weight: 600;
@@ -994,16 +992,23 @@
   flex-wrap: wrap;
 }
 .pluggy-telegram-status .item-descricao { margin: 0; }
-/* 3 botões (Abrir no Telegram / Já vinculei / Gerar outro código) numa
-   linha só, dividindo 100% da largura igualmente, mesma altura. */
+/* 3 botões (Abrir no Telegram / Já vinculei / Gerar outro código): tentam
+   caber numa linha só, dividindo o espaço igualmente, e só quebram quando
+   o espaço aperta de verdade (puro flex-wrap, se ajusta sozinho pra
+   largura disponível). "Já vinculei" + "Gerar outro código" ficam num
+   wrapper só (.pluggy-telegram-acoes-par) — um item de flex atômico, então
+   nunca quebra pra uma linha "viúva" com um botão sozinho: quando não cabe
+   junto de "Abrir no Telegram", o par inteiro desce junto, sempre dividido
+   50/50 entre si. */
 .pluggy-telegram-acoes {
   display: flex;
+  flex-wrap: wrap;
   align-items: stretch;
   gap: .6rem;
   margin-top: .4rem;
 }
 .pluggy-telegram-acoes > * {
-  flex: 1 1 0;
+  flex: 1 1 12rem;
   min-width: 0;
   box-sizing: border-box;
   height: 2.3rem;
@@ -1013,6 +1018,11 @@
   text-align: center;
   white-space: nowrap;
 }
+.pluggy-telegram-acoes-par {
+  display: flex;
+  gap: .6rem;
+}
+.pluggy-telegram-acoes-par > * { flex: 1 1 0; min-width: 0; }
 .pluggy-telegram-link { text-decoration: none; }
 
 /* Campos "soltos" (sem .form-group/.dialogo-corpo em volta) usados nos
