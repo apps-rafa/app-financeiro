@@ -20,6 +20,7 @@ function iniciarDados() {
 const _dadosIncluir = { categorias: false, formas: false, feriados: false, lancamentos: false };
 const _dadosMesesSelecionados = new Set(); // competência ISO ('YYYY-MM-01')
 let _dadosMesesCache = null; // [{ competencia, label, total }], carregado 1x por abertura da aba
+let _dadosMesesTocado = false; // true assim que o usuário mexe manualmente num mês (pra não reimpor o "todos selecionados" default depois)
 
 /** Contagens pra mostrar junto de cada botão-toggle marcado. */
 async function _contagemDados() {
@@ -149,12 +150,20 @@ async function _renderDadosMeses(aoMudar) {
         lista.innerHTML = '<p class="empty-text">Nenhum lançamento cadastrado ainda</p>';
         return;
     }
+    // Por padrão todos os meses entram selecionados (backup/apagamento
+    // completo é o caso mais comum) — só na primeira vez que a lista é
+    // montada nesta abertura da aba, pra não sobrescrever uma escolha que
+    // o usuário já tenha feito.
+    if (!_dadosMesesSelecionados.size && !_dadosMesesTocado) {
+        meses.forEach(m => _dadosMesesSelecionados.add(m.competencia));
+    }
     lista.innerHTML = meses.map(m => `
         <button type="button" class="modo-btn" data-mes="${m.competencia}">
             <span class="dados-incluir-check">✓</span> ${m.label} (${m.total})
         </button>`).join('');
     lista.querySelectorAll('[data-mes]').forEach(btn => {
         btn.addEventListener('click', () => {
+            _dadosMesesTocado = true;
             const mes = btn.dataset.mes;
             if (_dadosMesesSelecionados.has(mes)) _dadosMesesSelecionados.delete(mes);
             else _dadosMesesSelecionados.add(mes);
