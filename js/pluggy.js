@@ -841,13 +841,13 @@ function gerarHTMLImportadaPluggy(item) {
         <td>${_dataCurtaPluggy(item.data)}</td>
         <td>${formatarMoeda(item.valor)}</td>
         <td>
-            <select data-campo="categoria" title="Categoria" ${ignorada ? 'disabled' : ''}>
+            <select data-campo="categoria" name="categoria-${item.id}" aria-label="Categoria" title="Categoria" ${ignorada ? 'disabled' : ''}>
                 <option value="">Selecione...</option>
                 ${opcoesCategoria}
             </select>
         </td>
         <td class="import-csv-desc-edit">
-            <input type="text" class="import-desc-input" data-campo="descricao" value="${descEscapada}" title="Descrição (editável)" ${ignorada ? 'disabled' : ''}>
+            <input type="text" class="import-desc-input" data-campo="descricao" name="descricao-${item.id}" aria-label="Descrição" value="${descEscapada}" title="Descrição (editável)" ${ignorada ? 'disabled' : ''}>
         </td>
     </tr>`;
 }

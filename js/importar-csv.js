@@ -348,7 +348,7 @@ function renderImportCSV() {
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">
             <thead><tr>
-                ${comCheckboxIgnorar ? `<th><input type="checkbox" id="importCsvIgnorarTudo" title="Marcar/desmarcar todas pra ignorar" ${grupo.every(([l]) => l.ignorarManual) ? 'checked' : ''}> Ignorar?</th>` : ''}
+                ${comCheckboxIgnorar ? `<th><input type="checkbox" id="importCsvIgnorarTudo" name="ignorar-tudo" aria-label="Marcar ou desmarcar todas pra ignorar" title="Marcar/desmarcar todas pra ignorar" ${grupo.every(([l]) => l.ignorarManual) ? 'checked' : ''}> Ignorar?</th>` : ''}
                 <th>Data</th><th>Valor</th><th>Tipo</th><th>Forma de pgto.</th><th>Categoria</th><th>Descrição</th>
             </tr></thead>
             <tbody>${grupo.map(([l, i]) => _renderLinhaImportCSV(l, i, false, comCheckboxIgnorar)).join('')}</tbody>
@@ -364,7 +364,7 @@ function renderImportCSV() {
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">
             <thead><tr>
-                <th><input type="checkbox" id="importCsvPularTudo" title="Marcar/desmarcar todas pra pular" ${suspeitas.every(([l]) => l.pularDuplicata) ? 'checked' : ''}> Pular?</th>
+                <th><input type="checkbox" id="importCsvPularTudo" name="pular-tudo" aria-label="Marcar ou desmarcar todas pra pular" title="Marcar/desmarcar todas pra pular" ${suspeitas.every(([l]) => l.pularDuplicata) ? 'checked' : ''}> Pular?</th>
                 <th>Data</th><th>Valor</th><th>Tipo</th><th>Forma de pgto.</th><th>Categoria</th><th>Descrição</th>
             </tr></thead>
             <tbody>${suspeitas.map(([l, i]) => _renderLinhaImportCSV(l, i, true)).join('')}</tbody>
@@ -556,13 +556,13 @@ function _renderLinhaImportCSV(l, i, comCheckboxPular = false, comCheckboxIgnora
 
     return `
     <tr class="${pronta ? '' : 'import-csv-linha-revisar'}">
-        ${comCheckboxPular ? `<td><input type="checkbox" data-import-pular-dup="${i}" ${l.pularDuplicata ? 'checked' : ''}></td>` : ''}
-        ${comCheckboxIgnorar ? `<td><input type="checkbox" data-import-ignorar="${i}" title="Não importar esta linha" ${l.ignorarManual ? 'checked' : ''}></td>` : ''}
+        ${comCheckboxPular ? `<td><input type="checkbox" data-import-pular-dup="${i}" name="pular-dup-${i}" aria-label="Pular esta duplicata" ${l.pularDuplicata ? 'checked' : ''}></td>` : ''}
+        ${comCheckboxIgnorar ? `<td><input type="checkbox" data-import-ignorar="${i}" name="ignorar-${i}" aria-label="Não importar esta linha" title="Não importar esta linha" ${l.ignorarManual ? 'checked' : ''}></td>` : ''}
         <td>${l.dataISO ? l.dataISO.split('-').reverse().join('/') : '?'}</td>
         <td>${formatarMoeda(l.valor)}</td>
         <td><span class="chip-tipo chip-tipo--${l.tipo}">${l.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
         <td>
-            <select data-import-metodo="${i}">
+            <select data-import-metodo="${i}" name="metodo-${i}" aria-label="Forma de pagamento">
                 <option value="">Selecione...</option>
                 ${metodos.map(m => {
                     const rot = rotuloMetodo(m);
@@ -571,7 +571,7 @@ function _renderLinhaImportCSV(l, i, comCheckboxPular = false, comCheckboxIgnora
             </select>
         </td>
         <td>
-            <select data-import-categoria="${i}">
+            <select data-import-categoria="${i}" name="categoria-${i}" aria-label="Categoria">
                 <option value="">Selecione...</option>
                 ${categorias.map(c => `<option value="${c}" ${_rotuloCategoriaResolvida(l) === c ? 'selected' : ''}>${c}</option>`).join('')}
                 ${l.categoriaCSV ? `<option value="__nova__" ${_rotuloCategoriaResolvida(l) === '__nova__' ? 'selected' : ''}>+ criar categoria "${l.categoriaCSV}"</option>` : ''}

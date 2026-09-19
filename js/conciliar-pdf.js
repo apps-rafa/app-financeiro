@@ -880,7 +880,7 @@ function _renderTabelaTodasLinhas(p) {
             <thead><tr><th>Ignorar</th><th>Data</th><th>Valor</th><th>Tipo</th><th>Descrição</th></tr></thead>
             <tbody>${p.linhas.map((l, i) => `
                 <tr>
-                    <td><input type="checkbox" id="conciliarIgnorar-${p.id}-${i}" ${l.ignorar ? 'checked' : ''}></td>
+                    <td><input type="checkbox" id="conciliarIgnorar-${p.id}-${i}" name="ignorar-${i}" aria-label="Ignorar esta linha na comparação" ${l.ignorar ? 'checked' : ''}></td>
                     <td>${l.dataISO.split('-').reverse().join('/')}</td>
                     <td>${formatarMoeda(l.valor)}</td>
                     <td><span class="chip-tipo chip-tipo--${l.tipo}">${l.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>

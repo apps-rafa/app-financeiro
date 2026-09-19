@@ -52,16 +52,16 @@ async function carregarAbaMenus() {
         <details class="cat-coluna" data-cat-tipo="entradas" ${estadoAberto.entradas ? 'open' : ''}>
           <summary class="cat-coluna-topo">
             <span class="cat-subgrupo-titulo"><svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg> Receita</span>
-            <button type="button" class="h3-add h3-az" onclick="event.preventDefault();event.stopPropagation();ordenarAlfabetico('categoriasReceita')" title="Ordenar de A a Z">A→Z</button>
-            <button type="button" class="h3-add" onclick="event.preventDefault();event.stopPropagation();abrirNovaCategoria('entradas')" title="Nova categoria de receita">+</button>
+            <span role="button" tabindex="0" class="h3-add h3-az" onclick="event.preventDefault();event.stopPropagation();ordenarAlfabetico('categoriasReceita')" title="Ordenar de A a Z">A→Z</span>
+            <span role="button" tabindex="0" class="h3-add" onclick="event.preventDefault();event.stopPropagation();abrirNovaCategoria('entradas')" title="Nova categoria de receita">+</span>
           </summary>
           <div class="menu-list" id="categoriasReceitaList"></div>
         </details>
         <details class="cat-coluna" data-cat-tipo="saidas" ${estadoAberto.saidas ? 'open' : ''}>
           <summary class="cat-coluna-topo">
             <span class="cat-subgrupo-titulo"><svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--despesa-text)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg> Despesa</span>
-            <button type="button" class="h3-add h3-az" onclick="event.preventDefault();event.stopPropagation();ordenarAlfabetico('categoriasDespesa')" title="Ordenar de A a Z">A→Z</button>
-            <button type="button" class="h3-add" onclick="event.preventDefault();event.stopPropagation();abrirNovaCategoria('saidas')" title="Nova categoria de despesa">+</button>
+            <span role="button" tabindex="0" class="h3-add h3-az" onclick="event.preventDefault();event.stopPropagation();ordenarAlfabetico('categoriasDespesa')" title="Ordenar de A a Z">A→Z</span>
+            <span role="button" tabindex="0" class="h3-add" onclick="event.preventDefault();event.stopPropagation();abrirNovaCategoria('saidas')" title="Nova categoria de despesa">+</span>
           </summary>
           <div class="menu-list" id="categoriasDespesaList"></div>
         </details>
@@ -84,7 +84,7 @@ async function carregarAbaMenus() {
           <button type="button" class="mini-btn" data-fer-ano="-1">←</button>
           <span id="feriadosAno"></span>
           <button type="button" class="mini-btn" data-fer-ano="1">→</button>
-          <select id="feriadosUf" class="mini-btn" title="Feriados estaduais desta UF ao sincronizar">
+          <select id="feriadosUf" name="feriados-uf" aria-label="UF dos feriados estaduais" class="mini-btn" title="Feriados estaduais desta UF ao sincronizar">
             <option value="">UF…</option>
             ${(typeof UFS_BR !== 'undefined' ? UFS_BR : []).map(u => `<option value="${u}">${u}</option>`).join('')}
           </select>
@@ -162,7 +162,7 @@ async function carregarAbaMenus() {
 
         <div class="pluggy-toolbar">
           <div class="pluggy-toolbar-item pluggy-sync-periodo">
-            <select id="syncMesPluggy" class="pluggy-sync-mes"></select>
+            <select id="syncMesPluggy" name="sync-mes" aria-label="Mês a sincronizar" class="pluggy-sync-mes"></select>
             <button type="button" id="syncAnoMenos" class="pluggy-sync-ano-seta" title="Ano anterior">◂</button>
             <span id="syncAnoPluggy" class="pluggy-sync-ano-valor"></span>
             <button type="button" id="syncAnoMais" class="pluggy-sync-ano-seta" title="Próximo ano">▸</button>
@@ -630,9 +630,9 @@ function abrirEdicaoInline(row, id, tipo) {
     row.innerHTML = `
       <div class="item-edit">
         <div class="campo"><label>Nome</label>
-          <input type="text" class="edt-nome" value="${esc(item.nome)}"></div>
+          <input type="text" class="edt-nome" name="nome" aria-label="Nome" value="${esc(item.nome)}"></div>
         <div class="campo"><label>Descrição</label>
-          <input type="text" class="edt-desc" value="${esc(item.descricao)}"></div>
+          <input type="text" class="edt-desc" name="descricao" aria-label="Descrição" value="${esc(item.descricao)}"></div>
         <div class="item-edit-acoes">
           <button class="btn-add edt-salvar">Salvar</button>
           <button class="btn-icon edt-cancelar" title="Cancelar">✕</button>
@@ -653,14 +653,14 @@ function abrirEdicaoInline(row, id, tipo) {
   row.innerHTML = `
     <div class="item-edit">
       <div class="campo"><label>Banco ${ehCredito ? '' : '<span class="opt">(opcional)</span>'}</label>
-        <input type="text" class="edt-banco" value="${esc(item.banco)}"></div>
+        <input type="text" class="edt-banco" name="banco" aria-label="Banco" value="${esc(item.banco)}"></div>
       ${ehCredito ? `
         <div class="campo"><label>Vencimento (dia)</label>
-          <input type="text" class="edt-venc" inputmode="numeric" maxlength="2" value="${item.diaVencimento || ''}"></div>
+          <input type="text" class="edt-venc" name="vencimento" aria-label="Dia de vencimento" inputmode="numeric" maxlength="2" value="${item.diaVencimento || ''}"></div>
         <div class="campo"><label>Fechamento (dia) <span class="opt">(opcional)</span></label>
-          <input type="text" class="edt-fech" inputmode="numeric" maxlength="2" value="${item.diaFechamento || ''}"></div>
+          <input type="text" class="edt-fech" name="fechamento" aria-label="Dia de fechamento" inputmode="numeric" maxlength="2" value="${item.diaFechamento || ''}"></div>
         <div class="campo"><label>Melhor dia <span class="opt">(opcional)</span></label>
-          <input type="text" class="edt-melhor" inputmode="numeric" maxlength="2" value="${item.melhorDiaCompra || ''}"></div>
+          <input type="text" class="edt-melhor" name="melhor-dia" aria-label="Melhor dia de compra" inputmode="numeric" maxlength="2" value="${item.melhorDiaCompra || ''}"></div>
       ` : ''}
       <div class="item-edit-acoes">
         <button class="btn-add edt-salvar">Salvar</button>
