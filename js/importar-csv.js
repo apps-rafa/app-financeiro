@@ -18,6 +18,12 @@ let estadoImportCSV = null;
  *  cartão. Só quando a planilha traz apenas o dia (sem mês/ano) vale o mês de
  *  competência da tela + dia de corte. */
 function _competenciaDaLinhaCSV(l) {
+    if (l.competenciaEditada) return l.competenciaEditada;
+    return _competenciaSugeridaCSV(l);
+}
+
+/** Sugestão (sem a escolha manual): pela data + fechamento do cartão. */
+function _competenciaSugeridaCSV(l) {
     if (!l.dataCompletaISO) return _competenciaAtualISO();
     const metodoObj = ((estadoApp.menus && estadoApp.menus.metodos) || []).find(m => rotuloMetodo(m) === l.metodoResolvido);
     const fechamento = metodoObj && metodoObj.metodoKind === 'Crédito' ? metodoObj.diaFechamento : null;
@@ -384,7 +390,7 @@ function renderImportCSV() {
     // Mesmo layout do Open Finance (js/revisao-importacao.js): grupo →
     // subgrupos Despesas/Receitas → tabela X/Data/Valor/Forma de pgto./
     // Categoria/Descrição (editável).
-    const colunas = ['Data', 'Valor', 'Forma de pgto.', 'Categoria', 'Descrição'];
+    const colunas = ['Data', 'Valor', 'Forma de pgto.', 'Categoria', 'Mês', 'Descrição'];
     const grupo = (id, titulo, itens, nota = '', padraoAberto = true) => htmlGrupoRevisao({
         id, titulo, abertos, padraoAberto, itens, nota,
         tipoDe: ([l]) => l.tipo, colunas,
@@ -401,7 +407,7 @@ function renderImportCSV() {
         tipoDe: ([l]) => l.tipo, colunas,
         htmlLinha: ([l]) => htmlLinhaRevisao({
             dataISO: l.dataISO, valor: l.valor, celulaAcao: '',
-            celulasMeio: `<td>${escAttrRevisao(l.metodoResolvido || l.metodoCSV || '')}</td><td>${escAttrRevisao(_rotuloCategoriaResolvida(l) || l.categoriaCSV || '')}</td>`,
+            celulasMeio: `<td>${escAttrRevisao(l.metodoResolvido || l.metodoCSV || '')}</td><td>${escAttrRevisao(_rotuloCategoriaResolvida(l) || l.categoriaCSV || '')}</td><td>${competenciaParaBR ? competenciaParaBR(_competenciaDaLinhaCSV(l)) : ''}</td>`,
             descricao: _descricaoCSV(l),
         }),
     });
@@ -490,6 +496,11 @@ function renderImportCSV() {
             _renderImportCSVPreservandoScroll();
         });
     });
+    sec.querySelectorAll('[data-import-competencia]').forEach(sel => {
+        sel.addEventListener('change', e => {
+            st.linhas[parseInt(e.target.dataset.importCompetencia, 10)].competenciaEditada = e.target.value;
+        });
+    });
     // Descrição editável: guarda à parte (descricaoEditada) — a original
     // continua valendo pra detectar duplicata, e vai em dadosOriginais.
     // Sem re-render (senão o campo perde o foco).
@@ -555,6 +566,20 @@ function _rotuloCategoriaResolvida(l) {
     return typeof l.categoriaResolvida === 'object' ? `__nova__` : l.categoriaResolvida;
 }
 
+/** Select de competência (mês da fatura/lançamento): sugestão pela data +
+ *  fechamento, mas o usuário corrige com um clique quando o fechamento real
+ *  do cartão foi diferente do cadastrado. */
+function _htmlSelectCompetenciaCSV(l, i, dis) {
+    const atual = _competenciaDaLinhaCSV(l);
+    const [a, m] = atual.slice(0, 7).split('-').map(Number);
+    const opcoes = [-2, -1, 0, 1, 2].map(d => {
+        const dt = new Date(a, m - 1 + d, 1);
+        const v = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-01`;
+        return `<option value="${v}" ${v === atual ? 'selected' : ''}>${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getFullYear()).slice(2)}</option>`;
+    }).join('');
+    return `<select data-import-competencia="${i}" name="competencia-${i}" aria-label="Mês de competência" title="Mês de competência (sugerido pela data e pelo fechamento do cartão)" ${dis}>${opcoes}</select>`;
+}
+
 function _renderLinhaImportCSV(l, i) {
     const ignorada = _ignoradaCSV(l);
     const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
@@ -585,7 +610,8 @@ function _renderLinhaImportCSV(l, i) {
                 ${categorias.map(c => `<option value="${c}" ${_rotuloCategoriaResolvida(l) === c ? 'selected' : ''}>${c}</option>`).join('')}
                 ${l.categoriaCSV ? `<option value="__nova__" ${_rotuloCategoriaResolvida(l) === '__nova__' ? 'selected' : ''}>+ criar categoria "${l.categoriaCSV}"</option>` : ''}
             </select>
-        </td>`,
+        </td>
+        <td>${_htmlSelectCompetenciaCSV(l, i, dis)}</td>`,
         editavel: true, descricao: _descricaoCSV(l), placeholderDesc: l.categoriaCSV || '',
     });
 }
