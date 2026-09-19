@@ -222,12 +222,16 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Não autenticado" }, 401);
     }
 
-    // dateFrom opcional vindo do client (controle "Buscar últimos N dia(s)/
-    // mês(es)/ano(s)" na aba Revisão) — quando informado, ignora o
-    // ultimo_sync de cada conta e busca a partir dessa data pra todas.
-    // Sem isso, apagar os lançamentos importados não adianta: o próximo
-    // sync ainda parte do último ultimo_sync (recente) e não traz nada.
+    // dateFrom/dateTo opcionais vindos do client (seletor "Desde" mês/ano
+    // na aba Revisão) — quando informados, ignora o ultimo_sync de cada
+    // conta e busca só dentro dessa janela pra todas. Sem dateFrom, apagar
+    // os lançamentos importados não adianta: o próximo sync ainda parte do
+    // último ultimo_sync (recente) e não traz nada. dateTo é o que faz o
+    // seletor filtrar SÓ o mês escolhido (ex. AGO/2026), em vez de "a
+    // partir de AGO/2026 até hoje" — sem ele, qualquer mês mais recente que
+    // já tenha sido sincronizado também vinha junto.
     let dateFromOverride: string | null = null;
+    let dateToOverride: string | null = null;
     // Botão "Rendimentos" na aba Revisão (Agrupar/Ignorar) — em vez de uma
     // linha por transação de rendimento/dividendo (ex.: descrição
     // "Rendimentos" de conta remunerada, que credita quase todo dia e enche
@@ -239,6 +243,9 @@ Deno.serve(async (req: Request) => {
       const body = await req.json();
       if (typeof body?.dateFrom === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.dateFrom)) {
         dateFromOverride = body.dateFrom;
+      }
+      if (typeof body?.dateTo === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.dateTo)) {
+        dateToOverride = body.dateTo;
       }
       if (body?.modoRendimentos === "ignorar") {
         modoRendimentos = "ignorar";
@@ -282,6 +289,23 @@ Deno.serve(async (req: Request) => {
       .eq("tipo", "Categoria")
       .eq("status", "Ativo");
 
+    // Lançamentos já criados a partir do Pluggy antes (dados_originais leva
+    // o pluggy_transaction_id original) — usado pra reconhecer, ao
+    // ressincronizar um período já processado (ex.: depois de "Limpar" a
+    // fila de revisão), que aquela transação já virou um lançamento de
+    // verdade: em vez de pedir revisão de novo, a linha nasce direto como
+    // 'confirmada' e aparece no histórico.
+    const { data: transacoesPluggy } = await supabaseClient
+      .from("transacoes")
+      .select("id, dados_originais")
+      .eq("origem", "pluggy")
+      .not("dados_originais", "is", null);
+    const transacaoIdPorPluggyId = new Map<string, number>();
+    for (const t of transacoesPluggy ?? []) {
+      const ptid = (t.dados_originais as { pluggy_transaction_id?: string } | null)?.pluggy_transaction_id;
+      if (ptid) transacaoIdPorPluggyId.set(ptid, t.id);
+    }
+
     const apiKey = await getPluggyApiKey();
 
     // "Sincronizar agora" pede pra Pluggy buscar dados novos na instituição
@@ -319,7 +343,8 @@ Deno.serve(async (req: Request) => {
         // ENDPOINT_DEPRECATED) — /v2/transactions pagina por cursor: cada
         // resposta traz "next" com a query string pronta pra próxima página.
         let path: string | null =
-          `/v2/transactions?accountId=${conta.account_id}&dateFrom=${dateFrom}`;
+          `/v2/transactions?accountId=${conta.account_id}&dateFrom=${dateFrom}` +
+          (dateToOverride ? `&dateTo=${dateToOverride}` : "");
         while (path) {
           const resp = await pluggyGet(path, apiKey);
           for (const t of resp.results ?? []) {
@@ -354,6 +379,7 @@ Deno.serve(async (req: Request) => {
               continue;
             }
             const descricaoBanco = t.description || t.descriptionRaw || "";
+            const transacaoJaExistente = transacaoIdPorPluggyId.get(t.id);
             linhas.push({
               pluggy_transaction_id: t.id,
               conta_id: conta.id,
@@ -364,7 +390,8 @@ Deno.serve(async (req: Request) => {
               categoria_pluggy: categoriaTraduzida,
               categoria_sugerida: sugerirCategoria(categoriaTraduzida, descricaoBanco, tipo, categoriasApp ?? []),
               metodo_sugerido: conta.metodo_id ?? null,
-              status: "pendente",
+              status: transacaoJaExistente ? "confirmada" : "pendente",
+              transacao_id: transacaoJaExistente ?? null,
               user_id: user.id,
             });
           }

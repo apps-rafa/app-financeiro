@@ -483,6 +483,14 @@ function calcularDateFromSyncPluggy() {
     return `${_syncPluggy.ano}-${String(_syncPluggy.mes).padStart(2, '0')}-01`;
 }
 
+/** Último dia do mês escolhido no seletor "Desde" — sem isso o sync trazia
+ *  tudo "a partir daquele mês até hoje" (ex.: escolher AGO trazia AGO E
+ *  SET), em vez de só o mês selecionado. */
+function calcularDateToSyncPluggy() {
+    const ultimoDia = new Date(_syncPluggy.ano, _syncPluggy.mes, 0).getDate();
+    return `${_syncPluggy.ano}-${String(_syncPluggy.mes).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
+}
+
 /** Caixa "Total" ao lado do seletor de mês/ano — soma (por tipo) só os
  *  lançamentos pendentes de revisão cuja DATA cai no mês/ano escolhido ali
  *  (não é o total do app inteiro, é só da fila de revisão do Pluggy). */
@@ -505,7 +513,10 @@ async function sincronizarPluggyAgora() {
     try {
         const dateFrom = calcularDateFromSyncPluggy();
         const body = { modoRendimentos: _modoRendimentosPluggy() };
-        if (dateFrom) body.dateFrom = dateFrom;
+        if (dateFrom) {
+            body.dateFrom = dateFrom;
+            body.dateTo = calcularDateToSyncPluggy();
+        }
         const { data, error } = await sb.functions.invoke('pluggy-sync', { body });
         if (error) throw error;
         const novas = data?.novas || 0;
@@ -523,8 +534,13 @@ async function sincronizarPluggyAgora() {
 }
 
 /** Botão "Limpar tudo": mesmo padrão de 2 cliques usado no resto do app
- *  (sem confirm() nativo) — apaga de vez as linhas 'pendente' e 'ignorada'.
- *  Preserva as 'confirmada' (já viraram lançamento de verdade). */
+ *  (sem confirm() nativo) — apaga TODA a fila de revisão do Pluggy,
+ *  pendente/ignorada/confirmada. Isso não apaga o lançamento de verdade
+ *  já criado (tabela transacoes é separada) — só o "recibo" da revisão;
+ *  ressincronizar depois o mesmo período reconhece que aquela transação
+ *  já virou um lançamento (via pluggy_transaction_id salvo em
+ *  transacoes.dados_originais) e recoloca ela direto no histórico, sem
+ *  pedir revisão de novo (ver pluggy-sync). */
 function onClickLimparRevisaoPluggy(e) {
     const btn = e.currentTarget;
     if (btn.dataset.armed) {
@@ -549,7 +565,7 @@ async function limparFilaRevisaoPluggy(btn) {
     const original = '🧹 Limpar tudo';
     btn.disabled = true;
     try {
-        const { error } = await sb.from('transacoes_importadas').delete().in('status', ['pendente', 'ignorada']);
+        const { error } = await sb.from('transacoes_importadas').delete().in('status', ['pendente', 'ignorada', 'confirmada']);
         if (error) throw error;
         mostrarNotificacao('Fila de revisão limpa', 'sucesso');
         await carregarRevisaoPluggy();
