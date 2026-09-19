@@ -178,6 +178,7 @@ async function carregarAbaMenus() {
               <button type="button" class="pluggy-toggle-opt active" id="btnRendimentosAgrupar" data-rendimentos="agrupar">Agrupar</button>
               <button type="button" class="pluggy-toggle-opt" id="btnRendimentosIgnorar" data-rendimentos="ignorar">Ignorar</button>
             </div>
+            <div class="pluggy-contas-sync" id="pluggyContasSync" hidden></div>
             <div class="pluggy-toolbar-btns">
               <button type="button" class="btn-submit pluggy-toolbar-btn" id="btnSincronizarPluggy">↻ Sincronizar</button>
               <button type="button" class="mini-btn pluggy-toolbar-btn" id="btnLimparRevisaoPluggy">🧹 Limpar</button>

@@ -19,16 +19,52 @@ const PLUGGY_CONNECTOR_IDS = [2, 200];
 
 let _PluggyConnectCtor = null;
 // Estado aberto/fechado dos 2 grupos de contas — sobrevive a re-renders
-// (ex.: depois de (des)conectar uma conta). "Conectadas" começa aberto,
-// "Desconectadas" começa fechado.
-const _abertosPluggyContas = { conectadas: true, desconectadas: false };
+// (ex.: depois de (des)conectar uma conta). Os dois começam fechados.
+const _abertosPluggyContas = { conectadas: false, desconectadas: false };
 
-/** Título de exibição de uma conta Pluggy — nunca o nome do conector (ex.:
- *  "MeuPluggy" agrega várias instituições reais e não diz nada sozinho). */
+/** Banco de uma conta Pluggy. O conector "MeuPluggy" agrega vários bancos e
+ *  não diz qual é o de cada conta, então a fonte mais confiável é o banco do
+ *  "Método do app" ligado à conta; depois o nome de marketing sem o "(...)".
+ *  Mesma regra do telegram-webhook (tituloContaPluggyDetalhado). */
+function _bancoContaPluggy(c) {
+    const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
+    const metodo = c.metodo_id ? metodos.find(m => m.id === c.metodo_id) : null;
+    const marketing = c.marketing_name || '';
+    const bruto = (metodo && metodo.banco)
+        || (marketing ? marketing.replace(/\s*\([^)]*\)\s*$/, '') : null)
+        || (c.nome_instituicao && !/meupluggy/i.test(c.nome_instituicao) ? c.nome_instituicao : null);
+    if (!bruto) return null;
+    // "Nu Pagamentos S.A. - Instituição de Pagamento" -> "Nubank"
+    if (/^nu pagamentos/i.test(bruto.trim())) return 'Nubank';
+    return bruto.replace(/\s*\([^)]*\)\s*$/, '').trim();
+}
+
+/** Nome padrão da conta ("Banco: Tipo") — o mesmo do Telegram:
+ *    Mercado Pago: Conta Pré-paga
+ *    Bradesco: Cartão de crédito VISA INFINITE (final 1525) */
 function tituloContaPluggy(c) {
-    if (c.marketing_name) return c.marketing_name;
-    if (c.tipo_conta === 'CREDIT') return 'Cartão de crédito';
-    return c.nome_conta || 'Conta bancária';
+    const banco = _bancoContaPluggy(c);
+    if (c.tipo_conta === 'CREDIT') {
+        const marca = (c.marca_cartao || '').toUpperCase();
+        const nivel = (c.nome_conta || '').toUpperCase(); // "VISA INFINITE", "PLATINUM" ou o próprio banco
+        let detalhe;
+        if (nivel && marca && nivel.includes(marca)) detalhe = nivel;
+        else if (nivel && banco && nivel === banco.toUpperCase()) detalhe = marca;
+        else detalhe = [marca, nivel].filter(Boolean).join(' ');
+        const cartao = `Cartão de crédito${detalhe ? ' ' + detalhe : ''}${c.numero_mascarado ? ` (final ${c.numero_mascarado})` : ''}`;
+        return banco ? `${banco}: ${cartao}` : cartao;
+    }
+    const entreParenteses = (c.marketing_name || '').match(/\(([^)]+)\)\s*$/)?.[1];
+    const tipo = entreParenteses || c.nome_conta || 'Conta bancária';
+    return banco ? `${banco}: ${tipo}` : tipo;
+}
+
+/** Nome curto pros botões de escolher contas do sync: "Bradesco: Crédito",
+ *  "Mercado Pago: Conta". */
+function tituloContaPluggyCurto(c) {
+    const tipo = c.tipo_conta === 'CREDIT' ? 'Crédito' : 'Conta';
+    const banco = _bancoContaPluggy(c);
+    return banco ? `${banco}: ${tipo}` : tipo;
 }
 
 // Mesma heurística do servidor (supabase/functions/pluggy-sync e
@@ -152,11 +188,13 @@ async function carregarContasConectadas() {
         container.innerHTML = '<p class="empty-text">Nenhuma conta conectada ainda</p>';
         container.onclick = null;
         container.onchange = null;
+        _renderSeletorContasSyncPluggy([]);
         return;
     }
 
     const conectadas = data.filter(c => c.status !== 'desconectado');
     const desconectadas = data.filter(c => c.status === 'desconectado');
+    _renderSeletorContasSyncPluggy(conectadas);
 
     const grupo = (id, titulo, lista, aberto) => !lista.length ? '' : `
         <details class="pluggy-contas-grupo" data-grupo-id="${id}" ${aberto ? 'open' : ''}>
@@ -178,6 +216,36 @@ async function carregarContasConectadas() {
     container.onchange = onContasConectadasChange;
 }
 
+/** Botões (uma por conta conectada) que escolhem quais contas entram no
+ *  "Sincronizar" — fica entre a linha de mês/Total/Rendimentos e a de
+ *  Sincronizar/Limpar. Liga/desliga a mesma coluna `sincronizar` que o
+ *  pluggy-sync já respeita. */
+function _renderSeletorContasSyncPluggy(conectadas) {
+    const box = document.getElementById('pluggyContasSync');
+    if (!box) return;
+    box.hidden = !conectadas.length;
+    // Dois cartões do mesmo banco dariam o mesmo nome curto — desempata
+    // com o final do cartão.
+    const nomes = conectadas.map(tituloContaPluggyCurto);
+    box.innerHTML = conectadas.map((c, i) => {
+        const repetido = nomes.filter(n => n === nomes[i]).length > 1;
+        const nome = repetido && c.numero_mascarado ? `${nomes[i]} (${String(c.numero_mascarado).slice(-4)})` : nomes[i];
+        // Classe própria (não .pluggy-toggle-opt): o toggle de Rendimentos
+        // consulta/limpa TODOS os .pluggy-toggle-opt do documento.
+        return `<button type="button" class="pluggy-conta-sync ${c.sincronizar ? 'active' : ''}"
+            data-id="${c.id}" data-sincronizar="${c.sincronizar ? '1' : '0'}"
+            title="${c.sincronizar ? 'Incluída' : 'Fora'} no Sincronizar — clique pra ${c.sincronizar ? 'tirar' : 'incluir'}">${nome}</button>`;
+    }).join('');
+    box.onclick = e => {
+        const btn = e.target.closest('button[data-id]');
+        if (!btn) return;
+        const ligar = btn.dataset.sincronizar !== '1';
+        btn.classList.toggle('active', ligar);
+        btn.dataset.sincronizar = ligar ? '1' : '0';
+        associarSincronizarConta(Number(btn.dataset.id), ligar);
+    };
+}
+
 /** Card de uma conta conectada (grupo "Conectadas"/"Desconectadas"). */
 function gerarHTMLContaPluggy(c) {
     const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
@@ -190,23 +258,17 @@ function gerarHTMLContaPluggy(c) {
         ? `último sync: ${new Date(c.ultimo_sync).toLocaleString('pt-BR')}`
         : 'ainda não sincronizada';
 
-    const detalhesConta = [
-        c.nome_conta,
-        c.numero_mascarado ? `final ${c.numero_mascarado}` : null,
-        c.marca_cartao,
-    ].filter(Boolean).join(' · ');
     const saldoTxt = c.tipo_conta === 'BANK' && typeof c.saldo === 'number'
         ? `saldo: ${formatarMoeda(c.saldo)}` : '';
 
+    // O nome padrão já leva banco, bandeira/nível e final do cartão — não
+    // precisa de linha de detalhe nem de chip com o banco.
     return `
     <div class="menu-item ativo" data-conta-id="${c.id}">
         <div class="item-info">
             <div class="item-nome">${tituloContaPluggy(c)}
-                ${c.banco_origem && c.banco_origem !== tituloContaPluggy(c)
-                    ? `<span class="chip chip--neutro">${c.banco_origem}</span>` : ''}
                 ${statusTag}
             </div>
-            ${detalhesConta ? `<div class="item-descricao">${detalhesConta}</div>` : ''}
             <div class="item-descricao">${ultimoSync}${saldoTxt ? ' · ' + saldoTxt : ''}</div>
             <div class="item-descricao campo-metodo-conta">
                 <label for="metodo-conta-${c.id}">Método do app:</label>
@@ -218,13 +280,6 @@ function gerarHTMLContaPluggy(c) {
                     <button type="button" class="btn-mini-add" data-act="add-metodo" title="Novo método">+</button>
                 </div>
             </div>
-            ${!desconectada ? `
-            <div class="item-descricao">
-                <button type="button" class="pluggy-toggle-opt ${c.sincronizar ? 'active' : ''}"
-                    data-act="sincronizar-conta" data-id="${c.id}" data-sincronizar="${c.sincronizar ? '1' : '0'}">
-                    Incluir na sincronização
-                </button>
-            </div>` : ''}
         </div>
         <div class="item-actions">
             ${desconectada
@@ -249,14 +304,6 @@ function onContasConectadasClick(e) {
     const btnReconectar = e.target.closest('[data-act="reconectar-conta"]');
     if (btnReconectar) {
         reconectarConta(Number(btnReconectar.dataset.id));
-        return;
-    }
-    const btnSync = e.target.closest('[data-act="sincronizar-conta"]');
-    if (btnSync) {
-        const ligar = btnSync.dataset.sincronizar !== '1';
-        btnSync.classList.toggle('active', ligar);
-        btnSync.dataset.sincronizar = ligar ? '1' : '0';
-        associarSincronizarConta(Number(btnSync.dataset.id), ligar);
         return;
     }
     const btnApagar = e.target.closest('[data-act="apagar-conta"]');
@@ -668,6 +715,11 @@ async function carregarRevisaoPluggy() {
     for (const id of [..._ignoradasPluggy]) if (!_revisaoPluggyCache[id]) _ignoradasPluggy.delete(id);
     const prontasAtivas = prontas.filter(i => !_ignoradasPluggy.has(i.id));
     const totalIgnoradas = _ignoradasPluggy.size;
+    // "Cancelar" só desfaz alterações manuais — sem nenhuma, não tem o que
+    // desfazer e ficava parecendo um botão que não faz nada.
+    const temAlteracoes = totalIgnoradas > 0
+        || Object.keys(_categoriaEscolhidaPluggy).length > 0
+        || Object.keys(_descricaoEditadaPluggy).length > 0;
 
     // Colunas X/Data/Valor/Categoria/Descrição. O tipo (despesa/receita)
     // vira subgrupo dentro de cada grupo — some a coluna "Tipo" e o sinal
@@ -722,7 +774,9 @@ async function carregarRevisaoPluggy() {
             <button type="button" class="btn-submit" id="btnImportarProntasPluggy" ${prontasAtivas.length || totalIgnoradas ? '' : 'disabled'}>
                 Importar ${prontasAtivas.length} lançamento${prontasAtivas.length === 1 ? '' : 's'}${totalIgnoradas ? ` · descartar ${totalIgnoradas}` : ''}
             </button>
-            <button type="button" class="mini-btn" id="btnCancelarProntasPluggy" ${prontas.length || totalIgnoradas ? '' : 'disabled'}>Cancelar</button>
+            <button type="button" class="mini-btn" id="btnCancelarProntasPluggy"
+                title="Desfaz o que você mudou aqui (categorias escolhidas, descrições editadas e X) — volta tudo ao que veio da Pluggy. Não apaga nada."
+                ${temAlteracoes ? '' : 'disabled'}>Cancelar</button>
         </div>
         <div id="pluggyImportProgresso" class="import-csv-progresso" hidden></div>`,
         tabelaHistorico,
@@ -890,6 +944,7 @@ function onRevisaoPluggyChange(e) {
     } else if (e.target.dataset.campo === 'descricao') {
         // Só guarda — sem re-render (senão o campo perde o foco/cursor).
         _descricaoEditadaPluggy[id] = e.target.value;
+        document.getElementById('btnCancelarProntasPluggy')?.removeAttribute('disabled');
     }
 }
 
