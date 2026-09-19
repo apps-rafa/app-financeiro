@@ -618,6 +618,8 @@
    caixa, select com a mesma altura de qualquer outro select do app —
    antes a legenda ficava espremida DENTRO da caixa do select, ilegível). */
 .menu-section[data-sub="importar"] { --campo-import-h: 2.3rem; }
+.menu-section[data-sub="importar"] .import-formato-group { margin-top: 0; margin-bottom: 0; }
+.menu-section[data-sub="importar"] .import-formato-group select { height: var(--campo-import-h); box-sizing: border-box; }
 .import-formato-group { margin: .4rem 0; }
 /* Formato + o que cada formato renderiza dentro de #importCsvConteudo/
    #importPdfConteudo (upload, mês de competência...) numa linha só, cada
@@ -644,7 +646,8 @@
 .import-csv-contexto {
   flex: 1 1 12rem;
 }
-.import-csv-contexto > * { flex: 1 1 9rem; }
+.import-csv-contexto > .import-csv-campo { flex: 1 1 9rem; }
+.import-csv-contexto > .import-csv-campo:last-child { flex: 0 1 auto; }
 /* 2 níveis de wrapper: #importCsvConteudo > #secImportarCSV/#secConciliarCSV
    (e o par em PDF) > o HTML de verdade — os 2 precisam ser "transparentes"
    pro layout, senão o div do meio já conta como 1 bloco só na linha. */
@@ -737,66 +740,46 @@
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+/* Linha de contexto do CSV (mês de competência / dia de corte / trocar
+   arquivo): cada campo é uma coluna com o RÓTULO FORA e ACIMA da caixa — mesmo
+   estilo do rótulo "Formato" (.form-group label) — e todas as caixas (incl. o
+   select Formato) têm a MESMA altura (--campo-import-h), alinhadas pela base. */
 .import-csv-contexto {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-end;
+  gap: .6rem .8rem;
+}
+.import-csv-campo { display: flex; flex-direction: column; min-width: 0; }
+.import-csv-campo[hidden] { display: none; }
+.import-csv-campo-label {
+  display: inline-flex;
   align-items: center;
-  gap: .8rem;
-  padding: .6rem 0;
+  gap: .3rem;
+  margin-bottom: .25rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--dark);
+  font-size: .76rem;
 }
-/* Mesma caixa (borda+legenda dentro) do Formato/Mês de competência — "Dia
-   de corte" tinha a legenda numa linha própria ACIMA do campo, fora de
-   qualquer caixa, o que deixava essa coluna mais alta/deslocada que as
-   vizinhas. */
-.import-csv-contexto label {
+.import-csv-campo-caixa {
   box-sizing: border-box;
-  min-height: var(--campo-import-h);
+  width: 100%;
+  height: var(--campo-import-h);
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: .1rem;
-  padding: .2rem .5rem;
-  font-size: .68rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  border: 1px solid var(--border-strong, #D1D5DB);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-.import-csv-contexto input {
-  width: 46px;
-  padding: 0;
-  border: none;
-  background: transparent;
+  align-items: center;
+  padding: 0 .75rem;
   font-size: .85rem;
   font-weight: 700;
   color: var(--text);
-}
-.import-csv-contexto input:focus { outline: none; }
-/* "Mês de competência" não é mais editável (segue o mês em exibição no
-   topo do app) — mesma caixa/altura dos campos vizinhos, só que com cara
-   de valor fixo (fundo neutro, sem borda de input) em vez de campo. */
-.import-csv-competencia {
-  box-sizing: border-box;
-  min-height: var(--campo-import-h);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: .1rem;
-  padding: .2rem .6rem;
-  font-size: .68rem;
-  font-weight: 600;
-  color: var(--text-muted);
   border: 1px solid var(--border-strong, #D1D5DB);
   border-radius: var(--radius-sm);
   background: var(--surface);
 }
-.import-csv-competencia b { font-size: .85rem; color: var(--text); font-weight: 700; }
-.import-csv-contexto #importCsvTrocarArquivo {
-  box-sizing: border-box;
-  min-height: var(--campo-import-h);
-  padding: .35rem .6rem;
-}
+input.import-csv-campo-caixa { -moz-appearance: textfield; }
+input.import-csv-campo-caixa:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+/* Valor fixo (o mês segue o topo do app) — fundo neutro em vez de campo. */
+.import-csv-competencia { background: var(--surface-2); }
+button.import-csv-campo-caixa { justify-content: center; font-size: .78rem; font-weight: 600; cursor: pointer; }
 .import-csv-label-linha { display: inline-flex; align-items: center; gap: .3rem; }
 
 /* ============ Pluggy (Configurações > Open Finance) ============ */
@@ -1143,7 +1126,18 @@
   list-style: none;
   user-select: none;
 }
-.import-csv-grupo[open] > .import-csv-grupo-titulo { margin-bottom: .5rem; border-bottom: 1px solid var(--border); }
+.import-csv-grupo[open] > .import-csv-grupo-titulo { margin-bottom: .3rem; border-bottom: 1px solid var(--border); }
+/* Grupo dentro de grupo (subgrupos Despesas/Receitas): sem sobra de
+   preenchimento — cada nível a mais tirava ~1,4rem de largura da tabela. */
+.import-csv-grupo .import-csv-grupo { padding: 0 .25rem .25rem; margin: .35rem 0; }
+.import-csv-grupo .import-csv-grupo > .import-csv-grupo-titulo { margin: 0 -.25rem; padding: .4rem .5rem; }
+.import-csv-grupo .import-csv-grupo[open] > .import-csv-grupo-titulo { margin-bottom: 0; }
+@media (max-width: 600px) {
+  .import-csv-grupo { padding: 0 .35rem .35rem; margin: .5rem 0; }
+  .import-csv-grupo-titulo { margin: 0 -.35rem; padding: .45rem .5rem; }
+  .import-csv-grupo .import-csv-grupo { padding: 0 .15rem .15rem; margin: .3rem 0; }
+  .import-csv-grupo .import-csv-grupo > .import-csv-grupo-titulo { margin: 0 -.15rem; padding: .35rem .45rem; }
+}
 .import-csv-grupo-titulo::-webkit-details-marker { display: none; }
 /* Seta troca de glifo (▸ fechado / ▾ aberto) — sem rotação nem transição
    (a regra global *:hover::before{transform:none!important} de

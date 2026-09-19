@@ -540,12 +540,30 @@ function renderConciliar(secId, modo) {
             await _recompararPDV(p);
             renderConciliar(secId, modo);
         });
-        (p.linhas || []).forEach((l, i) => {
-            document.getElementById(`conciliarIgnorar-${p.id}-${i}`)?.addEventListener('change', e => {
-                l.ignorar = e.target.checked;
-                _recompararPDV(p).then(() => renderConciliar(secId, modo));
-            });
-        });
+    });
+
+    // X (ignorar da comparação) e descrição editável — delegados na lista.
+    const porId = id => { const s = String(id), k = s.lastIndexOf(':'); return [estado.pdfs.find(x => x.id === s.slice(0, k)), parseInt(s.slice(k + 1), 10)]; };
+    lista.addEventListener('click', e => {
+        const btn = e.target.closest('[data-rev-x]');
+        if (!btn) return;
+        const [pdf, i] = porId(btn.dataset.revX);
+        const l = pdf?.linhas[i];
+        if (!l) return;
+        l.ignorar = !l.ignorar;
+        _recompararPDV(pdf).then(() => renderConciliar(secId, modo));
+    });
+    lista.addEventListener('change', e => {
+        const inp = e.target.closest('input[data-pdf-desc], input[data-pdf-fdesc]');
+        if (!inp) return;
+        if (inp.dataset.pdfDesc) {
+            const [pdf, i] = porId(inp.dataset.pdfDesc);
+            if (pdf?.linhas[i]) pdf.linhas[i].descricaoEditada = inp.value;
+        } else {
+            const [pdf, idx] = porId(inp.dataset.pdfFdesc);
+            const fm = pdf?.formatados.find(x => x.origemIdx === idx);
+            if (fm) fm.dados.descricao = inp.value.trim();
+        }
     });
 }
 
@@ -602,28 +620,28 @@ function _renderPdfEntrada(p, modo, abertos = {}, secId = '') {
             id: `${p.id}:formatados`, abertos,
             padraoAberto: p.formatados.length > 0,
             titulo: `📋 Lançamentos formatados (${p.formatados.length})`,
-            corpo: _renderTabelaFormatados(p, secId, modo)
+            corpo: _renderTabelaFormatados(p, secId, modo, abertos)
         })}
 
         ${_grupoColapsavelConciliar({
             id: `${p.id}:pdf`, abertos,
             padraoAberto: res.noPdfNaoNoApp.length > 0,
             titulo: `⚠️ No ${rotuloArquivo} mas não lançado no app (${res.noPdfNaoNoApp.length})`,
-            corpo: _renderTabelaLinhasPDF(p, res.noPdfNaoNoApp, secId, modo)
+            corpo: _renderTabelaLinhasPDF(p, res.noPdfNaoNoApp, secId, modo, abertos)
         })}
 
         ${_grupoColapsavelConciliar({
             id: `${p.id}:app`, abertos,
             padraoAberto: res.noAppNaoNoPdf.length > 0,
             titulo: `⚠️ Lançado no app mas não no ${rotuloArquivo} (${res.noAppNaoNoPdf.length})`,
-            corpo: _renderTabelaTransacoesApp(res.noAppNaoNoPdf)
+            corpo: _renderTabelaTransacoesApp(res.noAppNaoNoPdf, p, abertos)
         })}
 
         ${_grupoColapsavelConciliar({
             id: `${p.id}:todas`, abertos,
             padraoAberto: false,
-            titulo: `Todas as linhas do ${rotuloArquivo} (marque pra ignorar da comparação)`,
-            corpo: _renderTabelaTodasLinhas(p)
+            titulo: `Todas as linhas do ${rotuloArquivo} (X = ignorar da comparação)`,
+            corpo: _renderTabelaTodasLinhas(p, abertos)
         })}
     </div>`;
 }
@@ -641,31 +659,28 @@ function _grupoColapsavelConciliar({ id, abertos, padraoAberto, titulo, corpo })
         </details>`;
 }
 
-function _renderTabelaLinhasPDF(p, linhas, secId, modo) {
+/** Descrição que vale pra linha do arquivo (a editada na revisão, senão a lida). */
+function _descPDF(l) { return l.descricaoEditada !== undefined ? l.descricaoEditada : l.descricao; }
+
+function _renderTabelaLinhasPDF(p, linhas, secId, modo, abertos = {}) {
     if (!linhas.length) return `<p class="import-csv-nota">Nenhuma.</p>`;
-    return `
-    <div class="import-csv-tabela-wrap">
-        <table class="import-csv-tabela">
-            <thead><tr><th></th><th>Data</th><th>Valor</th><th>Tipo</th><th>Descrição</th></tr></thead>
-            <tbody>${linhas.map(l => {
-                const idx = p.linhas.indexOf(l);
-                const jaFormatado = p.formatados.some(f => f.origemIdx === idx);
-                const botao = jaFormatado
-                    ? `<button type="button" class="btn-mini-add btn-mini-add--ok" title="Já formatado — clique pra editar"
-                            onclick="_abrirLancarConciliar('${secId}','${modo}','${p.id}',${idx})">✓</button>`
-                    : `<button type="button" class="btn-mini-add" title="Formatar esse item pra lançar"
-                            onclick="_abrirLancarConciliar('${secId}','${modo}','${p.id}',${idx})">+</button>`;
-                return `
-                <tr>
-                    <td>${botao}</td>
-                    <td>${l.dataISO.split('-').reverse().join('/')}</td>
-                    <td>${formatarMoeda(l.valor)}</td>
-                    <td><span class="chip-tipo chip-tipo--${l.tipo}">${l.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
-                    <td class="import-csv-desc" title="${l.descricao}">${l.descricao}</td>
-                </tr>`;
-            }).join('')}</tbody>
-        </table>
-    </div>`;
+    return htmlSubgruposRevisao({
+        idPai: `${p.id}:pdf`, abertos, itens: linhas, tipoDe: l => l.tipo,
+        colunas: ['Data', 'Valor', 'Descrição'],
+        htmlLinha: l => {
+            const idx = p.linhas.indexOf(l);
+            const jaFormatado = p.formatados.some(f => f.origemIdx === idx);
+            const botao = jaFormatado
+                ? `<button type="button" class="btn-mini-add btn-mini-add--ok" title="Já formatado — clique pra editar"
+                        onclick="_abrirLancarConciliar('${secId}','${modo}','${p.id}',${idx})">✓</button>`
+                : `<button type="button" class="btn-mini-add" title="Formatar esse item pra lançar"
+                        onclick="_abrirLancarConciliar('${secId}','${modo}','${p.id}',${idx})">+</button>`;
+            return htmlLinhaRevisao({
+                celulaAcao: botao, dataISO: l.dataISO, valor: l.valor,
+                editavel: true, descricao: _descPDF(l), attrsDesc: `data-pdf-desc="${p.id}:${idx}"`,
+            });
+        },
+    });
 }
 
 /** "+" (ou "✓" se já formatado) de uma linha "no CSV/PDF mas não lançado
@@ -713,7 +728,7 @@ function _abrirLancarConciliar(secId, modo, pId, idx) {
             </p>
             <div class="form-group">
                 <label for="lcDescricao">Descrição</label>
-                <input type="text" id="lcDescricao" value="${esc(existente ? existente.dados.descricao : l.descricao)}">
+                <input type="text" id="lcDescricao" value="${esc(existente ? existente.dados.descricao : _descPDF(l))}">
             </div>
             <div class="form-group">
                 <label for="lcCategoria">Categoria</label>
@@ -790,25 +805,19 @@ function _abrirLancarConciliar(secId, modo, pId, idx) {
     }
 }
 
-function _renderTabelaFormatados(p, secId, modo) {
+function _renderTabelaFormatados(p, secId, modo, abertos = {}) {
     const prontos = p.formatados.length;
-    const linhas = p.formatados.length ? `
-    <div class="import-csv-tabela-wrap">
-        <table class="import-csv-tabela">
-            <thead><tr><th></th><th>Data</th><th>Valor</th><th>Tipo</th><th>Categoria</th><th>Parcelas</th><th>Descrição</th></tr></thead>
-            <tbody>${p.formatados.map(f => `
-                <tr>
-                    <td><button type="button" class="btn-icon btn-danger" title="Remover"
-                            onclick="_removerFormatado('${secId}','${modo}','${p.id}',${f.origemIdx})">🗑️</button></td>
-                    <td>${f.dados.data.split('-').reverse().join('/')}</td>
-                    <td>${formatarMoeda(f.dados.valor)}</td>
-                    <td><span class="chip-tipo chip-tipo--${f.dados.tipo}">${f.dados.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
-                    <td>${f.dados.categoria}</td>
-                    <td>${f.dados.parcelas > 1 ? `${f.dados.parcelas}x` : 'à vista'}</td>
-                    <td class="import-csv-desc" title="${f.dados.descricao}">${f.dados.descricao}</td>
-                </tr>`).join('')}</tbody>
-        </table>
-    </div>` : `<p class="import-csv-nota">Use o "+" nas linhas de cima pra formatar e acumular aqui.</p>`;
+    const linhas = p.formatados.length ? htmlSubgruposRevisao({
+        idPai: `${p.id}:formatados`, abertos, itens: p.formatados, tipoDe: f => f.dados.tipo,
+        colunas: ['Data', 'Valor', 'Categoria', 'Parcelas', 'Descrição'],
+        htmlLinha: f => htmlLinhaRevisao({
+            celulaAcao: `<button type="button" class="import-x" title="Remover" aria-label="Remover"
+                    onclick="_removerFormatado('${secId}','${modo}','${p.id}',${f.origemIdx})">✕</button>`,
+            dataISO: f.dados.data, valor: f.dados.valor,
+            celulasMeio: `<td>${escAttrRevisao(f.dados.categoria)}</td><td>${f.dados.parcelas > 1 ? `${f.dados.parcelas}x` : 'à vista'}</td>`,
+            editavel: true, descricao: f.dados.descricao, attrsDesc: `data-pdf-fdesc="${p.id}:${f.origemIdx}"`,
+        }),
+    }) : `<p class="import-csv-nota">Use o "+" nas linhas de cima pra formatar e acumular aqui.</p>`;
 
     return `
     ${linhas}
@@ -854,38 +863,29 @@ async function _importarFormatados(secId, modo, pId) {
         falhas ? 'erro' : 'sucesso');
 }
 
-function _renderTabelaTransacoesApp(transacoes) {
+function _renderTabelaTransacoesApp(transacoes, p, abertos = {}) {
     if (!transacoes.length) return `<p class="import-csv-nota">Nenhuma.</p>`;
-    return `
-    <div class="import-csv-tabela-wrap">
-        <table class="import-csv-tabela">
-            <thead><tr><th>Data</th><th>Valor</th><th>Tipo</th><th>Categoria</th><th>Descrição</th></tr></thead>
-            <tbody>${transacoes.map(t => `
-                <tr>
-                    <td>${String(t.data).slice(0, 10).split('-').reverse().join('/')}</td>
-                    <td>${formatarMoeda(Math.abs(parseFloat(t.valor)))}</td>
-                    <td><span class="chip-tipo chip-tipo--${t.tipo}">${t.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
-                    <td>${t.categoria || ''}</td>
-                    <td class="import-csv-desc" title="${t.descricao || ''}">${t.descricao || ''}</td>
-                </tr>`).join('')}</tbody>
-        </table>
-    </div>`;
+    return htmlSubgruposRevisao({
+        idPai: `${p.id}:app`, abertos, itens: transacoes, tipoDe: t => t.tipo,
+        colunas: ['Data', 'Valor', 'Categoria', 'Descrição'],
+        htmlLinha: t => htmlLinhaRevisao({
+            celulaAcao: '', dataISO: String(t.data).slice(0, 10), valor: Math.abs(parseFloat(t.valor)),
+            celulasMeio: `<td>${escAttrRevisao(t.categoria || '')}</td>`,
+            descricao: t.descricao || '',
+        }),
+    });
 }
 
-function _renderTabelaTodasLinhas(p) {
+/** Todas as linhas do arquivo: o X marca a linha pra ficar fora da comparação
+ *  (esmaece e trava, não some). */
+function _renderTabelaTodasLinhas(p, abertos = {}) {
     if (!p.linhas.length) return '';
-    return `
-    <div class="import-csv-tabela-wrap">
-        <table class="import-csv-tabela">
-            <thead><tr><th>Ignorar</th><th>Data</th><th>Valor</th><th>Tipo</th><th>Descrição</th></tr></thead>
-            <tbody>${p.linhas.map((l, i) => `
-                <tr>
-                    <td><input type="checkbox" id="conciliarIgnorar-${p.id}-${i}" name="ignorar-${i}" aria-label="Ignorar esta linha na comparação" ${l.ignorar ? 'checked' : ''}></td>
-                    <td>${l.dataISO.split('-').reverse().join('/')}</td>
-                    <td>${formatarMoeda(l.valor)}</td>
-                    <td><span class="chip-tipo chip-tipo--${l.tipo}">${l.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
-                    <td class="import-csv-desc" title="${l.descricao}">${l.descricao}</td>
-                </tr>`).join('')}</tbody>
-        </table>
-    </div>`;
+    return htmlSubgruposRevisao({
+        idPai: `${p.id}:todas`, abertos, itens: p.linhas.map((l, i) => [l, i]), tipoDe: ([l]) => l.tipo,
+        colunas: ['Data', 'Valor', 'Descrição'],
+        htmlLinha: ([l, i]) => htmlLinhaRevisao({
+            ignorada: !!l.ignorar, chaveX: `${p.id}:${i}`, dataISO: l.dataISO, valor: l.valor,
+            editavel: true, descricao: _descPDF(l), attrsDesc: `data-pdf-desc="${p.id}:${i}"`,
+        }),
+    });
 }

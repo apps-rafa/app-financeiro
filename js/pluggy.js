@@ -499,7 +499,13 @@ const _descricaoEditadaPluggy = {};
 // pra 'ignorada' no banco (e somem) só quando o usuário aperta "Importar".
 const _ignoradasPluggy = new Set();
 // Estado aberto/fechado dos grupos — sobrevive a re-renders.
-const _abertosPluggy = { duplicatas: true, pendentes: true, prontas: true, historico: false };
+const _abertosPluggy = {}; // id completo do grupo/subgrupo -> aberto (sem chave = padrão do grupo)
+// Grupo (revisar/duplicatas/prontas) de cada linha, congelado na 1ª vez que ela
+// aparece — resolver a categoria não muda a linha de grupo, só tira o vermelho.
+const _grupoPluggy = {};
+// Possíveis duplicatas já inicializadas com X (pra não re-marcar depois que o
+// usuário reativou uma).
+const _duplicatasIniciadasPluggy = new Set();
 
 /** Toggle "Rendimentos": Agrupar/Ignorar, um ativo por vez (não checkbox). */
 function _modoRendimentosPluggy() {
@@ -711,10 +717,32 @@ async function carregarRevisaoPluggy() {
     }
     _historicoPluggyCache = Object.fromEntries(historicoValido.map(item => [item.id, item]));
 
-    const temCategoria = item => !!_categoriaAoVivoPluggy(item);
-    const duplicatas = marcados.filter(i => i._duplicataSuspeita && !temCategoria(i));
-    const pendentes = marcados.filter(i => !i._duplicataSuspeita && !temCategoria(i));
-    const prontas = marcados.filter(temCategoria);
+    // Em qual grupo cada linha cai é CONGELADO na 1ª vez que ela aparece
+    // (mesma regra do CSV): resolver a categoria de uma linha "para revisar"
+    // só tira o destaque vermelho, NÃO muda ela de grupo.
+    const categoriasDoTipo = item => (estadoApp.menus &&
+        (item.tipo === 'entradas' ? estadoApp.menus.categoriasReceita : estadoApp.menus.categoriasDespesa)) || [];
+    const veioComSugestao = item => !!(item.categoria_sugerida || sugerirCategoriaClientePluggy(item, categoriasDoTipo(item)));
+    marcados.forEach(item => {
+        if (!_grupoPluggy[item.id]) {
+            _grupoPluggy[item.id] = item._duplicataSuspeita ? 'duplicatas' : (veioComSugestao(item) ? 'prontas' : 'revisar');
+        }
+        // Possível duplicata já nasce com X (não entra), igual ao CSV/PDF —
+        // o usuário reativa (↺) se for mesmo um lançamento novo.
+        if (item._duplicataSuspeita && !_duplicatasIniciadasPluggy.has(item.id)) {
+            _duplicatasIniciadasPluggy.add(item.id);
+            _ignoradasPluggy.add(item.id);
+        }
+    });
+    // Ids que já não estão na fila (sync/limpar) saem dos controles locais —
+    // senão sobra contador/estado de linha que não existe mais.
+    for (const id of Object.keys(_grupoPluggy)) if (!_revisaoPluggyCache[id]) delete _grupoPluggy[id];
+    for (const id of [..._ignoradasPluggy]) if (!_revisaoPluggyCache[id]) _ignoradasPluggy.delete(id);
+
+    const daFila = g => marcados.filter(i => _grupoPluggy[i.id] === g);
+    const revisar = daFila('revisar');
+    const duplicatas = daFila('duplicatas');
+    const prontas = daFila('prontas');
 
     // "Limpar" só habilita se há algo visível pra limpar (pendentes ou histórico).
     const btnLimparRevisao = document.getElementById('btnLimparRevisaoPluggy');
@@ -727,39 +755,23 @@ async function carregarRevisaoPluggy() {
         return;
     }
 
-    // Ids ignorados que já não estão na fila (ex.: sumiram num sync/limpar)
-    // saem do conjunto — senão o contador "descartar N" fica sobrando.
-    for (const id of [..._ignoradasPluggy]) if (!_revisaoPluggyCache[id]) _ignoradasPluggy.delete(id);
-    const prontasAtivas = prontas.filter(i => !_ignoradasPluggy.has(i.id));
+    // Contadores AO VIVO (o grupo é congelado, o estado da linha não).
     const totalIgnoradas = _ignoradasPluggy.size;
+    const prontasAoVivo = marcados.filter(i => !_ignoradasPluggy.has(i.id) && _categoriaAoVivoPluggy(i));
+    const aRevisarAoVivo = marcados.filter(i => !_ignoradasPluggy.has(i.id) && !_categoriaAoVivoPluggy(i));
     // "Cancelar" só desfaz alterações manuais — sem nenhuma, não tem o que
     // desfazer e ficava parecendo um botão que não faz nada.
     const temAlteracoes = totalIgnoradas > 0
         || Object.keys(_categoriaEscolhidaPluggy).length > 0
         || Object.keys(_descricaoEditadaPluggy).length > 0;
 
-    // Colunas X/Data/Valor/Categoria/Descrição. O tipo (despesa/receita)
-    // vira subgrupo dentro de cada grupo — some a coluna "Tipo" e o sinal
-    // do valor (já implícito) — pra caber em tela estreita. Sem "Forma de
-    // pgto." (o método já vem fixado pela conta em "Método do app").
-    // Cada subgrupo é um <details> igual ao do grupo pai (mesma classe,
-    // mesma seta), com a própria tabela; começa aberto e lembra o estado
-    // (chave = id completo em _abertosPluggy).
-    const subgrupo = (idPai, tipo, itens) => !itens.length ? '' : _grupoColapsavelConciliar({
-        id: `${idPai}-${tipo}`, abertos: _abertosPluggy, padraoAberto: true,
-        titulo: `${tipo === 'entradas' ? 'Receitas' : 'Despesas'} (${itens.length})`,
-        corpo: `
-    <div class="import-csv-tabela-wrap import-csv-tabela-wrap--solta">
-        <table class="import-csv-tabela import-csv-tabela--compacta">
-            <thead><tr><th></th><th>Data</th><th>Valor</th><th>Categoria</th><th>Descrição</th></tr></thead>
-            <tbody>${itens.map(gerarHTMLImportadaPluggy).join('')}</tbody>
-        </table>
-    </div>`
-    });
-    const tabela = (id, titulo, lista, aberto) => !lista.length ? '' : _grupoColapsavelConciliar({
-        id, abertos: _abertosPluggy, padraoAberto: aberto, titulo: `${titulo} (${lista.length})`,
-        corpo: subgrupo(id, 'saidas', lista.filter(i => i.tipo !== 'entradas'))
-            + subgrupo(id, 'entradas', lista.filter(i => i.tipo === 'entradas'))
+    // Mesmo layout do CSV/PDF (js/revisao-importacao.js): grupo → subgrupos
+    // Despesas/Receitas → tabela X/Data/Valor/Categoria/Descrição. Sem
+    // "Forma de pgto." — o método já vem fixado pela conta em "Método do app".
+    const grupo = (id, titulo, itens, nota = '') => htmlGrupoRevisao({
+        id, titulo, abertos: _abertosPluggy, padraoAberto: true, itens, nota,
+        tipoDe: i => i.tipo, colunas: ['Data', 'Valor', 'Categoria', 'Descrição'],
+        htmlLinha: gerarHTMLImportadaPluggy,
     });
 
     const tabelaHistorico = !historicoValido.length ? '' : _grupoColapsavelConciliar({
@@ -776,20 +788,20 @@ async function carregarRevisaoPluggy() {
 
     container.innerHTML = [
         `<p class="import-csv-resumo">
-            ${pendentesBrutos.length ? `<b>${pendentesBrutos.length}</b> pendente${pendentesBrutos.length === 1 ? '' : 's'} —` : ''}
-            <span class="ok">${prontas.length} pronta${prontas.length === 1 ? '' : 's'}</span>
+            <b>${pendentesBrutos.length}</b> linha${pendentesBrutos.length === 1 ? '' : 's'} na fila —
+            <span class="ok">${prontasAoVivo.length} pronta${prontasAoVivo.length === 1 ? '' : 's'}</span>
+            ${aRevisarAoVivo.length ? ` · <span class="alerta">${aRevisarAoVivo.length} para revisar</span>` : ''}
             ${duplicatas.length ? ` · <span class="alerta">${duplicatas.length} possível${duplicatas.length === 1 ? '' : 'is'} duplicata${duplicatas.length === 1 ? '' : 's'}</span>` : ''}
-            ${pendentes.length ? ` · <span class="alerta">${pendentes.length} pra revisar</span>` : ''}
         </p>`,
-        duplicatas.length
-            ? `<p class="import-csv-nota">🔁 Mesmo tipo, data (± 2 dias) e valor de algo já lançado no app — escolha uma categoria pra liberar, ou ignore pra não duplicar.</p>`
-            : '',
-        tabela('pluggy-duplicatas', '🔁 Possíveis duplicatas', duplicatas, _abertosPluggy.duplicatas),
-        tabela('pluggy-pendentes', '⚠️ Pendentes para revisar', pendentes, _abertosPluggy.pendentes),
-        tabela('pluggy-prontas', '✓ Prontas', prontas, _abertosPluggy.prontas),
+        grupo('pluggy-revisar', '⚠️ Para revisar', revisar),
+        grupo('pluggy-duplicatas', '🔁 Possíveis duplicatas — já existe algo parecido no app', duplicatas,
+            `<p class="import-csv-nota">Mesmo tipo, data (± 2 dias) e valor de algo já lançado no app. Vêm com X (não entram) — clique no ↺ pra reativar se for mesmo um lançamento novo.</p>`),
+        grupo('pluggy-prontas', '✓ Prontas', prontas),
         `<div class="import-csv-acoes">
-            <button type="button" class="btn-submit" id="btnImportarProntasPluggy" ${prontasAtivas.length || totalIgnoradas ? '' : 'disabled'}>
-                Importar ${prontasAtivas.length} lançamento${prontasAtivas.length === 1 ? '' : 's'}${totalIgnoradas ? ` · descartar ${totalIgnoradas}` : ''}
+            <button type="button" class="btn-submit" id="btnImportarProntasPluggy"
+                title="${totalIgnoradas ? `As ${totalIgnoradas} linha(s) com X serão descartadas da fila.` : ''}"
+                ${prontasAoVivo.length || totalIgnoradas ? '' : 'disabled'}>
+                Importar ${prontasAoVivo.length} lançamento${prontasAoVivo.length === 1 ? '' : 's'}
             </button>
             <button type="button" class="mini-btn" id="btnCancelarProntasPluggy"
                 title="Desfaz o que você mudou aqui (categorias escolhidas, descrições editadas e X) — volta tudo ao que veio da Pluggy. Não apaga nada."
@@ -800,12 +812,7 @@ async function carregarRevisaoPluggy() {
     ].join('');
 
     container.querySelectorAll('details.import-csv-grupo').forEach(det => {
-        det.addEventListener('toggle', () => {
-            const id = det.dataset.grupoId;
-            const chave = { 'pluggy-duplicatas': 'duplicatas', 'pluggy-pendentes': 'pendentes', 'pluggy-prontas': 'prontas', 'pluggy-historico': 'historico' }[id];
-            // Subgrupos (Despesas/Receitas) guardam o estado pelo id completo.
-            _abertosPluggy[chave || id] = det.open;
-        });
+        det.addEventListener('toggle', () => { _abertosPluggy[det.dataset.grupoId] = det.open; });
     });
 
     document.getElementById('btnImportarProntasPluggy')?.addEventListener('click', importarProntasPluggy);
@@ -815,15 +822,11 @@ async function carregarRevisaoPluggy() {
     container.onchange = onRevisaoPluggyChange;
 }
 
-/** Linha da tabela de revisão: categoria (ajustável — escolher move pra
- *  "Prontas" na hora) + descrição + checkbox pra ignorar. Sem coluna de
- *  forma de pagamento: esse já vem fixado pela conta em "Método do app"
- *  (ver carregarContasConectadas). Mesmo layout de tabela do CSV/PDF. */
+/** Linha da tabela de revisão (layout compartilhado — ver
+ *  js/revisao-importacao.js): X, data dd/mm, valor, categoria, descrição
+ *  editável. Vermelha enquanto falta categoria; esmaecida/travada com X. */
 function gerarHTMLImportadaPluggy(item) {
     const ignorada = _ignoradasPluggy.has(item.id);
-    const descEscapada = _descricaoAoVivoPluggy(item)
-        .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-
     const categoriasApp = (estadoApp.menus &&
         (item.tipo === 'entradas' ? estadoApp.menus.categoriasReceita : estadoApp.menus.categoriasDespesa)) || [];
     const categoriaAoVivo = _categoriaAoVivoPluggy(item);
@@ -831,32 +834,18 @@ function gerarHTMLImportadaPluggy(item) {
         `<option value="${nome}" ${nome === categoriaAoVivo ? 'selected' : ''}>${nome}</option>`
     ).join('');
 
-    // "X" só marca/desmarca localmente (some da fila de verdade só ao
-    // apertar "Importar"): a linha fica esmaecida e travada; o próprio botão
-    // vira "↺" pra reativar.
-    return `
-    <tr data-importada-id="${item.id}"${ignorada ? ' class="linha-ignorada"' : ''}>
-        <td><button type="button" class="import-x" data-act="ignorar-importada" data-id="${item.id}"
-            title="${ignorada ? 'Reativar esta linha' : 'Não importar esta linha'}">${ignorada ? '↺' : '✕'}</button></td>
-        <td>${_dataCurtaPluggy(item.data)}</td>
-        <td>${formatarMoeda(item.valor)}</td>
-        <td>
+    return htmlLinhaRevisao({
+        atributos: `data-importada-id="${item.id}"`,
+        ignorada, revisar: !categoriaAoVivo,
+        chaveX: item.id, dataISO: item.data, valor: item.valor,
+        celulasMeio: `<td>
             <select data-campo="categoria" name="categoria-${item.id}" aria-label="Categoria" title="Categoria" ${ignorada ? 'disabled' : ''}>
                 <option value="">Selecione...</option>
                 ${opcoesCategoria}
             </select>
-        </td>
-        <td class="import-csv-desc-edit">
-            <input type="text" class="import-desc-input" data-campo="descricao" name="descricao-${item.id}" aria-label="Descrição" value="${descEscapada}" title="Descrição (editável)" ${ignorada ? 'disabled' : ''}>
-        </td>
-    </tr>`;
-}
-
-/** "dd/mm" (sem ano) — a tela de revisão sempre mostra assim. */
-function _dataCurtaPluggy(dataISO) {
-    if (!dataISO) return '?';
-    const [, m, d] = dataISO.split('-');
-    return `${d}/${m}`;
+        </td>`,
+        editavel: true, descricao: _descricaoAoVivoPluggy(item),
+    });
 }
 
 /** Linha do histórico (já confirmado) — categoria/descrição/data vêm da
@@ -873,7 +862,7 @@ function gerarHTMLHistoricoPluggy(item) {
     const sinal = t.tipo === 'entradas' ? '+' : '-';
     return `
     <tr data-historico-id="${item.id}">
-        <td>${_dataCurtaPluggy(t.data)}</td>
+        <td>${dataCurtaRevisao(t.data)}</td>
         <td>${sinal} ${formatarMoeda(t.valor)}</td>
         <td><span class="chip-tipo chip-tipo--${t.tipo}">${t.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
         <td>${t.categoria || 'Sem categoria'}</td>
@@ -940,12 +929,13 @@ function _renderRevisaoPluggyPreservandoScroll() {
 }
 
 function onRevisaoPluggyClick(e) {
+    const x = e.target.closest('[data-rev-x]');
+    if (x) { alternarIgnorarImportadaPluggy(Number(x.dataset.revX)); return; }
     const btn = e.target.closest('[data-act]');
     if (!btn) return;
     const id = Number(btn.dataset.id);
     switch (btn.dataset.act) {
         case 'add-categoria': abrirNovaCategoria(btn.dataset.tipo); break;
-        case 'ignorar-importada': alternarIgnorarImportadaPluggy(id); break;
         case 'editar-historico': editarHistoricoPluggy(id); break;
         case 'excluir-historico': excluirHistoricoPluggy(id); break;
     }
@@ -1048,6 +1038,7 @@ function cancelarProntasPluggy() {
     for (const key of Object.keys(_categoriaEscolhidaPluggy)) delete _categoriaEscolhidaPluggy[key];
     for (const key of Object.keys(_descricaoEditadaPluggy)) delete _descricaoEditadaPluggy[key];
     _ignoradasPluggy.clear();
+    _duplicatasIniciadasPluggy.clear(); // carregarRevisao re-marca as duplicatas com X
     carregarRevisaoPluggy();
 }
 
