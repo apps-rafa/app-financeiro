@@ -381,8 +381,8 @@ function _renderGrupoDuplicatas(transacoes, tipoUI, aberto) {
     <details class="rec-grupo" data-nome="__duplicatas__" style="--cor-rec:var(--despesa-text)" ${aberto ? 'open' : ''}>
       <summary>
         <span class="rec-grupo-nome">🔁 Duplicatas</span>
-        <button type="button" class="mini-btn" data-dup-aceitar-todas title="Marca todas como &quot;não é duplicata&quot; — não avisa de novo sobre elas">✓ Aceitar todas</button>
-        <button type="button" class="mini-btn armed" data-dup-apagar-todas title="Apaga todos os lançamentos listados aqui">🗑 Apagar todas</button>
+        <span role="button" tabindex="0" class="mini-btn" data-dup-aceitar-todas title="Marca todas como &quot;não é duplicata&quot; — não avisa de novo sobre elas">✓ Aceitar todas</span>
+        <span role="button" tabindex="0" class="mini-btn armed" data-dup-apagar-todas title="Apaga todos os lançamentos listados aqui">🗑 Apagar todas</span>
         <span class="rec-grupo-espaco"></span>
         <span class="rec-grupo-contagem">${duplicatas.length}</span>
         <span class="rec-grupo-total">${formatarMoeda(total)}</span>
@@ -879,11 +879,11 @@ function _ordenarPorGrupo(itens, chave) {
  *  divide a linha do cabeçalho com o nome do grupo, a contagem e o total. */
 function _renderOrdemCriacaoToggle(chave) {
     const ativo = _ordemCriacaoAtiva(chave);
-    return `<button type="button" class="ordem-criacao-btn${ativo ? ' active' : ''}"
+    return `<span role="button" tabindex="0" class="ordem-criacao-btn${ativo ? ' active' : ''}"
                     data-ordem-criacao-toggle="${String(chave).replace(/"/g, '&quot;')}"
                     title="Ordenar pela ordem em que os lançamentos foram criados, em vez de cronológica">
               <span class="ordcri-emoji">🕓</span><span class="ordcri-full">Ordem de criação</span><span class="ordcri-media">Ordem de criação</span><span class="ordcri-curto">Por criação</span><span class="ordcri-min">Criação</span>
-            </button>`;
+            </span>`;
 }
 
 // Quais dimensões aparecem como opção de submodo, conforme o modo (top)
@@ -949,11 +949,11 @@ function _renderOrganizadorInline(tipoUI, modo, grupoChave, ehDespesa) {
     const botoes = opcoes.map(dim => {
         const cfg = _dimensaoSubmodo(dim, ehDespesa);
         const full = `${cfg.emoji} ${cfg.label}`;
-        return `<button type="button" class="subgrupo-modo-btn${subAtual === dim ? ' active' : ''}" data-submodo="${dim}" data-full="${full}" data-emoji="${cfg.emoji}">${full}</button>`;
+        return `<span role="button" tabindex="0" class="subgrupo-modo-btn${subAtual === dim ? ' active' : ''}" data-submodo="${dim}" data-full="${full}" data-emoji="${cfg.emoji}">${full}</span>`;
     }).join('');
     return `
         <span class="subgrupo-organizador" data-grupo-chave="${String(grupoChave).replace(/"/g, '&quot;')}">
-          <button type="button" class="subgrupo-modo-icone${subAtual !== 'cronologica' ? ' ativo' : ''}" data-submodo-icone="1" title="Tirar filtro"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M3 4h18v2.5l-7 8V19l-4 2v-6.5l-7-8V4z"/></svg></button>
+          <span role="button" tabindex="0" class="subgrupo-modo-icone${subAtual !== 'cronologica' ? ' ativo' : ''}" data-submodo-icone="1" title="Tirar filtro"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M3 4h18v2.5l-7 8V19l-4 2v-6.5l-7-8V4z"/></svg></span>
           ${botoes}
         </span>`;
 }
@@ -1006,7 +1006,7 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
     // Fica ao lado do "1/3", antes dos chips de método/categoria — não mais
     // junto dos ícones de editar/excluir no fim da linha.
     const quitarCheckbox = (ehParcela && !trans.quitada && !opts.semAcoes)
-        ? `<label class="quitar-check" title="Quitar a partir deste mês"><input type="checkbox" data-act="quitar-parc" data-id="${trans.id}" ${trans.quitadoEm ? 'checked' : ''}> quitar</label>`
+        ? `<label class="quitar-check" title="Quitar a partir deste mês"><input type="checkbox" name="quitar-parcela" data-act="quitar-parc" data-id="${trans.id}" ${trans.quitadoEm ? 'checked' : ''}> quitar</label>`
         : '';
     const quitadoTag = ehParcela && trans.quitadoEm
         ? `<span class="quitado-badge">quitado ${typeof mesTri === 'function' ? mesTri(String(trans.quitadoEm).slice(5, 7)) + '/' + String(trans.quitadoEm).slice(2, 4) : ''}</span>`

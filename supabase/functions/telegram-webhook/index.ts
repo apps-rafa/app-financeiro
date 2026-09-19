@@ -76,9 +76,10 @@ function normalizarBanco(nome: string): string {
  *    Mercado Pago: Conta Pré-paga
  *    Bradesco: Cartão de crédito VISA INFINITE (final 1525)
  *    Nubank: Cartão de crédito MASTERCARD PLATINUM (final 8381)
- *  Usado no log e no teclado do /atualizar — o título curto do app vira
- *  "Cartão de crédito" genérico pra qualquer cartão. */
-function tituloContaPluggyDetalhado(c: ContaPluggy): string {
+ *  Cartão quebra em 2 linhas ("Nubank: Cartão de crédito" / "MASTERCARD
+ *  PLATINUM (final 8381)") — é o que o menu do /atualizar mostra. O título
+ *  curto do app vira "Cartão de crédito" genérico pra qualquer cartão. */
+function linhasContaPluggy(c: ContaPluggy): string[] {
   const marketing = c.marketing_name ?? "";
   const tipoEntreParenteses = marketing.match(/\(([^)]+)\)\s*$/)?.[1] ?? null; // "Conta Pré-paga"
   const bancoBruto = c.banco_metodo
@@ -93,12 +94,18 @@ function tituloContaPluggyDetalhado(c: ContaPluggy): string {
     if (nivel && marca && nivel.includes(marca)) detalhe = nivel;
     else if (nivel && banco && nivel === banco.toUpperCase()) detalhe = marca;
     else detalhe = [marca, nivel].filter(Boolean).join(" ");
-    const cartao = `Cartão de crédito${detalhe ? ` ${detalhe}` : ""}${c.numero_mascarado ? ` (final ${c.numero_mascarado})` : ""}`;
-    return banco ? `${banco}: ${cartao}` : cartao;
+    const linha1 = banco ? `${banco}: Cartão de crédito` : "Cartão de crédito";
+    const linha2 = `${detalhe}${c.numero_mascarado ? `${detalhe ? " " : ""}(final ${c.numero_mascarado})` : ""}`;
+    return linha2 ? [linha1, linha2] : [linha1];
   }
 
   const tipo = tipoEntreParenteses || c.nome_conta || "Conta bancária";
-  return banco ? `${banco}: ${tipo}` : tipo;
+  return [banco ? `${banco}: ${tipo}` : tipo];
+}
+
+/** Mesmo nome numa linha só (log das transações, aviso de "Atualizando..."). */
+function tituloContaPluggyDetalhado(c: ContaPluggy): string {
+  return linhasContaPluggy(c).join(" ");
 }
 
 /** Contas Pluggy ativas do usuário, com o banco do "Método do app" junto
@@ -342,15 +349,25 @@ Deno.serve(async (req: Request) => {
 
         // Todo menu do bot termina com "Cancelar" (callback "cancelar",
         // tratado mais abaixo — vale pra qualquer teclado novo também).
-        const botoes = contas.map((c) => ([{
-          text: tituloContaPluggyDetalhado(c),
-          callback_data: `atualizarconta:${c.id}`,
-        }]));
+        // O texto de um botão inline é sempre centralizado e numa linha só
+        // (o Telegram não deixa mudar) — por isso as contas vão listadas no
+        // TEXTO da mensagem (alinhado à esquerda, com quebra de linha) e os
+        // botões são só os números.
+        const lista = contas
+          .map((c, i) => {
+            const [linha1, ...resto] = linhasContaPluggy(c).map(escaparHtml);
+            return [`<b>${i + 1}.</b> ${linha1}`, ...resto].join("\n");
+          })
+          .join("\n\n");
+        const numeros = contas.map((c, i) => ({ text: String(i + 1), callback_data: `atualizarconta:${c.id}` }));
+        const botoes: { text: string; callback_data: string }[][] = [];
+        for (let i = 0; i < numeros.length; i += 5) botoes.push(numeros.slice(i, i + 5));
         botoes.push([{ text: "🔄 Todas as contas", callback_data: "atualizarconta:todas" }]);
         botoes.push([{ text: "❌ Cancelar", callback_data: "cancelar" }]);
         await tg(token, "sendMessage", {
           chat_id: chatId,
-          text: "Qual conta você quer atualizar?",
+          parse_mode: "HTML",
+          text: `Qual conta você quer atualizar?\n\n${lista}`,
           reply_markup: { inline_keyboard: botoes },
         });
         return json({ ok: true });

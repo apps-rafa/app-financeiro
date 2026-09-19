@@ -503,3 +503,18 @@ function selecionarSugestao(categoria) {
         document.querySelector(SELECTORS.valor)?.focus();
     }
 }
+
+/**
+ * Controles dentro de <summary> (ordem de criação, filtros do grupo, A→Z, +,
+ * Aceitar/Apagar todas) são <span role="button" tabindex="0"> em vez de
+ * <button> — botão dentro de <summary> é HTML inválido (o Chrome sinaliza).
+ * Um span não ativa com Enter/Espaço sozinho: este handler faz isso, e
+ * preventDefault impede que o Espaço/Enter também abra/feche o <details>.
+ */
+document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const ctrl = e.target.closest && e.target.closest("summary [role=\"button\"]");
+    if (!ctrl) return;
+    e.preventDefault();
+    ctrl.click();
+});

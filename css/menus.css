@@ -1396,3 +1396,9 @@
 }
 .dados-acoes .btn-submit { width: auto; flex: 7 1 0; }
 .dados-acoes .armed { flex: 3 1 0; }
+
+/* <span role="button"> dentro de <summary> (ver events.js): reproduz o padrão
+   que o navegador dá a um <button> (fonte Arial, texto centralizado, 13.33px
+   regular) pra não mudar a aparência ao trocar a tag. */
+summary [role="button"] { font-family: Arial; text-align: center; }
+.subgrupo-modo-icone[role="button"] { font-size: 13.3333px; font-weight: 400; }
