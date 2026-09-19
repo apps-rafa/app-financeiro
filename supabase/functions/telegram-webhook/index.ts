@@ -179,12 +179,15 @@ Deno.serve(async (req: Request) => {
           return json({ ok: true });
         }
 
+        // Sem filtro de "sincronizar" de propósito — /atualizar é uma ação
+        // explícita do usuário no Telegram pra TODAS as contas ativas,
+        // independente do toggle "Incluir na sincronização" do botão
+        // automático no app (esse sim respeita o toggle).
         const { data: contas, error: contasError } = await supabaseAdmin
           .from("pluggy_contas")
           .select("*")
           .eq("user_id", tgUser.user_id)
-          .in("status", ["ativo", "erro"])
-          .eq("sincronizar", true);
+          .in("status", ["ativo", "erro"]);
         if (contasError) {
           console.error(contasError);
           await tg(token, "sendMessage", { chat_id: chatId, text: "Deu erro ao buscar suas contas conectadas." });
@@ -214,11 +217,16 @@ Deno.serve(async (req: Request) => {
           ));
           await new Promise((resolve) => setTimeout(resolve, 6000));
 
+          // /v2/transactions não aceita "pageSize" (só filtros — accountId,
+          // dateFrom/dateTo — e pagina por cursor via "next" na resposta,
+          // igual ao pluggy-sync); busca uma janela recente e pega as 3 mais
+          // novas no client.
+          const dateFrom = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
           const blocos: string[] = [];
           for (const conta of contas) {
             const titulo = tituloContaPluggy(conta);
             try {
-              const resp = await pluggyGet(`/v2/transactions?accountId=${conta.account_id}&pageSize=3`, apiKey);
+              const resp = await pluggyGet(`/v2/transactions?accountId=${conta.account_id}&dateFrom=${dateFrom}`, apiKey);
               const ultimas = [...(resp.results ?? [])]
                 .sort((a: { date: string }, b: { date: string }) => (a.date < b.date ? 1 : -1))
                 .slice(0, 3);
