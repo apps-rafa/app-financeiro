@@ -856,6 +856,38 @@
   margin: 0 0 .8rem;
 }
 .pluggy-toolbar-row2 { display: contents; }
+/* Escolha das contas que entram no "Sincronizar": linha própria (100%) entre
+   a de mês/Total/Rendimentos e a de Sincronizar/Limpar. */
+.pluggy-contas-sync {
+  flex: 0 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+.pluggy-contas-sync[hidden] { display: none; }
+.pluggy-conta-sync {
+  flex: 1 1 9rem;
+  box-sizing: border-box;
+  min-height: 2rem;
+  padding: .3rem .6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border: 1px solid var(--border-strong, #D1D5DB);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: .72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pluggy-conta-sync:hover { color: var(--text); }
+.pluggy-conta-sync.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
 .pluggy-toolbar-item,
 .pluggy-toolbar-btns {
   flex: 1 1 0;
