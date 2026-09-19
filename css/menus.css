@@ -1162,6 +1162,15 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
+/* Tabelas do Pluggy dentro dos grupos: sem invólucro próprio (borda/altura
+   máxima/rolagem vertical) — o grupo já é o recipiente. */
+.import-csv-tabela-wrap--solta {
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
+  border: 0;
+  border-radius: 0;
+}
 .import-csv-tabela { width: 100%; border-collapse: collapse; font-size: .78rem; }
 .import-csv-tabela th {
   position: sticky;
