@@ -225,11 +225,40 @@ function _recalcularLinhas() {
     });
 }
 
+/** Data, forma de pgto., categoria e valor resolvidos (independe de X). */
+function _dadosCompletosCSV(l) {
+    return !!l.dataISO && !!l.metodoResolvido && !!l.categoriaResolvida && l.valor > 0;
+}
+
+/** Linha com X: ignorada à mão OU possível duplicata marcada pra pular
+ *  (vem marcada por padrão). */
+function _ignoradaCSV(l) {
+    return !!(l.ignorarManual || (l.duplicataSuspeita && l.pularDuplicata));
+}
+
+/** Liga/desliga o X — numa possível duplicata mexe no "pular" (e limpa o
+ *  ignorarManual, pra o clique sempre ter efeito). */
+function _alternarIgnorarCSV(l) {
+    if (_ignoradaCSV(l)) {
+        l.ignorarManual = false;
+        if (l.duplicataSuspeita) l.pularDuplicata = false;
+    } else if (l.duplicataSuspeita) {
+        l.pularDuplicata = true;
+    } else {
+        l.ignorarManual = true;
+    }
+}
+
+/** Descrição que vale pra importar (a editada na revisão, senão a do arquivo). */
+function _descricaoCSV(l) {
+    return l.descricaoEditada !== undefined ? l.descricaoEditada : (l.descricao || '');
+}
+
 function _linhaPronta(l) {
     if (l.ignorarManual) return false;                 // usuário marcou pra não importar
     if (l.duplicataExata) return false;               // já existe idêntica — ignorada sem perguntar
-    if (l.duplicataSuspeita && l.pularDuplicata) return false; // parecida — usuário decide (marcado por padrão)
-    return !!l.dataISO && !!l.metodoResolvido && !!l.categoriaResolvida && l.valor > 0;
+    if (l.duplicataSuspeita && l.pularDuplicata) return false; // parecida — usuário decide (marcada por padrão)
+    return _dadosCompletosCSV(l);
 }
 
 /* ---------- Detecção de duplicatas contra o que já está no app ---------- */
@@ -326,78 +355,50 @@ function renderImportCSV() {
     const exatas = linhasComIdx.filter(([l]) => l.duplicataExata);
     const suspeitas = linhasComIdx.filter(([l]) => l.duplicataSuspeita);
     const normais = linhasComIdx.filter(([l]) => !l.duplicataExata && !l.duplicataSuspeita);
-    // Qual tabela a linha caiu (revisar x pronta) usa o status CONGELADO
+    // Em qual grupo (revisar x pronta) a linha cai usa o status CONGELADO
     // (_eraPronta, setado 1x em _recomputarImportCSV) — resolver método/
-    // categoria numa linha "para revisar" não muda mais ela de tabela, só
-    // tira o destaque vermelho (_renderLinhaImportCSV usa o status AO VIVO
-    // pra isso). "revisar" (trava o botão "Importar") também é sempre ao
-    // vivo — precisa cair conforme o usuário resolve, mesmo que a linha
-    // continue visualmente na tabela de revisão.
+    // categoria numa linha "para revisar" não muda ela de grupo, só tira o
+    // destaque vermelho (o vermelho e o botão "Importar" usam o status AO
+    // VIVO). Marcar X também NÃO muda de grupo: a linha só esmaece e trava.
     const eraPronta = l => l._eraPronta !== undefined ? l._eraPronta : _linhaPronta(l);
-    // Ignorada manualmente conta como resolvida (não bloqueia a importação,
-    // não entra em "para revisar"), mas nunca é "pronta" — fica na mesma
-    // tabela de revisão, só com a caixinha já marcada.
-    const paraRevisarOuIgnorada = normais.filter(([l]) => l.ignorarManual || !eraPronta(l));
-    const prontasLinhas = normais.filter(([l]) => !l.ignorarManual && eraPronta(l));
+    const revisarGrupo = normais.filter(([l]) => !eraPronta(l));
+    const prontasGrupo = normais.filter(([l]) => eraPronta(l));
     const prontas = st.linhas.filter(_linhaPronta).length;
-    const revisar = normais.filter(([l]) => !l.ignorarManual && !_linhaPronta(l)).length;
+    // Pendentes de verdade (travam o "Importar"): tudo que não é duplicata
+    // exata, não tem X e ainda não está completo.
+    const pendentesAoVivo = st.linhas.filter(l => !l.duplicataExata && !_ignoradaCSV(l) && !_linhaPronta(l));
+    const revisar = pendentesAoVivo.length;
 
-    const tabela = (id, titulo, grupo, comCheckboxIgnorar = false) => !grupo.length ? '' : _grupoColapsavelConciliar({
-        id, abertos, padraoAberto: grupo.length > 0, titulo: `${titulo} (${grupo.length})`,
-        corpo: `
-    <div class="import-csv-tabela-wrap">
-        <table class="import-csv-tabela">
-            <thead><tr>
-                ${comCheckboxIgnorar ? `<th><input type="checkbox" id="importCsvIgnorarTudo" name="ignorar-tudo" aria-label="Marcar ou desmarcar todas pra ignorar" title="Marcar/desmarcar todas pra ignorar" ${grupo.every(([l]) => l.ignorarManual) ? 'checked' : ''}> Ignorar?</th>` : ''}
-                <th>Data</th><th>Valor</th><th>Tipo</th><th>Forma de pgto.</th><th>Categoria</th><th>Descrição</th>
-            </tr></thead>
-            <tbody>${grupo.map(([l, i]) => _renderLinhaImportCSV(l, i, false, comCheckboxIgnorar)).join('')}</tbody>
-        </table>
-    </div>`
+    // Mesmo layout do Open Finance (js/revisao-importacao.js): grupo →
+    // subgrupos Despesas/Receitas → tabela X/Data/Valor/Forma de pgto./
+    // Categoria/Descrição (editável).
+    const colunas = ['Data', 'Valor', 'Forma de pgto.', 'Categoria', 'Descrição'];
+    const grupo = (id, titulo, itens, nota = '', padraoAberto = true) => htmlGrupoRevisao({
+        id, titulo, abertos, padraoAberto, itens, nota,
+        tipoDe: ([l]) => l.tipo, colunas,
+        htmlLinha: ([l, i]) => _renderLinhaImportCSV(l, i),
     });
 
-    const tabelaSuspeitas = !suspeitas.length ? '' : _grupoColapsavelConciliar({
-        id: 'importcsv:suspeitas', abertos, padraoAberto: suspeitas.length > 0,
-        titulo: `🔁 Possíveis duplicatas — já existe algo parecido no app (${suspeitas.length})`,
-        corpo: `
-    <p class="import-csv-nota">Mesmo tipo, data e valor de algo já lançado, mas com forma de pagamento/categoria/descrição diferente. Marcadas pra pular por padrão — desmarque se for mesmo um lançamento novo.</p>
-    <div class="import-csv-tabela-wrap">
-        <table class="import-csv-tabela">
-            <thead><tr>
-                <th><input type="checkbox" id="importCsvPularTudo" name="pular-tudo" aria-label="Marcar ou desmarcar todas pra pular" title="Marcar/desmarcar todas pra pular" ${suspeitas.every(([l]) => l.pularDuplicata) ? 'checked' : ''}> Pular?</th>
-                <th>Data</th><th>Valor</th><th>Tipo</th><th>Forma de pgto.</th><th>Categoria</th><th>Descrição</th>
-            </tr></thead>
-            <tbody>${suspeitas.map(([l, i]) => _renderLinhaImportCSV(l, i, true)).join('')}</tbody>
-        </table>
-    </div>`
+    const tabelaSuspeitas = grupo('importcsv:suspeitas', '🔁 Possíveis duplicatas — já existe algo parecido no app', suspeitas,
+        `<p class="import-csv-nota">Mesmo tipo, data e valor de algo já lançado, mas com forma de pagamento/categoria/descrição diferente. Vêm com X (não entram) — clique no ↺ pra reativar se for mesmo um lançamento novo.</p>`);
+
+    const infoExatas = htmlGrupoRevisao({
+        id: 'importcsv:exatas', titulo: '🔁 Duplicadas — já lançadas, ignoradas automaticamente',
+        abertos, padraoAberto: false, itens: exatas,
+        nota: `<p class="import-csv-nota">Mesmo tipo, data, valor, forma de pgto. e descrição de algo já lançado — não entram na importação.</p>`,
+        tipoDe: ([l]) => l.tipo, colunas,
+        htmlLinha: ([l]) => htmlLinhaRevisao({
+            dataISO: l.dataISO, valor: l.valor, celulaAcao: '',
+            celulasMeio: `<td>${escAttrRevisao(l.metodoResolvido || l.metodoCSV || '')}</td><td>${escAttrRevisao(_rotuloCategoriaResolvida(l) || l.categoriaCSV || '')}</td>`,
+            descricao: _descricaoCSV(l),
+        }),
     });
 
-    const infoExatas = !exatas.length ? '' : _grupoColapsavelConciliar({
-        id: 'importcsv:exatas', abertos, padraoAberto: false,
-        titulo: `🔁 Duplicadas — já lançadas, ignoradas automaticamente (${exatas.length})`,
-        corpo: `
-    <p class="import-csv-nota">Mesmo tipo, data, valor, forma de pgto. e descrição de algo já lançado — não entram na importação.</p>
-    <div class="import-csv-tabela-wrap">
-        <table class="import-csv-tabela">
-            <thead><tr><th>Data</th><th>Valor</th><th>Tipo</th><th>Forma de pgto.</th><th>Categoria</th><th>Descrição</th></tr></thead>
-            <tbody>${exatas.map(([l]) => `
-                <tr>
-                    <td>${l.dataISO ? l.dataISO.split('-').reverse().join('/') : '?'}</td>
-                    <td>${formatarMoeda(l.valor)}</td>
-                    <td><span class="chip-tipo chip-tipo--${l.tipo}">${l.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
-                    <td>${l.metodoResolvido || l.metodoCSV || ''}</td>
-                    <td>${_rotuloCategoriaResolvida(l) || l.categoriaCSV || ''}</td>
-                    <td class="import-csv-desc" title="${l.descricao}">${l.descricao}</td>
-                </tr>`).join('')}</tbody>
-        </table>
-    </div>`
-    });
-
-    const faltamData = paraRevisarOuIgnorada.some(([l]) => !l.ignorarManual && !l.dataISO);
+    const faltamData = pendentesAoVivo.some(l => !l.dataISO);
     // Se toda linha já veio com data completa (dd/mm/aaaa etc.), o corte não
     // serve pra nada — não tem "dia do mês" pra reconstruir.
     const todasComDataCompleta = st.linhas.length > 0 && st.linhas.every(l => l.dataCompletaISO);
-    const faltamMetodoOuCategoria = paraRevisarOuIgnorada.some(([l]) => !l.ignorarManual && (!l.metodoResolvido || !l.categoriaResolvida));
+    const faltamMetodoOuCategoria = pendentesAoVivo.some(l => !l.metodoResolvido || !l.categoriaResolvida);
     const motivos = [];
     if (faltamData) motivos.push('data');
     if (faltamMetodoOuCategoria) motivos.push('forma de pgto./categoria');
@@ -405,17 +406,21 @@ function renderImportCSV() {
 
     sec.innerHTML = `
     <div class="import-csv-contexto">
-        <div class="import-csv-competencia">
-            <span class="import-csv-label-linha">Mês de competência
+        <div class="import-csv-campo">
+            <span class="import-csv-campo-label">Mês de competência
                 <span class="import-csv-ajuda" title="Segue o mês em exibição no topo do app — pra importar num mês diferente, troca por lá antes.">?</span>
             </span>
-            <b>${typeof obterMesAnoCurto === 'function' ? obterMesAnoCurto(estadoApp.mesAtual || new Date()) : ''}</b>
+            <div class="import-csv-campo-caixa import-csv-competencia"><b>${typeof obterMesAnoCurto === 'function' ? obterMesAnoCurto(estadoApp.mesAtual || new Date()) : ''}</b></div>
         </div>
-        <label ${todasComDataCompleta ? 'hidden' : ''}>
-            <span class="import-csv-label-linha">Dia de corte <span class="import-csv-ajuda" title="Dias a partir deste valor caem no mês ANTERIOR à competência (ex.: fechamento do cartão). Deixe em branco se a coluna Data já for do próprio mês de competência.">?</span></span>
-            <input type="number" id="importCsvCorte" min="1" max="31" value="${st.corte ?? ''}" placeholder="ex: 14">
-        </label>
-        <button type="button" class="mini-btn" id="importCsvTrocarArquivo">Trocar arquivo</button>
+        <div class="import-csv-campo" ${todasComDataCompleta ? 'hidden' : ''}>
+            <label class="import-csv-campo-label" for="importCsvCorte">Dia de corte
+                <span class="import-csv-ajuda" title="Dias a partir deste valor caem no mês ANTERIOR à competência (ex.: fechamento do cartão). Deixe em branco se a coluna Data já for do próprio mês de competência.">?</span>
+            </label>
+            <input type="number" id="importCsvCorte" class="import-csv-campo-caixa" min="1" max="31" value="${st.corte ?? ''}" placeholder="ex: 14">
+        </div>
+        <div class="import-csv-campo">
+            <button type="button" class="mini-btn import-csv-campo-caixa" id="importCsvTrocarArquivo">Trocar arquivo</button>
+        </div>
     </div>
     ${todasComDataCompleta ? `<p class="import-csv-nota">📅 Data completa detectada na planilha — não precisa de "Dia de corte".</p>` : ''}
     <p class="import-csv-resumo">
@@ -425,9 +430,9 @@ function renderImportCSV() {
         ${suspeitas.length ? ` · <span class="alerta">${suspeitas.length} possível${suspeitas.length === 1 ? '' : 'is'} duplicata${suspeitas.length === 1 ? '' : 's'}</span>` : ''}
     </p>
     ${infoExatas}
-    ${tabela('importcsv:revisar', '⚠️ Para revisar', paraRevisarOuIgnorada, true)}
+    ${grupo('importcsv:revisar', '⚠️ Para revisar', revisarGrupo)}
     ${tabelaSuspeitas}
-    ${tabela('importcsv:prontas', '✓ Prontas', prontasLinhas)}
+    ${grupo('importcsv:prontas', '✓ Prontas', prontasGrupo)}
     <div class="import-csv-acoes">
         <button type="button" class="btn-submit" id="importCsvConfirmar" ${revisar ? 'disabled' : ''}>
             Importar ${prontas} lançamento${prontas === 1 ? '' : 's'}
@@ -438,14 +443,6 @@ function renderImportCSV() {
     <div id="importCsvProgresso" class="import-csv-progresso" hidden></div>
     `;
 
-    document.getElementById('importCsvIgnorarTudo')?.addEventListener('change', e => {
-        paraRevisarOuIgnorada.forEach(([l]) => { l.ignorarManual = e.target.checked; });
-        _renderImportCSVPreservandoScroll();
-    });
-    document.getElementById('importCsvPularTudo')?.addEventListener('change', e => {
-        suspeitas.forEach(([l]) => { l.pularDuplicata = e.target.checked; });
-        _renderImportCSVPreservandoScroll();
-    });
     document.getElementById('importCsvCorte')?.addEventListener('change', e => {
         const v = parseInt(e.target.value, 10);
         st.corte = Number.isInteger(v) ? v : null;
@@ -461,10 +458,9 @@ function renderImportCSV() {
     });
     document.getElementById('importCsvConfirmar')?.addEventListener('click', onImportCsvConfirmar);
 
-    // Troca de método/categoria refaz a tabela inteira (linha pode "mudar de
-    // grupo" entre revisar/pronta) — sem preservar o scroll, o navegador
-    // volta pro topo da página a cada seleção (o <select> em foco some do
-    // DOM junto com o innerHTML antigo).
+    // Troca de método/categoria refaz a tabela inteira — sem preservar o
+    // scroll, o navegador volta pro topo da página a cada seleção (o
+    // <select> em foco some do DOM junto com o innerHTML antigo).
     sec.querySelectorAll('[data-import-metodo]').forEach(sel => {
         sel.addEventListener('change', e => {
             const i = parseInt(e.target.dataset.importMetodo, 10);
@@ -482,17 +478,19 @@ function renderImportCSV() {
             _renderImportCSVPreservandoScroll();
         });
     });
-    sec.querySelectorAll('[data-import-pular-dup]').forEach(chk => {
-        chk.addEventListener('change', e => {
-            const i = parseInt(e.target.dataset.importPularDup, 10);
-            st.linhas[i].pularDuplicata = e.target.checked;
-            _renderImportCSVPreservandoScroll();
+    // Descrição editável: guarda à parte (descricaoEditada) — a original
+    // continua valendo pra detectar duplicata, e vai em dadosOriginais.
+    // Sem re-render (senão o campo perde o foco).
+    sec.querySelectorAll('input[data-campo="descricao"]').forEach(inp => {
+        inp.addEventListener('change', e => {
+            const i = parseInt(e.target.closest('tr').dataset.importLinha, 10);
+            st.linhas[i].descricaoEditada = e.target.value;
         });
     });
-    sec.querySelectorAll('[data-import-ignorar]').forEach(chk => {
-        chk.addEventListener('change', e => {
-            const i = parseInt(e.target.dataset.importIgnorar, 10);
-            st.linhas[i].ignorarManual = e.target.checked;
+    // X (ignorar/pular): só esmaece e trava — a linha não some nem troca de grupo.
+    sec.querySelectorAll('[data-rev-x]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            _alternarIgnorarCSV(st.linhas[parseInt(btn.dataset.revX, 10)]);
             _renderImportCSVPreservandoScroll();
         });
     });
@@ -545,24 +543,23 @@ function _rotuloCategoriaResolvida(l) {
     return typeof l.categoriaResolvida === 'object' ? `__nova__` : l.categoriaResolvida;
 }
 
-function _renderLinhaImportCSV(l, i, comCheckboxPular = false, comCheckboxIgnorar = false) {
-    const pronta = _linhaPronta(l);
+function _renderLinhaImportCSV(l, i) {
+    const ignorada = _ignoradaCSV(l);
     const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
     const categorias = l.tipo === 'entradas'
         ? (estadoApp.menus.categoriasReceita || [])
         : (estadoApp.menus.categoriasDespesa || []);
-    const nomeNovaCategoria = (l.categoriaResolvida && typeof l.categoriaResolvida === 'object')
-        ? l.categoriaResolvida.nome : l.categoriaCSV;
+    const dis = ignorada ? 'disabled' : '';
 
-    return `
-    <tr class="${pronta ? '' : 'import-csv-linha-revisar'}">
-        ${comCheckboxPular ? `<td><input type="checkbox" data-import-pular-dup="${i}" name="pular-dup-${i}" aria-label="Pular esta duplicata" ${l.pularDuplicata ? 'checked' : ''}></td>` : ''}
-        ${comCheckboxIgnorar ? `<td><input type="checkbox" data-import-ignorar="${i}" name="ignorar-${i}" aria-label="Não importar esta linha" title="Não importar esta linha" ${l.ignorarManual ? 'checked' : ''}></td>` : ''}
-        <td>${l.dataISO ? l.dataISO.split('-').reverse().join('/') : '?'}</td>
-        <td>${formatarMoeda(l.valor)}</td>
-        <td><span class="chip-tipo chip-tipo--${l.tipo}">${l.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
+    return htmlLinhaRevisao({
+        atributos: `data-import-linha="${i}"`,
+        ignorada,
+        // Vermelha enquanto falta algo; volta à cor normal quando ajustada.
+        revisar: !_dadosCompletosCSV(l),
+        chaveX: i, dataISO: l.dataISO, valor: l.valor,
+        celulasMeio: `
         <td>
-            <select data-import-metodo="${i}" name="metodo-${i}" aria-label="Forma de pagamento">
+            <select data-import-metodo="${i}" name="metodo-${i}" aria-label="Forma de pagamento" ${dis}>
                 <option value="">Selecione...</option>
                 ${metodos.map(m => {
                     const rot = rotuloMetodo(m);
@@ -571,14 +568,14 @@ function _renderLinhaImportCSV(l, i, comCheckboxPular = false, comCheckboxIgnora
             </select>
         </td>
         <td>
-            <select data-import-categoria="${i}" name="categoria-${i}" aria-label="Categoria">
+            <select data-import-categoria="${i}" name="categoria-${i}" aria-label="Categoria" ${dis}>
                 <option value="">Selecione...</option>
                 ${categorias.map(c => `<option value="${c}" ${_rotuloCategoriaResolvida(l) === c ? 'selected' : ''}>${c}</option>`).join('')}
                 ${l.categoriaCSV ? `<option value="__nova__" ${_rotuloCategoriaResolvida(l) === '__nova__' ? 'selected' : ''}>+ criar categoria "${l.categoriaCSV}"</option>` : ''}
             </select>
-        </td>
-        <td class="import-csv-desc" title="${l.descricao}">${l.descricao || '<span class="import-csv-tag-original">' + l.categoriaCSV + '</span>'}</td>
-    </tr>`;
+        </td>`,
+        editavel: true, descricao: _descricaoCSV(l), placeholderDesc: l.categoriaCSV || '',
+    });
 }
 
 /* ---------- Eventos ---------- */
@@ -641,7 +638,7 @@ async function onImportCsvConfirmar() {
                 valor: l.valor,
                 metodo: l.metodoResolvido,
                 categoria: categoriaFinal,
-                descricao: l.descricao,
+                descricao: _descricaoCSV(l),
                 formaPagamento: 'À vista',
                 tipoRecorrencia: 'Pontual',
                 diaRecorrencia: '',
