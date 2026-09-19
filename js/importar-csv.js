@@ -12,6 +12,18 @@ let estadoImportCSV = null;
  *  mês em exibição no topo do app (mesma tira JUN/JUL/AGO...). Trocar de
  *  mês por lá recalcula quem tá pronto (ver hook em recarregarDados,
  *  data.js). */
+/** Competência de cada linha importada. Com data completa no arquivo, ela
+ *  vem da PRÓPRIA data (nunca do mês em exibição): Pix/Débito segue a data à
+ *  risca; Crédito rola pro mês seguinte a partir do dia de fechamento do
+ *  cartão. Só quando a planilha traz apenas o dia (sem mês/ano) vale o mês de
+ *  competência da tela + dia de corte. */
+function _competenciaDaLinhaCSV(l) {
+    if (!l.dataCompletaISO) return _competenciaAtualISO();
+    const metodoObj = ((estadoApp.menus && estadoApp.menus.metodos) || []).find(m => rotuloMetodo(m) === l.metodoResolvido);
+    const fechamento = metodoObj && metodoObj.metodoKind === 'Crédito' ? metodoObj.diaFechamento : null;
+    return competenciaDe(l.dataCompletaISO, fechamento);
+}
+
 function _competenciaAtualISO() {
     const m = (typeof estadoApp !== 'undefined' && estadoApp.mesAtual) ? estadoApp.mesAtual : new Date();
     return `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}-01`;
@@ -644,7 +656,7 @@ async function onImportCsvConfirmar() {
                 diaRecorrencia: '',
                 diaSemana: '',
                 semanas: [],
-                competencia: _competenciaAtualISO(),
+                competencia: _competenciaDaLinhaCSV(l),
                 origem: 'csv',
                 // Como veio na linha do arquivo, antes de resolver método/
                 // categoria pro vocabulário do app.
