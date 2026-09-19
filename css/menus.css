@@ -835,10 +835,8 @@
   margin-right: .3rem;
   font-size: 1rem;
   line-height: 1;
-  transition: transform .15s ease;
 }
-.pluggy-contas-grupo[open] > .pluggy-contas-grupo-titulo::before { transform: rotate(90deg); }
-.pluggy-contas-grupo[open] > .pluggy-contas-grupo-titulo:hover::before { transform: rotate(90deg) !important; }
+.pluggy-contas-grupo[open] > .pluggy-contas-grupo-titulo::before { content: '▾'; }
 
 /* Barra de ações da Revisão: "Desde", "Rendimentos" e o par
    "Sincronizar"/"Limpar" tentam caber numa linha só; só quebram quando o
@@ -1115,22 +1113,17 @@
 }
 .import-csv-grupo[open] > .import-csv-grupo-titulo { margin-bottom: .5rem; border-bottom: 1px solid var(--border); }
 .import-csv-grupo-titulo::-webkit-details-marker { display: none; }
+/* Seta troca de glifo (▸ fechado / ▾ aberto) — sem rotação nem transição
+   (a regra global *:hover::before{transform:none!important} de
+   animations.css desfazia a rotação no hover e a seta "piscava"). */
 .import-csv-grupo-titulo::before {
   content: '▸';
   display: inline-block;
   margin-right: .35rem;
   font-size: 1.2rem;
   line-height: 1;
-  transition: transform .15s ease;
 }
-.import-csv-grupo[open] > .import-csv-grupo-titulo::before { transform: rotate(90deg); }
-/* A regra global *:hover::before{transform:none!important} (animations.css
-   — existe pra cancelar deslocamento em botões no hover) também pegava
-   essa seta sem querer: com o grupo aberto, só de passar o mouse por cima
-   do título ela "destrancava" de volta pra ▸ e voltava a girar ao tirar o
-   mouse — um pisca-pisca sem sentido nenhum aqui. Mais específica, então
-   vence mesmo com !important dos dois lados. */
-.import-csv-grupo[open] > .import-csv-grupo-titulo:hover::before { transform: rotate(90deg) !important; }
+.import-csv-grupo[open] > .import-csv-grupo-titulo::before { content: '▾'; }
 .import-csv-tabela-wrap {
   max-height: 420px;
   overflow: auto;
@@ -1160,14 +1153,26 @@
   border: 1px solid var(--border-strong, #D1D5DB);
   border-radius: var(--radius-xs);
 }
-/* Revisão do Pluggy: linha de subgrupo (Despesas/Receitas), botão "X" e
-   linha ignorada (esmaecida/travada até o "Importar"). */
-.import-csv-subgrupo th {
-  position: static;
+/* Revisão do Pluggy: colunas coladas (só a Descrição, que é editável, cresce
+   e ocupa o resto), botão "X" e linha ignorada (esmaecida/travada até o
+   "Importar"). */
+.import-csv-tabela--compacta th,
+.import-csv-tabela--compacta td { width: 1%; white-space: nowrap; }
+.import-csv-tabela--compacta th:last-child,
+.import-csv-tabela--compacta td:last-child { width: auto; white-space: normal; }
+.import-csv-tabela--compacta select { width: auto; }
+.import-desc-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 9rem;
+  padding: .2rem .35rem;
+  font-size: .75rem;
+  color: inherit;
   background: var(--surface);
-  padding: .5rem .5rem .25rem;
-  border-bottom: 0;
+  border: 1px solid var(--border-strong, #D1D5DB);
+  border-radius: var(--radius-xs);
 }
+.import-desc-input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
 .import-x {
   width: 1.3rem;
   height: 1.3rem;
@@ -1186,14 +1191,13 @@
 .import-x:hover { color: var(--despesa-text); border-color: var(--despesa-text); }
 .linha-ignorada td:not(:first-child) { opacity: .4; }
 .linha-ignorada td:nth-child(3),
-.linha-ignorada .import-csv-desc { text-decoration: line-through; }
-.linha-ignorada select { pointer-events: none; }
-.dt-curta { display: none; }
-/* Celular: fonte bem menor em toda a tabela de revisão e data só dd/mm. */
+.linha-ignorada .import-desc-input { text-decoration: line-through; }
+.linha-ignorada select,
+.linha-ignorada .import-desc-input { pointer-events: none; }
+/* Celular: fonte bem menor em toda a tabela de revisão. */
 @media (max-width: 600px) {
-  .dt-full { display: none; }
-  .dt-curta { display: inline; }
   .import-csv-tabela { font-size: .62rem; }
+  .import-desc-input { min-width: 5.5rem; font-size: .6rem; padding: .1rem .2rem; }
   /* O "* { font-size }" do celular (responsive.css) crava o tamanho em
      CADA elemento (tr inclusive), então nada herda da tabela — precisa
      valor explícito em th/td/span. */
