@@ -220,10 +220,20 @@ async function carregarContasConectadas() {
  *  "Sincronizar" — fica entre a linha de mês/Total/Rendimentos e a de
  *  Sincronizar/Limpar. Liga/desliga a mesma coluna `sincronizar` que o
  *  pluggy-sync já respeita. */
+let _syncZeradoPluggy = false;
 function _renderSeletorContasSyncPluggy(conectadas) {
     const box = document.getElementById('pluggyContasSync');
     if (!box) return;
     box.hidden = !conectadas.length;
+    // Por padrão nenhuma conta vem escolhida: na 1ª vez em cada carga da
+    // página zera a coluna (o pluggy-sync lê dela) e mostra tudo desmarcado.
+    if (!_syncZeradoPluggy && conectadas.length) {
+        _syncZeradoPluggy = true;
+        conectadas.filter(c => c.sincronizar).forEach(c => {
+            c.sincronizar = false;
+            associarSincronizarConta(c.id, false);
+        });
+    }
     // Dois cartões do mesmo banco dariam o mesmo nome curto — desempata
     // com o final do cartão.
     const nomes = conectadas.map(tituloContaPluggyCurto);
