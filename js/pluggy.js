@@ -667,16 +667,28 @@ async function limparFilaRevisaoPluggy(btn) {
 }
 
 /** Marca cada item pendente como possível duplicata — mesmo tipo, mesmo
- *  valor (tolerância de 1 centavo) e data a até 2 dias de distância de
- *  algum lançamento que já existe no app (mesma ideia de _conciliar em
- *  js/conciliar-pdf.js) — mostrado num grupo à parte, igual CSV/PDF. */
-function _marcarDuplicatasPluggy(itens) {
-    const pool = [...(estadoApp.transacoes.entradas || []), ...(estadoApp.transacoes.saidas || [])];
+ *  valor (tolerância de 1 centavo), data a até 2 dias e, quando os dois lados
+ *  têm forma de pgto., a MESMA forma — de algum lançamento já gravado no app.
+ *  Busca no banco o período dos pendentes (o estadoApp só tem o mês em tela,
+ *  então sincronizar outro mês nunca achava nada). Grupo à parte, igual CSV/PDF. */
+async function _marcarDuplicatasPluggy(itens) {
+    if (!itens.length) return [];
+    const datas = itens.map(i => String(i.data).slice(0, 10)).sort();
+    const ampliar = (iso, d) => { const x = new Date(iso + 'T12:00:00'); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
+    const { data: existentes, error } = await sb.from('transacoes')
+        .select('tipo, valor, data, metodo')
+        .gte('data', ampliar(datas[0], -2)).lte('data', ampliar(datas[datas.length - 1], 2));
+    if (error) console.error(error);
+    const pool = existentes || [];
+    const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
+    const rotuloDe = id => { const m = id ? metodos.find(x => x.id === id) : null; return m ? rotuloMetodo(m) : null; };
     return itens.map(item => {
+        const rot = rotuloDe(item.metodo_sugerido);
         const suspeita = pool.some(t =>
             t.tipo === item.tipo &&
-            Math.abs(parseFloat(t.valor) - parseFloat(item.valor)) < 0.005 &&
-            typeof _diffDias === 'function' && _diffDias(t.data, item.data) <= 2
+            Math.abs(Math.abs(parseFloat(t.valor)) - Math.abs(parseFloat(item.valor))) < 0.005 &&
+            typeof _diffDias === 'function' && _diffDias(String(t.data).slice(0, 10), String(item.data).slice(0, 10)) <= 2 &&
+            (!rot || !t.metodo || t.metodo === rot)
         );
         return { ...item, _duplicataSuspeita: suspeita };
     });
@@ -719,7 +731,7 @@ async function carregarRevisaoPluggy() {
     }
 
     const pendentesBrutos = data || [];
-    const marcados = _marcarDuplicatasPluggy(pendentesBrutos);
+    const marcados = await _marcarDuplicatasPluggy(pendentesBrutos);
     _revisaoPluggyCache = Object.fromEntries(marcados.map(item => [item.id, item]));
     _atualizarTotalMesPluggy();
 
