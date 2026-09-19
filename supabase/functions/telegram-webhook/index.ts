@@ -44,15 +44,105 @@ function rotuloMetodo(m: { nome: string; metodo_kind: string | null; banco: stri
   return m.banco ? `${m.metodo_kind} ${m.banco}` : m.metodo_kind;
 }
 
+interface ContaPluggy {
+  id: number;
+  item_id: string;
+  account_id: string;
+  marketing_name: string | null;
+  tipo_conta: string | null;
+  nome_conta: string | null;
+  banco_origem: string | null;
+  numero_mascarado: string | null;
+  marca_cartao: string | null;
+}
+
 /** Mesmo título mostrado no app (js/pluggy.js:tituloContaPluggy). */
-function tituloContaPluggy(c: { marketing_name: string | null; tipo_conta: string | null; nome_conta: string | null }): string {
+function tituloContaPluggy(c: ContaPluggy): string {
   if (c.marketing_name) return c.marketing_name;
   if (c.tipo_conta === "CREDIT") return "Cartão de crédito";
   return c.nome_conta || "Conta bancária";
 }
 
+/** Igual tituloContaPluggy, mas com o banco/final do cartão junto — o
+ *  título sozinho vira "Cartão de crédito" genérico pra QUALQUER cartão,
+ *  então quem tem mais de um cartão conectado não consegue distinguir
+ *  qual é qual no log do /atualizar (ou no teclado de escolha). */
+function tituloContaPluggyDetalhado(c: ContaPluggy): string {
+  const base = tituloContaPluggy(c);
+  const extra = [c.banco_origem, c.numero_mascarado ? `final ${c.numero_mascarado}` : null]
+    .filter(Boolean).join(" · ");
+  return extra && !base.includes(extra) ? `${base} (${extra})` : base;
+}
+
 function formatarMoedaBR(valor: number): string {
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+/** Força a Pluggy buscar dados novos AGORA nas contas passadas (PATCH
+ *  /items/{id}, mesma chamada do "Sincronizar agora" no app) e manda de
+ *  volta um log com as 3 transações mais recentes de cada uma. Usado pelo
+ *  /atualizar tanto pra "Todas as contas" quanto pra uma conta escolhida
+ *  no teclado. */
+async function executarAtualizacaoPluggy(
+  token: string,
+  chatId: number,
+  contas: ContaPluggy[],
+): Promise<void> {
+  try {
+    const apiKey = await getPluggyApiKey();
+
+    // Assíncrono do lado da Pluggy, por isso a pequena espera antes de
+    // buscar as transações; itemIds repetidos (várias contas da mesma
+    // conexão) só disparam uma vez.
+    const itemIds = [...new Set(contas.map((c) => c.item_id))];
+    await Promise.all(itemIds.map((itemId) =>
+      fetch(`${PLUGGY_API_URL}/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }).catch((e) => console.error(`Falha ao forçar atualização do item ${itemId}:`, e))
+    ));
+    await new Promise((resolve) => setTimeout(resolve, 6000));
+
+    // /v2/transactions não aceita "pageSize" (só filtros — accountId,
+    // dateFrom/dateTo — e pagina por cursor via "next" na resposta, igual
+    // ao pluggy-sync); busca uma janela recente e pega as 3 mais novas no
+    // client.
+    const dateFrom = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const blocos: string[] = [];
+    for (const conta of contas) {
+      const titulo = tituloContaPluggyDetalhado(conta);
+      try {
+        const resp = await pluggyGet(`/v2/transactions?accountId=${conta.account_id}&dateFrom=${dateFrom}`, apiKey);
+        const ultimas = [...(resp.results ?? [])]
+          .sort((a: { date: string }, b: { date: string }) => (a.date < b.date ? 1 : -1))
+          .slice(0, 3);
+        if (!ultimas.length) {
+          blocos.push(`🏦 <b>${titulo}</b>\nSem transações no período.`);
+          continue;
+        }
+        const linhas = ultimas.map((t: { date: string; amount: number; type: string; description?: string; descriptionRaw?: string }) => {
+          const data = String(t.date).slice(0, 10).split("-").reverse().join("/");
+          const sinal = t.type === "CREDIT" ? "+" : "-";
+          const desc = t.description || t.descriptionRaw || "(sem descrição)";
+          return `• ${data} ${sinal}${formatarMoedaBR(Math.abs(Number(t.amount) || 0))} — ${desc}`;
+        });
+        blocos.push(`🏦 <b>${titulo}</b>\n${linhas.join("\n")}`);
+      } catch (e) {
+        console.error(`Erro buscando transações da conta ${conta.id}:`, e);
+        blocos.push(`🏦 <b>${titulo}</b>\n⚠️ Erro ao buscar transações.`);
+      }
+    }
+
+    await tg(token, "sendMessage", {
+      chat_id: chatId,
+      parse_mode: "HTML",
+      text: `✅ Atualizado. Últimas transações por conta:\n\n${blocos.join("\n\n")}`,
+    });
+  } catch (e) {
+    console.error("Erro no /atualizar:", e);
+    await tg(token, "sendMessage", { chat_id: chatId, text: "Deu erro ao atualizar com a Pluggy — tenta de novo em instantes." });
+  }
 }
 
 /** Mesmo par client_id/client_secret do pluggy-sync — gera uma API key
@@ -165,12 +255,13 @@ Deno.serve(async (req: Request) => {
         return json({ ok: true });
       }
 
-      // "/atualizar" — força a Pluggy buscar dados novos de TODAS as
-      // conexões do usuário agora (mesmo PATCH /items/{id} do botão
-      // "Sincronizar agora" no app) e manda de volta um log com as 3
-      // transações mais recentes de cada conta, só pra conferência — não
-      // mexe na fila de revisão do app (isso continua exigindo o
-      // "Sincronizar" no app ou o aviso automático do pluggy-webhook).
+      // "/atualizar" — pergunta qual conexão bancária atualizar (teclado
+      // inline) antes de ir na Pluggy; a atualização em si (PATCH /items/
+      // {id}, igual ao "Sincronizar agora" do app + log das 3 transações
+      // mais recentes) só acontece depois do toque num botão (ver
+      // callback_query "atualizarconta:" mais abaixo). Não mexe na fila de
+      // revisão do app (isso continua exigindo o "Sincronizar" no app ou o
+      // aviso automático do pluggy-webhook).
       if (texto.startsWith("/atualizar")) {
         const { data: tgUser } = await supabaseAdmin
           .from("telegram_users").select("user_id").eq("chat_id", chatId).maybeSingle();
@@ -180,9 +271,9 @@ Deno.serve(async (req: Request) => {
         }
 
         // Sem filtro de "sincronizar" de propósito — /atualizar é uma ação
-        // explícita do usuário no Telegram pra TODAS as contas ativas,
-        // independente do toggle "Incluir na sincronização" do botão
-        // automático no app (esse sim respeita o toggle).
+        // explícita do usuário no Telegram pra contas ativas, independente
+        // do toggle "Incluir na sincronização" do botão automático no app
+        // (esse sim respeita o toggle).
         const { data: contas, error: contasError } = await supabaseAdmin
           .from("pluggy_contas")
           .select("*")
@@ -198,64 +289,23 @@ Deno.serve(async (req: Request) => {
           return json({ ok: true });
         }
 
-        await tg(token, "sendMessage", { chat_id: chatId, text: `🔄 Atualizando ${contas.length} conta(s) na Pluggy...` });
-
-        try {
-          const apiKey = await getPluggyApiKey();
-
-          // Pede pra Pluggy buscar dados novos na instituição AGORA (é
-          // assíncrono do lado dela) — mesma chamada do "Sincronizar agora"
-          // no app. itemIds repetidos (várias contas da mesma conexão) só
-          // disparam uma vez.
-          const itemIds = [...new Set(contas.map((c) => c.item_id))];
-          await Promise.all(itemIds.map((itemId) =>
-            fetch(`${PLUGGY_API_URL}/items/${itemId}`, {
-              method: "PATCH",
-              headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
-              body: JSON.stringify({}),
-            }).catch((e) => console.error(`Falha ao forçar atualização do item ${itemId}:`, e))
-          ));
-          await new Promise((resolve) => setTimeout(resolve, 6000));
-
-          // /v2/transactions não aceita "pageSize" (só filtros — accountId,
-          // dateFrom/dateTo — e pagina por cursor via "next" na resposta,
-          // igual ao pluggy-sync); busca uma janela recente e pega as 3 mais
-          // novas no client.
-          const dateFrom = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-          const blocos: string[] = [];
-          for (const conta of contas) {
-            const titulo = tituloContaPluggy(conta);
-            try {
-              const resp = await pluggyGet(`/v2/transactions?accountId=${conta.account_id}&dateFrom=${dateFrom}`, apiKey);
-              const ultimas = [...(resp.results ?? [])]
-                .sort((a: { date: string }, b: { date: string }) => (a.date < b.date ? 1 : -1))
-                .slice(0, 3);
-              if (!ultimas.length) {
-                blocos.push(`🏦 <b>${titulo}</b>\nSem transações no período.`);
-                continue;
-              }
-              const linhas = ultimas.map((t: { date: string; amount: number; type: string; description?: string; descriptionRaw?: string }) => {
-                const data = String(t.date).slice(0, 10).split("-").reverse().join("/");
-                const sinal = t.type === "CREDIT" ? "+" : "-";
-                const desc = t.description || t.descriptionRaw || "(sem descrição)";
-                return `• ${data} ${sinal}${formatarMoedaBR(Math.abs(Number(t.amount) || 0))} — ${desc}`;
-              });
-              blocos.push(`🏦 <b>${titulo}</b>\n${linhas.join("\n")}`);
-            } catch (e) {
-              console.error(`Erro buscando transações da conta ${conta.id}:`, e);
-              blocos.push(`🏦 <b>${titulo}</b>\n⚠️ Erro ao buscar transações.`);
-            }
-          }
-
-          await tg(token, "sendMessage", {
-            chat_id: chatId,
-            parse_mode: "HTML",
-            text: `✅ Atualizado. Últimas transações por conta:\n\n${blocos.join("\n\n")}`,
-          });
-        } catch (e) {
-          console.error("Erro no /atualizar:", e);
-          await tg(token, "sendMessage", { chat_id: chatId, text: "Deu erro ao atualizar com a Pluggy — tenta de novo em instantes." });
+        // Só 1 conta conectada: não faz sentido perguntar, vai direto.
+        if (contas.length === 1) {
+          await tg(token, "sendMessage", { chat_id: chatId, text: "🔄 Atualizando..." });
+          await executarAtualizacaoPluggy(token, chatId, contas as ContaPluggy[]);
+          return json({ ok: true });
         }
+
+        const botoes = (contas as ContaPluggy[]).map((c) => ([{
+          text: tituloContaPluggyDetalhado(c),
+          callback_data: `atualizarconta:${c.id}`,
+        }]));
+        botoes.push([{ text: "🔄 Todas as contas", callback_data: "atualizarconta:todas" }]);
+        await tg(token, "sendMessage", {
+          chat_id: chatId,
+          text: "Qual conta você quer atualizar?",
+          reply_markup: { inline_keyboard: botoes },
+        });
         return json({ ok: true });
       }
 
@@ -267,11 +317,42 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true });
     }
 
-    // ---------- Clique em botão inline (Confirmar/Ignorar) ----------
+    // ---------- Clique em botão inline (Confirmar/Ignorar/Atualizar conta) ----------
     if (update.callback_query) {
       const cq = update.callback_query;
       const chatId = cq.message?.chat?.id;
       const [acao, idStr] = String(cq.data || "").split(":");
+
+      // Escolha de conta no teclado do /atualizar — "todas" ou o id de uma
+      // pluggy_contas específica.
+      if (acao === "atualizarconta" && chatId) {
+        const { data: tgUser } = await supabaseAdmin.from("telegram_users").select("user_id").eq("chat_id", chatId).maybeSingle();
+        if (!tgUser) {
+          await tg(token, "answerCallbackQuery", { callback_query_id: cq.id, text: "Conta não vinculada" });
+          return json({ ok: true });
+        }
+        const { data: contas } = await supabaseAdmin
+          .from("pluggy_contas")
+          .select("*")
+          .eq("user_id", tgUser.user_id)
+          .in("status", ["ativo", "erro"]);
+        const contaId = idStr === "todas" ? null : Number(idStr);
+        // Nunca confia só no id vindo do botão — filtra pelas contas do
+        // PRÓPRIO usuário vinculado, não pelo id cru.
+        const alvo = contaId ? (contas ?? []).filter((c) => c.id === contaId) : (contas ?? []);
+        if (!alvo.length) {
+          await tg(token, "answerCallbackQuery", { callback_query_id: cq.id, text: "Conta não encontrada" });
+          return json({ ok: true });
+        }
+        await tg(token, "answerCallbackQuery", { callback_query_id: cq.id, text: "Atualizando..." });
+        await tg(token, "editMessageText", {
+          chat_id: chatId, message_id: cq.message.message_id,
+          text: `🔄 Atualizando ${contaId ? tituloContaPluggyDetalhado(alvo[0]) : `${alvo.length} conta(s)`}...`,
+        });
+        await executarAtualizacaoPluggy(token, chatId, alvo as ContaPluggy[]);
+        return json({ ok: true });
+      }
+
       const importadaId = Number(idStr);
 
       if (!chatId || !importadaId || !["confirmar", "ignorar"].includes(acao)) {
