@@ -162,11 +162,15 @@ async function carregarAbaMenus() {
 
         <div class="pluggy-toolbar">
           <div class="pluggy-toolbar-item pluggy-sync-periodo">
-            <span class="pluggy-toolbar-label">Desde</span>
             <select id="syncMesPluggy" class="pluggy-sync-mes"></select>
             <button type="button" id="syncAnoMenos" class="pluggy-sync-ano-seta" title="Ano anterior">◂</button>
             <span id="syncAnoPluggy" class="pluggy-sync-ano-valor"></span>
             <button type="button" id="syncAnoMais" class="pluggy-sync-ano-seta" title="Próximo ano">▸</button>
+          </div>
+          <div class="pluggy-toolbar-item pluggy-total">
+            <span class="pluggy-toolbar-label">Total</span>
+            <span class="pluggy-total-valor pluggy-total-receita" id="pluggyTotalReceita">+R$ 0</span>
+            <span class="pluggy-total-valor pluggy-total-despesa" id="pluggyTotalDespesa">-R$ 0</span>
           </div>
           <div class="pluggy-toolbar-row2">
             <div class="pluggy-toolbar-item pluggy-rendimentos" role="group" aria-label="Rendimentos">

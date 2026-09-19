@@ -470,15 +470,31 @@ function _preencherSeletorSyncPluggy() {
 
 function onChangeSyncMesPluggy(e) {
     _syncPluggy.mes = parseInt(e.target.value, 10) || _syncPluggy.mes;
+    _atualizarTotalMesPluggy();
 }
 
 function onClickSyncAnoPluggy(delta) {
     _syncPluggy.ano += delta;
     _preencherSeletorSyncPluggy();
+    _atualizarTotalMesPluggy();
 }
 
 function calcularDateFromSyncPluggy() {
     return `${_syncPluggy.ano}-${String(_syncPluggy.mes).padStart(2, '0')}-01`;
+}
+
+/** Caixa "Total" ao lado do seletor de mês/ano — soma (por tipo) só os
+ *  lançamentos pendentes de revisão cuja DATA cai no mês/ano escolhido ali
+ *  (não é o total do app inteiro, é só da fila de revisão do Pluggy). */
+function _atualizarTotalMesPluggy() {
+    const elReceita = document.getElementById('pluggyTotalReceita');
+    const elDespesa = document.getElementById('pluggyTotalDespesa');
+    if (!elReceita || !elDespesa) return;
+    const competencia = `${_syncPluggy.ano}-${String(_syncPluggy.mes).padStart(2, '0')}`;
+    const itens = Object.values(_revisaoPluggyCache).filter(item => String(item.data || '').startsWith(competencia));
+    const somar = tipo => itens.filter(i => i.tipo === tipo).reduce((s, i) => s + (Number(i.valor) || 0), 0);
+    elReceita.textContent = `+${formatarMoeda(somar('entradas'))}`;
+    elDespesa.textContent = `-${formatarMoeda(somar('saidas'))}`;
 }
 
 /** Botão "Sincronizar agora": busca transações novas em todas as contas. */
@@ -601,6 +617,7 @@ async function carregarRevisaoPluggy() {
     const pendentesBrutos = data || [];
     const marcados = _marcarDuplicatasPluggy(pendentesBrutos);
     _revisaoPluggyCache = Object.fromEntries(marcados.map(item => [item.id, item]));
+    _atualizarTotalMesPluggy();
     _historicoPluggyCache = Object.fromEntries((historico || []).map(item => [item.id, item]));
 
     const temCategoria = item => !!_categoriaAoVivoPluggy(item);

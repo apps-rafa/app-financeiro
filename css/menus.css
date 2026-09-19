@@ -865,7 +865,8 @@
 /* Larguras mínimas proporcionais ao conteúdo real de cada caixa (medido)
    — evita o que dava antes: "Rendimentos" (rótulo + 2 chips, a mais
    larga) recebendo MENOS espaço que os botões, cortando "Ignorar". */
-.pluggy-sync-periodo { min-width: 14rem; gap: .3rem; padding: 0 .5rem; }
+.pluggy-sync-periodo { min-width: 10rem; gap: .3rem; padding: 0 .5rem; }
+.pluggy-total { min-width: 11rem; }
 .pluggy-rendimentos { min-width: 13rem; }
 .pluggy-toolbar-btns { min-width: 13rem; display: flex; gap: .6rem; }
 .pluggy-toolbar-btns .pluggy-toolbar-btn { flex: 1 1 0; min-width: 0; }
@@ -925,6 +926,15 @@
   min-width: 2.3rem;
   text-align: center;
 }
+/* Caixa "Total": soma (por tipo) dos lançamentos pendentes de revisão cujo
+   mês/ano batem com o seletor "Desde" ao lado. */
+.pluggy-total-valor {
+  font-size: var(--pluggy-toolbar-fs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pluggy-total-receita { color: var(--receita-text); }
+.pluggy-total-despesa { color: var(--despesa-text); }
 /* Sem "space-between": isso jogava o último botão ("Ignorar") encostado
    na borda arredondada da caixa — um retângulo reto colado bem na curva
    do canto sempre parece "sangrar" pra fora dela. Com gap normal (herdado
