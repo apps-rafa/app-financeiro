@@ -60,14 +60,14 @@
   background: var(--surface);
   color: var(--text-muted);
   font-weight: 600;
-  font-size: 0.64rem;
+  font-size: clamp(0.6rem, 0.35rem + 1.1vw, 0.82rem); /* maior na largura máxima, encolhe conforme aperta */
   cursor: pointer;
   white-space: normal;
   line-height: 1.15;
   text-align: center;
 }
 @media (max-width: 480px) {
-  .subtabs .subtab { font-size: 0.6rem; padding: 0.35rem 0.25rem; }
+  .subtabs .subtab { padding: 0.35rem 0.25rem; }
 }
 .subtabs .subtab.active {
   background: var(--primary);
@@ -676,7 +676,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: .5rem;
-  padding: .6rem 0;
+  padding: 0;
 }
 /* "Escolher arquivo" ao lado de "Formato": esse campo tem um rótulo
    ACIMA do select ("Formato"), then o botão de upload (sem rótulo
@@ -690,9 +690,7 @@
    disso e ficaria com um vão vazio em cima à toa. */
 .menu-section[data-sub="importar"] div[data-importar-modo="csv"] .import-csv-upload::before,
 .menu-section[data-sub="importar"] div[data-importar-modo="pdf"] .import-csv-upload::before {
-  content: "";
-  flex-basis: 100%;
-  height: 1.47rem;
+  content: none; /* o pai já alinha pela base (align-items:flex-end) */
 }
 /* O <input type="file"> nativo fica escondido (acessível — só fora da
    tela, não display:none) e vira um <label class="import-csv-upload-label">
