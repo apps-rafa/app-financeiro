@@ -1396,3 +1396,13 @@ button.import-csv-campo-caixa { justify-content: center; font-size: .78rem; font
    regular) pra não mudar a aparência ao trocar a tag. */
 summary [role="button"] { font-family: Arial; text-align: center; }
 .subgrupo-modo-icone[role="button"] { font-size: 13.3333px; font-weight: 400; }
+
+/* Grupos de revisão sempre ocupam a linha inteira (o display:contents do
+   #importCsvConteudo os promove a itens flex, e fechados ficavam lado a lado). */
+#importCsvConteudo .import-csv-grupo, #importPdfConteudo .import-csv-grupo { flex: 1 1 100%; min-width: 100%; box-sizing: border-box; }
+/* Tabela do subgrupo vai de borda a borda (anula o padding do subgrupo) — o
+   vermelho das linhas a revisar preenche 100% da largura. */
+.import-csv-grupo .import-csv-grupo > .import-csv-tabela-wrap--solta { margin: 0 -.25rem; }
+@media (max-width: 600px) {
+  .import-csv-grupo .import-csv-grupo > .import-csv-tabela-wrap--solta { margin: 0 -.15rem; }
+}
