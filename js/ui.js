@@ -1379,14 +1379,48 @@ async function atualizarProximasTransacoes() {
     if (!container) return;
 
     try {
+        // Lê o aberto/fechado ANTES de reescrever (a fatura também usa essa chave).
+        const abertosPend = {};
+        container.querySelectorAll('details.fatura-item[data-pend]').forEach(d => { abertosPend[d.dataset.pend] = d.open; });
+        const pendentesHTML = renderPendentesProximas(abertosPend);
         const faturasHTML = renderFaturasCartao(container);
-        container.innerHTML = faturasHTML || `<p class="empty-message">Nenhuma fatura de cartão neste mês</p>`;
-        container.onclick = faturasHTML ? _onCliqueProximas : null;
+        const html = pendentesHTML + (faturasHTML || '');
+        container.innerHTML = html || `<p class="empty-message">Nada a receber, a pagar nem fatura neste mês</p>`;
+        container.onclick = html ? _onCliqueProximas : null;
         container.querySelectorAll('.faturas-cartao .subgrupo-organizador').forEach(_ajustarLabelsFiltro);
     } catch (error) {
         console.error('Erro ao atualizar próximas transações:', error);
         container.innerHTML = '<p class="empty-message">Erro ao carregar próximas transações</p>';
     }
+}
+
+/** Grupos "A receber" e "A pagar" da aba Próximos: lançamentos do mês em
+ *  exibição que ainda não aconteceram (mesma regra do card de resumo —
+ *  _transacaoRealizada), fora os de cartão de crédito, que aparecem em
+ *  "Faturas". Abertos por padrão. */
+function renderPendentesProximas(abertos = {}) {
+    const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
+    const rotulosCredito = new Set(metodos.filter(m => m.metodoKind === 'Crédito').map(m => rotuloMetodo(m)));
+    const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
+    const pend = lista => (lista || [])
+        .filter(t => !rotulosCredito.has(t.metodo) && !_transacaoRealizada(t))
+        .sort((a, b) => String(a.data).localeCompare(String(b.data)));
+    const grupo = (nome, chave, lista, tipoUI) => {
+        if (!lista.length) return '';
+        const total = lista.reduce((acc, t) => acc + valorDe(t), 0);
+        return `
+        <details class="fatura-item" data-pend="${chave}" ${abertos[chave] !== false ? 'open' : ''}>
+          <summary>
+            <span class="fatura-nome">${nome}</span>
+            <span class="fatura-espaco"></span>
+            <span class="subgrupo-contagem">${lista.length}</span>
+            <span class="fatura-total">${formatarMoeda(total)}</span>
+          </summary>
+          <div class="fatura-itens">${lista.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}</div>
+        </details>`;
+    };
+    return grupo('A receber', 'receber', pend(estadoApp.transacoes.entradas), 'entrada')
+         + grupo('A pagar', 'pagar', pend(estadoApp.transacoes.saidas), 'saida');
 }
 
 /** Bloco "Faturas de cartão de crédito": cada cartão com o total lançado no
