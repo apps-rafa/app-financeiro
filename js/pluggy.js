@@ -243,7 +243,18 @@ function _renderSeletorContasSyncPluggy(conectadas) {
         btn.classList.toggle('active', ligar);
         btn.dataset.sincronizar = ligar ? '1' : '0';
         associarSincronizarConta(Number(btn.dataset.id), ligar);
+        _atualizarBotaoSincronizarPluggy();
     };
+    _atualizarBotaoSincronizarPluggy();
+}
+
+/** "Sincronizar" só habilita com pelo menos uma conta escolhida acima. */
+function _atualizarBotaoSincronizarPluggy() {
+    const btn = document.getElementById('btnSincronizarPluggy');
+    if (!btn || btn.dataset.ocupado) return; // sincronizando: quem termina reavalia
+    const algumaEscolhida = !!document.querySelector('#pluggyContasSync .pluggy-conta-sync.active');
+    btn.disabled = !algumaEscolhida;
+    btn.title = algumaEscolhida ? '' : 'Escolha pelo menos uma conta pra sincronizar';
 }
 
 /** Card de uma conta conectada (grupo "Conectadas"/"Desconectadas"). */
@@ -492,7 +503,7 @@ const _abertosPluggy = { duplicatas: true, pendentes: true, prontas: true, histo
 
 /** Toggle "Rendimentos": Agrupar/Ignorar, um ativo por vez (não checkbox). */
 function _modoRendimentosPluggy() {
-    return document.querySelector('.pluggy-toggle-opt.active')?.dataset.rendimentos || 'agrupar';
+    return document.querySelector('.pluggy-toggle-opt.active')?.dataset.rendimentos || 'ignorar';
 }
 
 function onClickRendimentosPluggy(e) {
@@ -559,7 +570,7 @@ function _atualizarTotalMesPluggy() {
 async function sincronizarPluggyAgora() {
     const btn = document.getElementById('btnSincronizarPluggy');
     const textoOriginal = btn ? btn.textContent : '';
-    if (btn) { btn.disabled = true; btn.textContent = 'Sincronizando...'; }
+    if (btn) { btn.dataset.ocupado = '1'; btn.disabled = true; btn.textContent = 'Sincronizando...'; }
     try {
         const dateFrom = calcularDateFromSyncPluggy();
         const body = { modoRendimentos: _modoRendimentosPluggy() };
@@ -579,7 +590,7 @@ async function sincronizarPluggyAgora() {
         console.error(e);
         mostrarNotificacao('Erro ao sincronizar com a Pluggy', 'erro');
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = textoOriginal || '↻ Sincronizar agora'; }
+        if (btn) { btn.textContent = textoOriginal || '↻ Sincronizar'; delete btn.dataset.ocupado; _atualizarBotaoSincronizarPluggy(); }
     }
 }
 
@@ -612,18 +623,20 @@ function onClickLimparRevisaoPluggy(e) {
 async function limparFilaRevisaoPluggy(btn) {
     delete btn.dataset.armed;
     btn.classList.remove('armed');
-    const original = '🧹 Limpar tudo';
+    const original = '🧹 Limpar';
     btn.disabled = true;
     try {
         const { error } = await sb.from('transacoes_importadas').delete().in('status', ['pendente', 'ignorada', 'confirmada']);
         if (error) throw error;
         mostrarNotificacao('Fila de revisão limpa', 'sucesso');
+        // carregarRevisaoPluggy decide se o botão fica habilitado (só
+        // habilita se ainda sobrar algo pra limpar).
         await carregarRevisaoPluggy();
     } catch (e) {
         console.error(e);
         mostrarNotificacao('Erro ao limpar a fila', 'erro');
-    } finally {
         btn.disabled = false;
+    } finally {
         btn.textContent = original;
     }
 }
@@ -703,6 +716,10 @@ async function carregarRevisaoPluggy() {
     const pendentes = marcados.filter(i => !i._duplicataSuspeita && !temCategoria(i));
     const prontas = marcados.filter(temCategoria);
 
+    // "Limpar" só habilita se há algo visível pra limpar (pendentes ou histórico).
+    const btnLimparRevisao = document.getElementById('btnLimparRevisaoPluggy');
+    if (btnLimparRevisao) btnLimparRevisao.disabled = !pendentesBrutos.length && !historicoValido.length;
+
     if (!pendentesBrutos.length && !historicoValido.length) {
         container.innerHTML = '<p class="empty-message">Nada pendente — toque em "Sincronizar agora" pra buscar transações novas</p>';
         container.onclick = null;
@@ -732,7 +749,7 @@ async function carregarRevisaoPluggy() {
         id: `${idPai}-${tipo}`, abertos: _abertosPluggy, padraoAberto: true,
         titulo: `${tipo === 'entradas' ? 'Receitas' : 'Despesas'} (${itens.length})`,
         corpo: `
-    <div class="import-csv-tabela-wrap">
+    <div class="import-csv-tabela-wrap import-csv-tabela-wrap--solta">
         <table class="import-csv-tabela import-csv-tabela--compacta">
             <thead><tr><th></th><th>Data</th><th>Valor</th><th>Categoria</th><th>Descrição</th></tr></thead>
             <tbody>${itens.map(gerarHTMLImportadaPluggy).join('')}</tbody>
@@ -749,7 +766,7 @@ async function carregarRevisaoPluggy() {
         id: 'pluggy-historico', abertos: _abertosPluggy, padraoAberto: false,
         titulo: `📜 Já lançados (histórico) (${historicoValido.length})`,
         corpo: `
-    <div class="import-csv-tabela-wrap">
+    <div class="import-csv-tabela-wrap import-csv-tabela-wrap--solta">
         <table class="import-csv-tabela">
             <thead><tr><th>Data</th><th>Valor</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th></th></tr></thead>
             <tbody>${historicoValido.map(gerarHTMLHistoricoPluggy).join('')}</tbody>
