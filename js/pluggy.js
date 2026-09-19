@@ -634,14 +634,26 @@ async function carregarRevisaoPluggy() {
     const marcados = _marcarDuplicatasPluggy(pendentesBrutos);
     _revisaoPluggyCache = Object.fromEntries(marcados.map(item => [item.id, item]));
     _atualizarTotalMesPluggy();
-    _historicoPluggyCache = Object.fromEntries((historico || []).map(item => [item.id, item]));
+
+    // "confirmada" com transacao_id apontando pra um lançamento que não
+    // existe mais (apagado no app, via FK on-delete-set-null) não deveria
+    // continuar ocupando o histórico como um "Lançamento apagado" — isso é
+    // lixo da revisão, não histórico de verdade. Apaga esse resíduo e
+    // segue só com o que ainda tem o lançamento de verdade por trás.
+    const historicoValido = (historico || []).filter(item => item.transacao);
+    const historicoOrfao = (historico || []).filter(item => !item.transacao);
+    if (historicoOrfao.length) {
+        sb.from('transacoes_importadas').delete().in('id', historicoOrfao.map(item => item.id))
+            .then(({ error }) => { if (error) console.error('Erro ao limpar histórico órfão do Pluggy:', error); });
+    }
+    _historicoPluggyCache = Object.fromEntries(historicoValido.map(item => [item.id, item]));
 
     const temCategoria = item => !!_categoriaAoVivoPluggy(item);
     const duplicatas = marcados.filter(i => i._duplicataSuspeita && !temCategoria(i));
     const pendentes = marcados.filter(i => !i._duplicataSuspeita && !temCategoria(i));
     const prontas = marcados.filter(temCategoria);
 
-    if (!pendentesBrutos.length && !(historico || []).length) {
+    if (!pendentesBrutos.length && !historicoValido.length) {
         container.innerHTML = '<p class="empty-message">Nada pendente — toque em "Sincronizar agora" pra buscar transações novas</p>';
         container.onclick = null;
         container.onchange = null;
@@ -665,14 +677,14 @@ async function carregarRevisaoPluggy() {
     </div>`
     });
 
-    const tabelaHistorico = !( historico || []).length ? '' : _grupoColapsavelConciliar({
+    const tabelaHistorico = !historicoValido.length ? '' : _grupoColapsavelConciliar({
         id: 'pluggy-historico', abertos: _abertosPluggy, padraoAberto: false,
-        titulo: `📜 Já lançados (histórico) (${historico.length})`,
+        titulo: `📜 Já lançados (histórico) (${historicoValido.length})`,
         corpo: `
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela">
             <thead><tr><th>Data</th><th>Valor</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th></th></tr></thead>
-            <tbody>${historico.map(gerarHTMLHistoricoPluggy).join('')}</tbody>
+            <tbody>${historicoValido.map(gerarHTMLHistoricoPluggy).join('')}</tbody>
         </table>
     </div>`
     });
