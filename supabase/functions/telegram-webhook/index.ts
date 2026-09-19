@@ -54,26 +54,76 @@ interface ContaPluggy {
   nome_instituicao: string | null;
   numero_mascarado: string | null;
   marca_cartao: string | null;
+  metodo_id: number | null;
+  /** Banco do "Método do app" ligado à conta (ex. "Bradesco") — é a fonte
+   *  mais confiável: o conector "MeuPluggy" agrega vários bancos e não diz
+   *  qual é o de cada conta. */
+  banco_metodo?: string | null;
 }
 
-/** Mesmo título mostrado no app (js/pluggy.js:tituloContaPluggy). */
-function tituloContaPluggy(c: ContaPluggy): string {
-  if (c.marketing_name) return c.marketing_name;
-  if (c.tipo_conta === "CREDIT") return "Cartão de crédito";
-  return c.nome_conta || "Conta bancária";
+function escaparHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-/** Igual tituloContaPluggy, mas com o banco (nome_instituicao — o
- *  conector/instituição, ex. "Nubank", diferente de marketing_name, que é
- *  um apelido por CONTA e costuma ficar em branco no cartão) e o final do
- *  número junto — o título sozinho vira "Cartão de crédito" genérico pra
- *  QUALQUER cartão, então quem tem mais de um conectado não consegue
- *  distinguir qual é qual no log do /atualizar (ou no teclado de escolha). */
+/** "Nu Pagamentos S.A. - Instituição de Pagamento" -> "Nubank"; tira
+ *  qualquer "(...)" final. */
+function normalizarBanco(nome: string): string {
+  if (/^nu pagamentos/i.test(nome.trim())) return "Nubank";
+  return nome.replace(/\s*\([^)]*\)\s*$/, "").trim();
+}
+
+/** Nome da conta no formato "Banco: Tipo", ex.:
+ *    Mercado Pago: Conta Pré-paga
+ *    Bradesco: Cartão de crédito VISA INFINITE (final 1525)
+ *    Nubank: Cartão de crédito MASTERCARD PLATINUM (final 8381)
+ *  Usado no log e no teclado do /atualizar — o título curto do app vira
+ *  "Cartão de crédito" genérico pra qualquer cartão. */
 function tituloContaPluggyDetalhado(c: ContaPluggy): string {
-  const base = tituloContaPluggy(c);
-  const extra = [c.nome_instituicao, c.numero_mascarado ? `final ${c.numero_mascarado}` : null]
-    .filter(Boolean).join(" · ");
-  return extra && !base.includes(extra) ? `${base} (${extra})` : base;
+  const marketing = c.marketing_name ?? "";
+  const tipoEntreParenteses = marketing.match(/\(([^)]+)\)\s*$/)?.[1] ?? null; // "Conta Pré-paga"
+  const bancoBruto = c.banco_metodo
+    || (marketing ? marketing.replace(/\s*\([^)]*\)\s*$/, "") : null)
+    || (c.nome_instituicao && !/meupluggy/i.test(c.nome_instituicao) ? c.nome_instituicao : null);
+  const banco = bancoBruto ? normalizarBanco(bancoBruto) : null;
+
+  if (c.tipo_conta === "CREDIT") {
+    const marca = (c.marca_cartao ?? "").toUpperCase();
+    const nivel = (c.nome_conta ?? "").toUpperCase(); // "VISA INFINITE", "PLATINUM" ou o próprio banco
+    let detalhe: string;
+    if (nivel && marca && nivel.includes(marca)) detalhe = nivel;
+    else if (nivel && banco && nivel === banco.toUpperCase()) detalhe = marca;
+    else detalhe = [marca, nivel].filter(Boolean).join(" ");
+    const cartao = `Cartão de crédito${detalhe ? ` ${detalhe}` : ""}${c.numero_mascarado ? ` (final ${c.numero_mascarado})` : ""}`;
+    return banco ? `${banco}: ${cartao}` : cartao;
+  }
+
+  const tipo = tipoEntreParenteses || c.nome_conta || "Conta bancária";
+  return banco ? `${banco}: ${tipo}` : tipo;
+}
+
+/** Contas Pluggy ativas do usuário, com o banco do "Método do app" junto
+ *  (ver ContaPluggy.banco_metodo). Sem filtro de "sincronizar" de
+ *  propósito — /atualizar é uma ação explícita do usuário no Telegram,
+ *  independente do toggle "Incluir na sincronização" do botão automático
+ *  do app. */
+async function carregarContasPluggy(
+  admin: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<{ erro: unknown; contas: ContaPluggy[] }> {
+  const { data, error } = await admin
+    .from("pluggy_contas").select("*").eq("user_id", userId).in("status", ["ativo", "erro"]).order("id");
+  if (error) return { erro: error, contas: [] };
+  const contas = (data ?? []) as ContaPluggy[];
+  const metodoIds = [...new Set(contas.map((c) => c.metodo_id).filter((id): id is number => !!id))];
+  const bancos = new Map<number, string>();
+  if (metodoIds.length) {
+    const { data: metodos } = await admin.from("menu_itens").select("id, banco").in("id", metodoIds);
+    for (const m of (metodos ?? []) as { id: number; banco: string | null }[]) if (m.banco) bancos.set(m.id, m.banco);
+  }
+  return {
+    erro: null,
+    contas: contas.map((c) => ({ ...c, banco_metodo: c.metodo_id ? bancos.get(c.metodo_id) ?? null : null })),
+  };
 }
 
 function formatarMoedaBR(valor: number): string {
@@ -113,7 +163,7 @@ async function executarAtualizacaoPluggy(
     const dateFrom = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const blocos: string[] = [];
     for (const conta of contas) {
-      const titulo = tituloContaPluggyDetalhado(conta);
+      const titulo = escaparHtml(tituloContaPluggyDetalhado(conta));
       try {
         const resp = await pluggyGet(`/v2/transactions?accountId=${conta.account_id}&dateFrom=${dateFrom}`, apiKey);
         const ultimas = [...(resp.results ?? [])]
@@ -272,21 +322,13 @@ Deno.serve(async (req: Request) => {
           return json({ ok: true });
         }
 
-        // Sem filtro de "sincronizar" de propósito — /atualizar é uma ação
-        // explícita do usuário no Telegram pra contas ativas, independente
-        // do toggle "Incluir na sincronização" do botão automático no app
-        // (esse sim respeita o toggle).
-        const { data: contas, error: contasError } = await supabaseAdmin
-          .from("pluggy_contas")
-          .select("*")
-          .eq("user_id", tgUser.user_id)
-          .in("status", ["ativo", "erro"]);
+        const { erro: contasError, contas } = await carregarContasPluggy(supabaseAdmin, tgUser.user_id);
         if (contasError) {
           console.error(contasError);
           await tg(token, "sendMessage", { chat_id: chatId, text: "Deu erro ao buscar suas contas conectadas." });
           return json({ ok: true });
         }
-        if (!contas || !contas.length) {
+        if (!contas.length) {
           await tg(token, "sendMessage", { chat_id: chatId, text: "Nenhuma conta conectada pra atualizar (Configurações > Open Finance no app)." });
           return json({ ok: true });
         }
@@ -294,15 +336,18 @@ Deno.serve(async (req: Request) => {
         // Só 1 conta conectada: não faz sentido perguntar, vai direto.
         if (contas.length === 1) {
           await tg(token, "sendMessage", { chat_id: chatId, text: "🔄 Atualizando..." });
-          await executarAtualizacaoPluggy(token, chatId, contas as ContaPluggy[]);
+          await executarAtualizacaoPluggy(token, chatId, contas);
           return json({ ok: true });
         }
 
-        const botoes = (contas as ContaPluggy[]).map((c) => ([{
+        // Todo menu do bot termina com "Cancelar" (callback "cancelar",
+        // tratado mais abaixo — vale pra qualquer teclado novo também).
+        const botoes = contas.map((c) => ([{
           text: tituloContaPluggyDetalhado(c),
           callback_data: `atualizarconta:${c.id}`,
         }]));
         botoes.push([{ text: "🔄 Todas as contas", callback_data: "atualizarconta:todas" }]);
+        botoes.push([{ text: "❌ Cancelar", callback_data: "cancelar" }]);
         await tg(token, "sendMessage", {
           chat_id: chatId,
           text: "Qual conta você quer atualizar?",
@@ -325,6 +370,18 @@ Deno.serve(async (req: Request) => {
       const chatId = cq.message?.chat?.id;
       const [acao, idStr] = String(cq.data || "").split(":");
 
+      // "Cancelar" — presente em todo menu do bot: tira o teclado e marca a
+      // mensagem como cancelada (editMessageText sem reply_markup remove os
+      // botões).
+      if (acao === "cancelar" && chatId) {
+        await tg(token, "answerCallbackQuery", { callback_query_id: cq.id, text: "Cancelado" });
+        await tg(token, "editMessageText", {
+          chat_id: chatId, message_id: cq.message.message_id,
+          text: `${cq.message.text}\n\n❌ Cancelado`,
+        });
+        return json({ ok: true });
+      }
+
       // Escolha de conta no teclado do /atualizar — "todas" ou o id de uma
       // pluggy_contas específica.
       if (acao === "atualizarconta" && chatId) {
@@ -333,15 +390,11 @@ Deno.serve(async (req: Request) => {
           await tg(token, "answerCallbackQuery", { callback_query_id: cq.id, text: "Conta não vinculada" });
           return json({ ok: true });
         }
-        const { data: contas } = await supabaseAdmin
-          .from("pluggy_contas")
-          .select("*")
-          .eq("user_id", tgUser.user_id)
-          .in("status", ["ativo", "erro"]);
+        const { contas } = await carregarContasPluggy(supabaseAdmin, tgUser.user_id);
         const contaId = idStr === "todas" ? null : Number(idStr);
         // Nunca confia só no id vindo do botão — filtra pelas contas do
         // PRÓPRIO usuário vinculado, não pelo id cru.
-        const alvo = contaId ? (contas ?? []).filter((c) => c.id === contaId) : (contas ?? []);
+        const alvo = contaId ? contas.filter((c) => c.id === contaId) : contas;
         if (!alvo.length) {
           await tg(token, "answerCallbackQuery", { callback_query_id: cq.id, text: "Conta não encontrada" });
           return json({ ok: true });
@@ -351,7 +404,7 @@ Deno.serve(async (req: Request) => {
           chat_id: chatId, message_id: cq.message.message_id,
           text: `🔄 Atualizando ${contaId ? tituloContaPluggyDetalhado(alvo[0]) : `${alvo.length} conta(s)`}...`,
         });
-        await executarAtualizacaoPluggy(token, chatId, alvo as ContaPluggy[]);
+        await executarAtualizacaoPluggy(token, chatId, alvo);
         return json({ ok: true });
       }
 

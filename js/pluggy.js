@@ -437,6 +437,9 @@ let _historicoPluggyCache = {};
 // "Importar N lançamentos"). Chave = id da transacoes_importadas.
 const _categoriaEscolhidaPluggy = {};
 const _descricaoEditadaPluggy = {};
+// Linhas marcadas com "X" — só marca local (esmaece/trava a linha); vão
+// pra 'ignorada' no banco (e somem) só quando o usuário aperta "Importar".
+const _ignoradasPluggy = new Set();
 // Estado aberto/fechado dos grupos — sobrevive a re-renders.
 const _abertosPluggy = { duplicatas: true, pendentes: true, prontas: true, historico: false };
 
@@ -660,19 +663,31 @@ async function carregarRevisaoPluggy() {
         return;
     }
 
-    // Mesma tabela do CSV/PDF (import-csv-tabela) — colunas Data/Valor/Tipo/
-    // Categoria/Descrição, sem "Forma de pgto." (o método já vem fixado
-    // pela conta em "Método do app", não faz sentido escolher de novo aqui).
-    const tabela = (id, titulo, lista, aberto, comIgnorar = true) => !lista.length ? '' : _grupoColapsavelConciliar({
+    // Ids ignorados que já não estão na fila (ex.: sumiram num sync/limpar)
+    // saem do conjunto — senão o contador "descartar N" fica sobrando.
+    for (const id of [..._ignoradasPluggy]) if (!_revisaoPluggyCache[id]) _ignoradasPluggy.delete(id);
+    const prontasAtivas = prontas.filter(i => !_ignoradasPluggy.has(i.id));
+    const totalIgnoradas = _ignoradasPluggy.size;
+
+    // Colunas X/Data/Valor/Categoria/Descrição. O tipo (despesa/receita)
+    // vira subgrupo dentro de cada grupo — some a coluna "Tipo" e o sinal
+    // do valor (já implícito) — pra caber em tela estreita. Sem "Forma de
+    // pgto." (o método já vem fixado pela conta em "Método do app").
+    const subgrupo = (tipo, itens) => !itens.length ? '' : `
+            <tr class="import-csv-subgrupo">
+                <th colspan="5"><span class="chip-tipo chip-tipo--${tipo}">${tipo === 'entradas' ? 'Receitas' : 'Despesas'} (${itens.length})</span></th>
+            </tr>
+            ${itens.map(gerarHTMLImportadaPluggy).join('')}`;
+    const tabela = (id, titulo, lista, aberto) => !lista.length ? '' : _grupoColapsavelConciliar({
         id, abertos: _abertosPluggy, padraoAberto: aberto, titulo: `${titulo} (${lista.length})`,
         corpo: `
     <div class="import-csv-tabela-wrap">
-        <table class="import-csv-tabela">
-            <thead><tr>
-                ${comIgnorar ? '<th>Ignorar?</th>' : ''}
-                <th>Data</th><th>Valor</th><th>Tipo</th><th>Categoria</th><th>Descrição</th>
-            </tr></thead>
-            <tbody>${lista.map(item => gerarHTMLImportadaPluggy(item, comIgnorar)).join('')}</tbody>
+        <table class="import-csv-tabela import-csv-tabela--compacta">
+            <thead><tr><th></th><th>Data</th><th>Valor</th><th>Categoria</th><th>Descrição</th></tr></thead>
+            <tbody>
+                ${subgrupo('saidas', lista.filter(i => i.tipo !== 'entradas'))}
+                ${subgrupo('entradas', lista.filter(i => i.tipo === 'entradas'))}
+            </tbody>
         </table>
     </div>`
     });
@@ -701,12 +716,12 @@ async function carregarRevisaoPluggy() {
             : '',
         tabela('pluggy-duplicatas', '🔁 Possíveis duplicatas', duplicatas, _abertosPluggy.duplicatas),
         tabela('pluggy-pendentes', '⚠️ Pendentes para revisar', pendentes, _abertosPluggy.pendentes),
-        tabela('pluggy-prontas', '✓ Prontas', prontas, _abertosPluggy.prontas, false),
+        tabela('pluggy-prontas', '✓ Prontas', prontas, _abertosPluggy.prontas),
         `<div class="import-csv-acoes">
-            <button type="button" class="btn-submit" id="btnImportarProntasPluggy" ${prontas.length ? '' : 'disabled'}>
-                Importar ${prontas.length} lançamento${prontas.length === 1 ? '' : 's'}
+            <button type="button" class="btn-submit" id="btnImportarProntasPluggy" ${prontasAtivas.length || totalIgnoradas ? '' : 'disabled'}>
+                Importar ${prontasAtivas.length} lançamento${prontasAtivas.length === 1 ? '' : 's'}${totalIgnoradas ? ` · descartar ${totalIgnoradas}` : ''}
             </button>
-            <button type="button" class="mini-btn" id="btnCancelarProntasPluggy" ${prontas.length ? '' : 'disabled'}>Cancelar</button>
+            <button type="button" class="mini-btn" id="btnCancelarProntasPluggy" ${prontas.length || totalIgnoradas ? '' : 'disabled'}>Cancelar</button>
         </div>
         <div id="pluggyImportProgresso" class="import-csv-progresso" hidden></div>`,
         tabelaHistorico,
@@ -730,9 +745,8 @@ async function carregarRevisaoPluggy() {
  *  "Prontas" na hora) + descrição + checkbox pra ignorar. Sem coluna de
  *  forma de pagamento: esse já vem fixado pela conta em "Método do app"
  *  (ver carregarContasConectadas). Mesmo layout de tabela do CSV/PDF. */
-function gerarHTMLImportadaPluggy(item, comIgnorar = true) {
-    const dataFmt = item.data ? item.data.split('-').reverse().join('/') : '?';
-    const sinal = item.tipo === 'entradas' ? '+' : '-';
+function gerarHTMLImportadaPluggy(item) {
+    const ignorada = _ignoradasPluggy.has(item.id);
     const descEscapada = _descricaoAoVivoPluggy(item).replace(/"/g, '&quot;');
 
     const categoriasApp = (estadoApp.menus &&
@@ -742,20 +756,31 @@ function gerarHTMLImportadaPluggy(item, comIgnorar = true) {
         `<option value="${nome}" ${nome === categoriaAoVivo ? 'selected' : ''}>${nome}</option>`
     ).join('');
 
+    // "X" só marca/desmarca localmente (some da fila de verdade só ao
+    // apertar "Importar"): a linha fica esmaecida e travada; o próprio botão
+    // vira "↺" pra reativar.
     return `
-    <tr data-importada-id="${item.id}">
-        ${comIgnorar ? `<td><input type="checkbox" data-act="ignorar-importada" data-id="${item.id}" title="Não importar esta linha"></td>` : ''}
-        <td>${dataFmt}</td>
-        <td>${sinal} ${formatarMoeda(item.valor)}</td>
-        <td><span class="chip-tipo chip-tipo--${item.tipo}">${item.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
+    <tr data-importada-id="${item.id}"${ignorada ? ' class="linha-ignorada"' : ''}>
+        <td><button type="button" class="import-x" data-act="ignorar-importada" data-id="${item.id}"
+            title="${ignorada ? 'Reativar esta linha' : 'Não importar esta linha'}">${ignorada ? '↺' : '✕'}</button></td>
+        <td>${_dataCurtaLongaPluggy(item.data)}</td>
+        <td>${formatarMoeda(item.valor)}</td>
         <td>
-            <select data-campo="categoria" title="Categoria">
+            <select data-campo="categoria" title="Categoria" ${ignorada ? 'disabled' : ''}>
                 <option value="">Selecione...</option>
                 ${opcoesCategoria}
             </select>
         </td>
         <td class="import-csv-desc" title="${descEscapada}">${descEscapada}</td>
     </tr>`;
+}
+
+/** Data com as duas versões no HTML — o CSS mostra só "dd/mm" em tela
+ *  estreita e "dd/mm/aaaa" no resto (ver .dt-curta/.dt-full). */
+function _dataCurtaLongaPluggy(dataISO) {
+    if (!dataISO) return '?';
+    const [a, m, d] = dataISO.split('-');
+    return `<span class="dt-full">${d}/${m}/${a}</span><span class="dt-curta">${d}/${m}</span>`;
 }
 
 /** Linha do histórico (já confirmado) — categoria/descrição/data vêm da
@@ -769,11 +794,10 @@ function gerarHTMLHistoricoPluggy(item) {
         // só pra registro; sem transação de verdade não tem o que mostrar.
         return `<tr><td colspan="6">Lançamento apagado — ${item.descricao_banco || 'sem descrição'}</td></tr>`;
     }
-    const dataFmt = t.data ? t.data.split('-').reverse().join('/') : '?';
     const sinal = t.tipo === 'entradas' ? '+' : '-';
     return `
     <tr data-historico-id="${item.id}">
-        <td>${dataFmt}</td>
+        <td>${_dataCurtaLongaPluggy(t.data)}</td>
         <td>${sinal} ${formatarMoeda(t.valor)}</td>
         <td><span class="chip-tipo chip-tipo--${t.tipo}">${t.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
         <td>${t.categoria || 'Sem categoria'}</td>
@@ -845,7 +869,7 @@ function onRevisaoPluggyClick(e) {
     const id = Number(btn.dataset.id);
     switch (btn.dataset.act) {
         case 'add-categoria': abrirNovaCategoria(btn.dataset.tipo); break;
-        case 'ignorar-importada': ignorarImportadaPluggy(id); break;
+        case 'ignorar-importada': alternarIgnorarImportadaPluggy(id); break;
         case 'editar-historico': editarHistoricoPluggy(id); break;
         case 'excluir-historico': excluirHistoricoPluggy(id); break;
     }
@@ -864,8 +888,10 @@ function onRevisaoPluggyChange(e) {
 /** Grava de vez todas as "Prontas" (via adicionarTransacaoAPI, uma de cada
  *  vez, igual CSV/PDF) e marca cada uma como confirmada na fila. */
 async function importarProntasPluggy() {
-    const prontas = Object.values(_revisaoPluggyCache).filter(item => _categoriaAoVivoPluggy(item));
-    if (!prontas.length) return;
+    const prontas = Object.values(_revisaoPluggyCache)
+        .filter(item => _categoriaAoVivoPluggy(item) && !_ignoradasPluggy.has(item.id));
+    const idsIgnoradas = [..._ignoradasPluggy];
+    if (!prontas.length && !idsIgnoradas.length) return;
 
     const btn = document.getElementById('btnImportarProntasPluggy');
     const barra = document.getElementById('pluggyImportProgresso');
@@ -918,9 +944,17 @@ async function importarProntasPluggy() {
         }
     }
 
+    // Só agora as linhas marcadas com "X" saem da fila de verdade.
+    if (idsIgnoradas.length) {
+        const { error } = await sb.from('transacoes_importadas').update({ status: 'ignorada' }).in('id', idsIgnoradas);
+        if (error) { console.error(error); falhas++; }
+        else idsIgnoradas.forEach(id => { _ignoradasPluggy.delete(id); delete _categoriaEscolhidaPluggy[id]; });
+    }
+
     if (barra) barra.hidden = true;
+    const descartadas = idsIgnoradas.length && !falhas ? ` · ${idsIgnoradas.length} descartado${idsIgnoradas.length === 1 ? '' : 's'}` : '';
     mostrarNotificacao(
-        falhas ? `${ok} importado(s), ${falhas} com erro` : `${ok} lançamento${ok === 1 ? '' : 's'} importado${ok === 1 ? '' : 's'}`,
+        falhas ? `${ok} importado(s), ${falhas} com erro` : `${ok} lançamento${ok === 1 ? '' : 's'} importado${ok === 1 ? '' : 's'}${descartadas}`,
         falhas ? 'erro' : 'sucesso'
     );
     await carregarRevisaoPluggy();
@@ -933,21 +967,16 @@ async function importarProntasPluggy() {
 function cancelarProntasPluggy() {
     for (const key of Object.keys(_categoriaEscolhidaPluggy)) delete _categoriaEscolhidaPluggy[key];
     for (const key of Object.keys(_descricaoEditadaPluggy)) delete _descricaoEditadaPluggy[key];
+    _ignoradasPluggy.clear();
     carregarRevisaoPluggy();
 }
 
-/** Ignora uma importada: não vira lançamento, só sai da fila. */
-async function ignorarImportadaPluggy(id) {
-    const { error } = await sb.from('transacoes_importadas').update({ status: 'ignorada' }).eq('id', id);
-    if (error) {
-        console.error(error);
-        mostrarNotificacao('Erro ao ignorar', 'erro');
-        return;
-    }
-    delete _categoriaEscolhidaPluggy[id];
-    delete _descricaoEditadaPluggy[id];
-    mostrarNotificacao('Ignorado', 'sucesso');
-    await carregarRevisaoPluggy();
+/** "X": marca/desmarca a linha como "não importar" — só visual/local, a
+ *  linha fica na tela (esmaecida e travada) até o "Importar". */
+function alternarIgnorarImportadaPluggy(id) {
+    if (_ignoradasPluggy.has(id)) _ignoradasPluggy.delete(id);
+    else _ignoradasPluggy.add(id);
+    _renderRevisaoPluggyPreservandoScroll();
 }
 
 /** Chamado ao entrar na sub-aba "Pluggy" de Importar (ver menus-ui.js). */
