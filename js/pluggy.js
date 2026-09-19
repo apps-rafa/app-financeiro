@@ -578,6 +578,15 @@ async function sincronizarPluggyAgora() {
     const textoOriginal = btn ? btn.textContent : '';
     if (btn) { btn.dataset.ocupado = '1'; btn.disabled = true; btn.textContent = 'Sincronizando...'; }
     try {
+        // Sincronizar SUBSTITUI o que está em tela: descarta a fila pendente
+        // (ainda não importada) antes de buscar o período novo — senão trocar
+        // de mês e sincronizar acumulava os meses. Ignoradas/confirmadas ficam
+        // (o servidor as reconhece e não pede revisão de novo).
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) throw new Error('sem usuário');
+        const { error: errLimpa } = await sb.from('transacoes_importadas').delete()
+            .eq('user_id', user.id).eq('status', 'pendente');
+        if (errLimpa) throw errLimpa;
         const dateFrom = calcularDateFromSyncPluggy();
         const body = { modoRendimentos: _modoRendimentosPluggy() };
         if (dateFrom) {
