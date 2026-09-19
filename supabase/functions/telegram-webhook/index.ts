@@ -51,7 +51,7 @@ interface ContaPluggy {
   marketing_name: string | null;
   tipo_conta: string | null;
   nome_conta: string | null;
-  banco_origem: string | null;
+  nome_instituicao: string | null;
   numero_mascarado: string | null;
   marca_cartao: string | null;
 }
@@ -63,13 +63,15 @@ function tituloContaPluggy(c: ContaPluggy): string {
   return c.nome_conta || "Conta bancária";
 }
 
-/** Igual tituloContaPluggy, mas com o banco/final do cartão junto — o
- *  título sozinho vira "Cartão de crédito" genérico pra QUALQUER cartão,
- *  então quem tem mais de um cartão conectado não consegue distinguir
- *  qual é qual no log do /atualizar (ou no teclado de escolha). */
+/** Igual tituloContaPluggy, mas com o banco (nome_instituicao — o
+ *  conector/instituição, ex. "Nubank", diferente de marketing_name, que é
+ *  um apelido por CONTA e costuma ficar em branco no cartão) e o final do
+ *  número junto — o título sozinho vira "Cartão de crédito" genérico pra
+ *  QUALQUER cartão, então quem tem mais de um conectado não consegue
+ *  distinguir qual é qual no log do /atualizar (ou no teclado de escolha). */
 function tituloContaPluggyDetalhado(c: ContaPluggy): string {
   const base = tituloContaPluggy(c);
-  const extra = [c.banco_origem, c.numero_mascarado ? `final ${c.numero_mascarado}` : null]
+  const extra = [c.nome_instituicao, c.numero_mascarado ? `final ${c.numero_mascarado}` : null]
     .filter(Boolean).join(" · ");
   return extra && !base.includes(extra) ? `${base} (${extra})` : base;
 }
