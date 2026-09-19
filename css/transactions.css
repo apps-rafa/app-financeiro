@@ -470,13 +470,9 @@
     margin-right: .35rem;
     font-size: 1.2rem;
     line-height: 1;
-    transition: transform .15s ease;
 }
-.subgrupo[open] > .subgrupo-cab::before { transform: rotate(90deg); }
-/* Mesmo pisca-pisca de hover do .rec-grupo (ver comentário lá) — a regra
-   global *:hover::before{transform:none!important} também alcançava essa
-   seta. */
-.subgrupo[open] > .subgrupo-cab:hover::before { transform: rotate(90deg) !important; }
+/* Glifo troca (▸/▾) em vez de girar — sem animação nem "pisca" no hover. */
+.subgrupo[open] > .subgrupo-cab::before { content: '▾'; }
 .subgrupo:not([open]) > .subgrupo-cab { border-bottom: 1px dashed var(--border); }
 .subgrupo[open] > .subgrupo-cab { border-bottom: 1px dashed var(--border); margin-bottom: .3rem; }
 .subgrupo-nome { flex: none; text-align: left; }

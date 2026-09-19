@@ -673,23 +673,24 @@ async function carregarRevisaoPluggy() {
     // vira subgrupo dentro de cada grupo — some a coluna "Tipo" e o sinal
     // do valor (já implícito) — pra caber em tela estreita. Sem "Forma de
     // pgto." (o método já vem fixado pela conta em "Método do app").
-    const subgrupo = (tipo, itens) => !itens.length ? '' : `
-            <tr class="import-csv-subgrupo">
-                <th colspan="5"><span class="chip-tipo chip-tipo--${tipo}">${tipo === 'entradas' ? 'Receitas' : 'Despesas'} (${itens.length})</span></th>
-            </tr>
-            ${itens.map(gerarHTMLImportadaPluggy).join('')}`;
-    const tabela = (id, titulo, lista, aberto) => !lista.length ? '' : _grupoColapsavelConciliar({
-        id, abertos: _abertosPluggy, padraoAberto: aberto, titulo: `${titulo} (${lista.length})`,
+    // Cada subgrupo é um <details> igual ao do grupo pai (mesma classe,
+    // mesma seta), com a própria tabela; começa aberto e lembra o estado
+    // (chave = id completo em _abertosPluggy).
+    const subgrupo = (idPai, tipo, itens) => !itens.length ? '' : _grupoColapsavelConciliar({
+        id: `${idPai}-${tipo}`, abertos: _abertosPluggy, padraoAberto: true,
+        titulo: `${tipo === 'entradas' ? 'Receitas' : 'Despesas'} (${itens.length})`,
         corpo: `
     <div class="import-csv-tabela-wrap">
         <table class="import-csv-tabela import-csv-tabela--compacta">
             <thead><tr><th></th><th>Data</th><th>Valor</th><th>Categoria</th><th>Descrição</th></tr></thead>
-            <tbody>
-                ${subgrupo('saidas', lista.filter(i => i.tipo !== 'entradas'))}
-                ${subgrupo('entradas', lista.filter(i => i.tipo === 'entradas'))}
-            </tbody>
+            <tbody>${itens.map(gerarHTMLImportadaPluggy).join('')}</tbody>
         </table>
     </div>`
+    });
+    const tabela = (id, titulo, lista, aberto) => !lista.length ? '' : _grupoColapsavelConciliar({
+        id, abertos: _abertosPluggy, padraoAberto: aberto, titulo: `${titulo} (${lista.length})`,
+        corpo: subgrupo(id, 'saidas', lista.filter(i => i.tipo !== 'entradas'))
+            + subgrupo(id, 'entradas', lista.filter(i => i.tipo === 'entradas'))
     });
 
     const tabelaHistorico = !historicoValido.length ? '' : _grupoColapsavelConciliar({
@@ -729,8 +730,10 @@ async function carregarRevisaoPluggy() {
 
     container.querySelectorAll('details.import-csv-grupo').forEach(det => {
         det.addEventListener('toggle', () => {
-            const chave = { 'pluggy-duplicatas': 'duplicatas', 'pluggy-pendentes': 'pendentes', 'pluggy-prontas': 'prontas', 'pluggy-historico': 'historico' }[det.dataset.grupoId];
-            if (chave) _abertosPluggy[chave] = det.open;
+            const id = det.dataset.grupoId;
+            const chave = { 'pluggy-duplicatas': 'duplicatas', 'pluggy-pendentes': 'pendentes', 'pluggy-prontas': 'prontas', 'pluggy-historico': 'historico' }[id];
+            // Subgrupos (Despesas/Receitas) guardam o estado pelo id completo.
+            _abertosPluggy[chave || id] = det.open;
         });
     });
 
@@ -747,7 +750,8 @@ async function carregarRevisaoPluggy() {
  *  (ver carregarContasConectadas). Mesmo layout de tabela do CSV/PDF. */
 function gerarHTMLImportadaPluggy(item) {
     const ignorada = _ignoradasPluggy.has(item.id);
-    const descEscapada = _descricaoAoVivoPluggy(item).replace(/"/g, '&quot;');
+    const descEscapada = _descricaoAoVivoPluggy(item)
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
     const categoriasApp = (estadoApp.menus &&
         (item.tipo === 'entradas' ? estadoApp.menus.categoriasReceita : estadoApp.menus.categoriasDespesa)) || [];
@@ -763,7 +767,7 @@ function gerarHTMLImportadaPluggy(item) {
     <tr data-importada-id="${item.id}"${ignorada ? ' class="linha-ignorada"' : ''}>
         <td><button type="button" class="import-x" data-act="ignorar-importada" data-id="${item.id}"
             title="${ignorada ? 'Reativar esta linha' : 'Não importar esta linha'}">${ignorada ? '↺' : '✕'}</button></td>
-        <td>${_dataCurtaLongaPluggy(item.data)}</td>
+        <td>${_dataCurtaPluggy(item.data)}</td>
         <td>${formatarMoeda(item.valor)}</td>
         <td>
             <select data-campo="categoria" title="Categoria" ${ignorada ? 'disabled' : ''}>
@@ -771,16 +775,17 @@ function gerarHTMLImportadaPluggy(item) {
                 ${opcoesCategoria}
             </select>
         </td>
-        <td class="import-csv-desc" title="${descEscapada}">${descEscapada}</td>
+        <td class="import-csv-desc-edit">
+            <input type="text" class="import-desc-input" data-campo="descricao" value="${descEscapada}" title="Descrição (editável)" ${ignorada ? 'disabled' : ''}>
+        </td>
     </tr>`;
 }
 
-/** Data com as duas versões no HTML — o CSS mostra só "dd/mm" em tela
- *  estreita e "dd/mm/aaaa" no resto (ver .dt-curta/.dt-full). */
-function _dataCurtaLongaPluggy(dataISO) {
+/** "dd/mm" (sem ano) — a tela de revisão sempre mostra assim. */
+function _dataCurtaPluggy(dataISO) {
     if (!dataISO) return '?';
-    const [a, m, d] = dataISO.split('-');
-    return `<span class="dt-full">${d}/${m}/${a}</span><span class="dt-curta">${d}/${m}</span>`;
+    const [, m, d] = dataISO.split('-');
+    return `${d}/${m}`;
 }
 
 /** Linha do histórico (já confirmado) — categoria/descrição/data vêm da
@@ -797,7 +802,7 @@ function gerarHTMLHistoricoPluggy(item) {
     const sinal = t.tipo === 'entradas' ? '+' : '-';
     return `
     <tr data-historico-id="${item.id}">
-        <td>${_dataCurtaLongaPluggy(t.data)}</td>
+        <td>${_dataCurtaPluggy(t.data)}</td>
         <td>${sinal} ${formatarMoeda(t.valor)}</td>
         <td><span class="chip-tipo chip-tipo--${t.tipo}">${t.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
         <td>${t.categoria || 'Sem categoria'}</td>
@@ -882,6 +887,9 @@ function onRevisaoPluggyChange(e) {
     if (e.target.dataset.campo === 'categoria') {
         _categoriaEscolhidaPluggy[id] = e.target.value || '';
         _renderRevisaoPluggyPreservandoScroll();
+    } else if (e.target.dataset.campo === 'descricao') {
+        // Só guarda — sem re-render (senão o campo perde o foco/cursor).
+        _descricaoEditadaPluggy[id] = e.target.value;
     }
 }
 
