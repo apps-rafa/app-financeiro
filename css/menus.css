@@ -1160,6 +1160,55 @@
   border: 1px solid var(--border-strong, #D1D5DB);
   border-radius: var(--radius-xs);
 }
+/* Revisão do Pluggy: linha de subgrupo (Despesas/Receitas), botão "X" e
+   linha ignorada (esmaecida/travada até o "Importar"). */
+.import-csv-subgrupo th {
+  position: static;
+  background: var(--surface);
+  padding: .5rem .5rem .25rem;
+  border-bottom: 0;
+}
+.import-x {
+  width: 1.3rem;
+  height: 1.3rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-strong, #D1D5DB);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: .62rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.import-x:hover { color: var(--despesa-text); border-color: var(--despesa-text); }
+.linha-ignorada td:not(:first-child) { opacity: .4; }
+.linha-ignorada td:nth-child(3),
+.linha-ignorada .import-csv-desc { text-decoration: line-through; }
+.linha-ignorada select { pointer-events: none; }
+.dt-curta { display: none; }
+/* Celular: fonte bem menor em toda a tabela de revisão e data só dd/mm. */
+@media (max-width: 600px) {
+  .dt-full { display: none; }
+  .dt-curta { display: inline; }
+  .import-csv-tabela { font-size: .62rem; }
+  /* O "* { font-size }" do celular (responsive.css) crava o tamanho em
+     CADA elemento (tr inclusive), então nada herda da tabela — precisa
+     valor explícito em th/td/span. */
+  .import-csv-tabela tr,
+  .import-csv-tabela th,
+  .import-csv-tabela td,
+  .import-csv-tabela td span,
+  .import-csv-tabela th span { font-size: .62rem; }
+  .import-csv-tabela th { padding: .3rem .3rem; }
+  .import-csv-tabela td { padding: .25rem .3rem; }
+  .import-csv-tabela select { max-width: 92px; padding: .1rem .15rem; font-size: .6rem; }
+  .import-csv-tabela .chip-tipo { font-size: .58rem; padding: .02rem .3rem; }
+  .import-csv-desc { max-width: 110px; }
+  .import-x { width: 1.1rem; height: 1.1rem; font-size: .55rem; }
+}
 .import-csv-linha-revisar { background: color-mix(in srgb, var(--despesa-text) 8%, transparent); }
 .import-csv-linha-revisar select { border-color: var(--despesa-text); }
 .import-csv-desc {
