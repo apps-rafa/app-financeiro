@@ -576,7 +576,9 @@ function _atualizarTotalMesPluggy() {
     const elDespesa = document.getElementById('pluggyTotalDespesa');
     if (!elReceita || !elDespesa) return;
     const competencia = `${_syncPluggy.ano}-${String(_syncPluggy.mes).padStart(2, '0')}`;
-    const itens = Object.values(_revisaoPluggyCache).filter(item => String(item.data || '').startsWith(competencia));
+    // Crédito: vale a competência da FATURA (quando a Pluggy informa); o resto, a data.
+    const itens = Object.values(_revisaoPluggyCache).filter(item =>
+        String(item.competencia_fatura || item.data || '').startsWith(competencia));
     const somar = tipo => itens.filter(i => i.tipo === tipo).reduce((s, i) => s + (Number(i.valor) || 0), 0);
     elReceita.textContent = `+${formatarMoeda(somar('entradas'))}`;
     elDespesa.textContent = `-${formatarMoeda(somar('saidas'))}`;
@@ -1009,7 +1011,10 @@ async function importarProntasPluggy() {
             // Crédito: competência vem da data da compra + fechamento do cartão
             // (mesma regra do formulário manual); os demais casos usam o mês
             // da própria data (competenciaDe sem diaFechamento não rola o mês).
-            const competencia = competenciaDe(item.data, metodoObj && metodoObj.metodoKind === 'Crédito' ? metodoObj.diaFechamento : null);
+            // Se a Pluggy ligou a compra a uma fatura, vale o mês dessa fatura.
+            const competencia = item.competencia_fatura
+                ? String(item.competencia_fatura).slice(0, 10)
+                : competenciaDe(item.data, metodoObj && metodoObj.metodoKind === 'Crédito' ? metodoObj.diaFechamento : null);
             const nova = await adicionarTransacaoAPI({
                 tipo: item.tipo,
                 data: item.data,
