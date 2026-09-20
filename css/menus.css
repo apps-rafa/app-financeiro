@@ -75,11 +75,6 @@
   border-color: var(--primary);
 }
 
-/* Toggle "CSV" / "PDF" dentro da sub-aba "Importar" — reaproveita o
-   .modo-lista/.modo-btn dos filtros de Receitas/Despesas, ocupando a
-   largura toda em vez do tamanho de conteúdo. */
-.importar-toggle { width: 100%; }
-
 /* Sem painel externo: as sub-seções da Configuração alinham com o resto */
 .menu-section {
   background: transparent;
@@ -610,176 +605,6 @@
   -webkit-line-clamp: unset;
 }
 
-/* ============ Importar (dropdown de formato) ============ */
-/* Altura padrão de toda "caixa" da linha de Importar (botão de upload, dia
-   de corte, trocar arquivo) — sem isso cada uma tinha o seu próprio
-   padding/font-size e a linha ficava com caixas de alturas diferentes,
-   degrau feio. "Formato" agora usa o .form-group padrão (label FORA da
-   caixa, select com a mesma altura de qualquer outro select do app —
-   antes a legenda ficava espremida DENTRO da caixa do select, ilegível). */
-.menu-section[data-sub="importar"] { --campo-import-h: 2.3rem; }
-.menu-section[data-sub="importar"] .import-formato-group { margin-top: 0; margin-bottom: 0; }
-.menu-section[data-sub="importar"] .import-formato-group select { height: var(--campo-import-h); box-sizing: border-box; }
-.import-formato-group { margin: .4rem 0; }
-/* Formato + o que cada formato renderiza dentro de #importCsvConteudo/
-   #importPdfConteudo (upload, mês de competência...) numa linha só, cada
-   item crescendo pra a linha ocupar 100% da largura (nunca sobra vão vazio
-   do lado) — só quebrando quando não couber. display:contents faz os
-   FILHOS do container de conteúdo virarem itens flex direto dessa linha,
-   em vez do próprio container (senão ele contaria como 1 bloco só, sempre
-   pulando pra linha de baixo inteiro). */
-/* Só os 2 DIVs de conteúdo (CSV/PDF) — não os botões CSV/PDF/Backup do
-   toggle ali em cima, que têm o MESMO data-importar-modo (valores iguais,
-   elementos diferentes); sem o ">div" isso também virava flex e
-   desalinhava o texto dos botões do toggle (destro-esquerda por padrão
-   de botão vs. centralizado que era o certo). */
-.menu-section[data-sub="importar"] > div[data-importar-modo="csv"],
-.menu-section[data-sub="importar"] > div[data-importar-modo="pdf"] {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: .6rem .8rem;
-}
-.menu-section[data-sub="importar"] > div[data-importar-modo="csv"] > .import-formato-group,
-.menu-section[data-sub="importar"] > div[data-importar-modo="pdf"] > .import-formato-group,
-.import-csv-upload,
-.import-csv-contexto {
-  flex: 1 1 12rem;
-}
-.import-csv-contexto > .import-csv-campo { flex: 1 1 9rem; }
-.import-csv-contexto > .import-csv-campo:last-child { flex: 0 1 auto; }
-/* 2 níveis de wrapper: #importCsvConteudo > #secImportarCSV/#secConciliarCSV
-   (e o par em PDF) > o HTML de verdade — os 2 precisam ser "transparentes"
-   pro layout, senão o div do meio já conta como 1 bloco só na linha. */
-#importCsvConteudo, #importPdfConteudo,
-#importCsvConteudo > div, #importPdfConteudo > div { display: contents; }
-/* Textos corridos (dica de formato, resumo do arquivo) e tudo que vem
-   DEPOIS da linha de Formato/upload sempre ocupam a linha inteira — não
-   fazem sentido "ao lado". Descendente (não filho direto) porque o
-   display:contents em cascata (comentário acima) promove netos a "filhos"
-   visuais da linha; flex-basis não faz nada em quem não virou item flex,
-   então isso é inofensivo em qualquer outro contexto (ex.: dentro de um
-   grupo colapsável, bem mais fundo na árvore). */
-#importCsvConteudo .menu-hint, #importPdfConteudo .menu-hint,
-#importCsvConteudo .import-csv-resumo, #importPdfConteudo .import-csv-resumo,
-#importCsvConteudo .import-csv-nota, #importPdfConteudo .import-csv-nota,
-#importCsvConteudo #importCsvProgresso,
-#importCsvConteudo [id$="Lista"], #importPdfConteudo [id$="Lista"],
-#importCsvConteudo .import-csv-acoes,
-#importCsvConteudo .import-csv-tabela-wrap {
-  flex-basis: 100%;
-}
-
-/* ============ Importar CSV ============ */
-.import-csv-upload {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: .5rem;
-  padding: 0;
-}
-/* "Escolher arquivo" ao lado de "Formato": esse campo tem um rótulo
-   ACIMA do select ("Formato"), then o botão de upload (sem rótulo
-   próprio) ficava mais alto que o select, flutuando fora de alinhamento
-   — mesmo com align-items:flex-end no container pai, os dois "campos"
-   não tinham a mesma altura total pra alinhar pela base. Um espaçador
-   invisível do tamanho exato do rótulo força a quebra de linha (via
-   flex-basis:100% num container flex-wrap) e empurra o botão pra baixo,
-   alinhando com o select. Só nos painéis CSV/PDF (onde há um Formato ao
-   lado) — o upload de Backup, sozinho na própria seção, não precisa
-   disso e ficaria com um vão vazio em cima à toa. */
-.menu-section[data-sub="importar"] div[data-importar-modo="csv"] .import-csv-upload::before,
-.menu-section[data-sub="importar"] div[data-importar-modo="pdf"] .import-csv-upload::before {
-  content: none; /* o pai já alinha pela base (align-items:flex-end) */
-}
-/* O <input type="file"> nativo fica escondido (acessível — só fora da
-   tela, não display:none) e vira um <label class="import-csv-upload-label">
-   com a cara dos outros botões do app: o texto nativo "Nenhum arquivo
-   escolhido" não servia pra nada (a seção inteira é remontada do zero a
-   cada evento — trocar forma de pgto., marcar "ignorar" — então esse texto
-   nunca refletia o arquivo de verdade; quem mostra o(s) arquivo(s) já
-   carregado(s) são os cartões abaixo) e ocupava a largura toda, empurrando
-   o "✕ Recomeçar" pra uma linha própria embaixo em vez de ficar do lado. */
-.import-csv-upload input[type="file"] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-.import-csv-upload-label {
-  box-sizing: border-box;
-  min-height: var(--campo-import-h);
-  display: inline-flex;
-  align-items: center;
-  padding: .4rem .8rem;
-  border: 1px solid var(--border-strong, #D1D5DB);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  font-size: .78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background .15s, border-color .15s, color .15s;
-}
-.import-csv-upload-label:hover { border-color: var(--primary); color: var(--primary); }
-/* "✕ Recomeçar" ao lado do botão de upload — mesma altura (senão ficava
-   visivelmente menor que "Escolher arquivos", a var() só array pros
-   campos vizinhos, .mini-btn sozinho usa uma altura padrão menor). */
-.import-csv-upload .mini-btn {
-  box-sizing: border-box;
-  min-height: var(--campo-import-h);
-}
-.import-csv-upload input[type="file"]:focus-visible + .import-csv-upload-label {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-/* Linha de contexto do CSV (mês de competência / dia de corte / trocar
-   arquivo): cada campo é uma coluna com o RÓTULO FORA e ACIMA da caixa — mesmo
-   estilo do rótulo "Formato" (.form-group label) — e todas as caixas (incl. o
-   select Formato) têm a MESMA altura (--campo-import-h), alinhadas pela base. */
-.import-csv-contexto {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: .6rem .8rem;
-}
-.import-csv-campo { display: flex; flex-direction: column; min-width: 0; }
-.import-csv-campo[hidden] { display: none; }
-.import-csv-campo-label {
-  display: inline-flex;
-  align-items: center;
-  gap: .3rem;
-  margin-bottom: .25rem;
-  font-weight: var(--font-weight-semibold);
-  color: var(--dark);
-  font-size: .76rem;
-}
-.import-csv-campo-caixa {
-  box-sizing: border-box;
-  width: 100%;
-  height: var(--campo-import-h);
-  display: flex;
-  align-items: center;
-  padding: 0 .75rem;
-  font-size: .85rem;
-  font-weight: 700;
-  color: var(--text);
-  border: 1px solid var(--border-strong, #D1D5DB);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-input.import-csv-campo-caixa { -moz-appearance: textfield; }
-input.import-csv-campo-caixa:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
-/* Valor fixo (o mês segue o topo do app) — fundo neutro em vez de campo. */
-.import-csv-competencia { background: var(--surface-2); }
-button.import-csv-campo-caixa { justify-content: center; font-size: .78rem; font-weight: 600; cursor: pointer; }
-.import-csv-label-linha { display: inline-flex; align-items: center; gap: .3rem; }
-
 /* ============ Pluggy (Configurações > Open Finance) ============ */
 .menu-section[data-sub="of"] {
   --pluggy-toolbar-h: 2.5rem;
@@ -1088,18 +913,6 @@ button.import-csv-campo-caixa { justify-content: center; font-size: .78rem; font
   color: var(--text);
 }
 .campo-com-add--mini select:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
-.import-csv-ajuda {
-  display: inline-block;
-  width: 1rem;
-  height: 1rem;
-  line-height: 1rem;
-  text-align: center;
-  border-radius: 50%;
-  background: var(--surface-3);
-  color: var(--text-muted);
-  font-size: .68rem;
-  cursor: help;
-}
 .import-csv-resumo { font-size: .82rem; color: var(--text-muted); margin: .3rem 0 .6rem; }
 .import-csv-resumo .ok { color: var(--receita-text); font-weight: 700; }
 .import-csv-resumo .alerta { color: var(--despesa-text); font-weight: 700; }
@@ -1262,7 +1075,6 @@ button.import-csv-campo-caixa { justify-content: center; font-size: .78rem; font
   color: var(--text-muted);
   margin: .4rem 0;
 }
-.import-csv-tag-original { font-style: italic; opacity: .7; }
 .chip-tipo {
   display: inline-block;
   padding: .05rem .4rem;
@@ -1281,8 +1093,7 @@ button.import-csv-campo-caixa { justify-content: center; font-size: .78rem; font
   gap: .7rem;
   margin-top: .7rem;
 }
-.import-csv-acoes .btn-submit,
-.import-csv-acoes #importCsvCancelar {
+.import-csv-acoes .btn-submit {
   width: auto;
   flex: 0 0 auto;
   padding: .55rem 1.1rem;
@@ -1290,53 +1101,7 @@ button.import-csv-campo-caixa { justify-content: center; font-size: .78rem; font
   text-align: center;
   white-space: nowrap;
 }
-.import-csv-bloqueado {
-  font-size: .78rem;
-  color: var(--despesa-text);
-  flex: 1 1 160px;
-  min-width: 140px;
-}
-.import-csv-aviso {
-  font-size: .82rem;
-  color: var(--despesa-text);
-  background: var(--despesa-bg);
-  border: 1px solid var(--despesa-border);
-  border-radius: var(--radius-sm);
-  padding: .5rem .7rem;
-  margin: .5rem 0 0;
-}
 .import-csv-progresso { font-size: .8rem; color: var(--text-muted); margin-top: .5rem; }
-
-/* ============ Conciliar PDF ============ */
-.conciliar-pdf-card {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: .8rem;
-  margin-top: .8rem;
-}
-.conciliar-pdf-card--erro { border-color: var(--despesa-text); color: var(--despesa-text); }
-.conciliar-pdf-topo {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .8rem;
-  margin-bottom: .3rem;
-}
-.conciliar-pdf-metodo {
-  display: flex;
-  flex-direction: column;
-  gap: .25rem;
-  font-size: .78rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  margin-left: auto;
-}
-.conciliar-pdf-metodo select {
-  padding: .3rem .5rem;
-  border: 1px solid var(--border-strong, #D1D5DB);
-  border-radius: var(--radius-sm);
-  font-size: .82rem;
-}
 
 /* ============ Dados (backup / apagar) ============ */
 .dados-incluir { margin-bottom: .5rem; }
@@ -1405,15 +1170,9 @@ button.import-csv-campo-caixa { justify-content: center; font-size: .78rem; font
    regular) pra não mudar a aparência ao trocar a tag. */
 summary [role="button"] { font-family: Arial; text-align: center; }
 .subgrupo-modo-icone[role="button"] { font-size: 13.3333px; font-weight: 400; }
-
-/* Grupos de revisão sempre ocupam a linha inteira (o display:contents do
-   #importCsvConteudo os promove a itens flex, e fechados ficavam lado a lado). */
-#importCsvConteudo .import-csv-grupo, #importPdfConteudo .import-csv-grupo { flex: 1 1 100%; min-width: 100%; box-sizing: border-box; }
 /* Tabela do subgrupo vai de borda a borda (anula o padding do subgrupo) — o
    vermelho das linhas a revisar preenche 100% da largura. */
 .import-csv-grupo .import-csv-grupo > .import-csv-tabela-wrap--solta { margin: 0 -.25rem; }
 @media (max-width: 600px) {
   .import-csv-grupo .import-csv-grupo > .import-csv-tabela-wrap--solta { margin: 0 -.15rem; }
 }
-
-select.import-csv-campo-caixa { display: block; font-weight: 600; }
