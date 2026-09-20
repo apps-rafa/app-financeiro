@@ -117,16 +117,17 @@
             <!-- Tabs Navigation: Despesas/Receitas saíram daqui — os próprios
                  cards de Receita/Despesa do dashboard já abrem a aba
                  correspondente ao clicar (abrirAba() em events.js). -->
+            <section class="tabs">
+                <button class="tab-btn" data-tab="adicionar"><span class="tab-mais">+</span> Lançamento</button>
+                <button class="tab-btn" data-tab="proximas">⏰ Próximos</button>
+                <button class="tab-btn tab-btn-icone" data-tab="lixeira" title="Lixeira (excluídos nos últimos 30 dias)" aria-label="Lixeira">🗑️</button>
+            </section>
+
             <!-- Busca universal: procura em Receitas, Despesas e Próximos, de qualquer tela -->
             <section class="busca-global">
                 <input type="search" id="buscaGlobal" name="busca-global" aria-label="Buscar em todo o app" class="busca-lista" placeholder="🔎 Buscar em tudo: descrição, categoria, forma de pgto., valor..." autocomplete="off">
             </section>
             <section id="resultadoBusca" class="resultado-busca" hidden></section>
-
-            <section class="tabs">
-                <button class="tab-btn" data-tab="adicionar"><span class="tab-mais">+</span> Lançamento</button>
-                <button class="tab-btn" data-tab="proximas">⏰ Próximos</button>
-            </section>
 
             <!-- Tab: Entradas -->
             <section id="entradas" class="tab-content">
@@ -174,6 +175,14 @@
                     <div id="proximasLista" class="transacoes-lista">
                         <!-- Faturas de cartão -->
                     </div>
+                </div>
+            </section>
+
+            <!-- Tab: Lixeira (lançamentos excluídos nos últimos 30 dias) -->
+            <section id="lixeira" class="tab-content">
+                <div class="proximas-container">
+                    <p class="menu-hint">Lançamentos excluídos ficam aqui por 30 dias — depois somem de vez.</p>
+                    <div id="lixeiraLista" class="transacoes-lista"></div>
                 </div>
             </section>
 
@@ -300,6 +309,7 @@
     <script src="js/menus-api.js"></script>
     <script src="js/menus-ui.js"></script>
     <script src="js/revisao-importacao.js"></script>
+    <script src="js/lixeira.js"></script>
     <script src="js/dados.js"></script>
     <script src="js/pluggy.js"></script>
     <script src="js/events.js"></script>
