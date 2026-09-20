@@ -97,17 +97,9 @@ function configurarEventListeners() {
 
     // Busca em tempo real (Receitas/Despesas) — filtra a cada tecla, funciona
     // igual em qualquer modo de visualização (ver _filtrarPorBusca em js/ui.js).
-    const buscaSaidasEl = document.getElementById('buscaSaidas');
-    if (buscaSaidasEl) buscaSaidasEl.addEventListener('input', e => {
-        if (typeof definirBuscaSaidas === 'function') definirBuscaSaidas(e.target.value);
-    });
-    const buscaEntradasEl = document.getElementById('buscaEntradas');
-    if (buscaEntradasEl) buscaEntradasEl.addEventListener('input', e => {
-        if (typeof definirBuscaEntradas === 'function') definirBuscaEntradas(e.target.value);
-    });
-    const buscaProximasEl = document.getElementById('buscaProximas');
-    if (buscaProximasEl) buscaProximasEl.addEventListener('input', e => {
-        if (typeof definirBuscaProximas === 'function') definirBuscaProximas(e.target.value);
+    const buscaGlobalEl = document.getElementById('buscaGlobal');
+    if (buscaGlobalEl) buscaGlobalEl.addEventListener('input', () => {
+        if (typeof atualizarBuscaGlobal === 'function') atualizarBuscaGlobal();
     });
 
     // Aba Próximas: filtro de tipo (Despesa/Receita) + modo de agrupamento
