@@ -716,7 +716,7 @@ async function carregarRevisaoPluggy() {
     const container = document.getElementById('pluggyRevisaoLista');
     if (!container) return;
 
-    const [{ data, error }, { data: historico }] = await Promise.all([
+    const [{ data, error }, { data: historico }, { data: contasRows }] = await Promise.all([
         sb.from('transacoes_importadas').select('*').eq('status', 'pendente').order('data', { ascending: false }),
         // Junta com a transação de verdade — categoria/descrição podem ter
         // sido ajustadas na revisão antes de importar, diferentes do que a
@@ -724,7 +724,9 @@ async function carregarRevisaoPluggy() {
         sb.from('transacoes_importadas')
             .select('*, transacao:transacao_id(id, data, valor, tipo, categoria, descricao, metodo, competencia)')
             .eq('status', 'confirmada').order('criado_em', { ascending: false }).limit(20),
+        sb.from('pluggy_contas').select('*'),
     ]);
+    const contasPorId = Object.fromEntries((contasRows || []).map(c => [c.id, c]));
 
     if (error) {
         console.error(error);
@@ -802,7 +804,7 @@ async function carregarRevisaoPluggy() {
     // Despesas/Receitas → tabela X/Data/Valor/Categoria/Descrição. Sem
     // "Forma de pgto." — o método já vem fixado pela conta em "Método do app".
     const grupo = (id, titulo, itens, nota = '') => htmlGrupoRevisao({
-        id, titulo, abertos: _abertosPluggy, padraoAberto: true, itens, nota,
+        id, titulo: titulo, abertos: _abertosPluggy, padraoAberto: true, itens, nota,
         tipoDe: i => i.tipo, colunas: ['Data', 'Valor', 'Categoria', 'Descrição'],
         htmlLinha: gerarHTMLImportadaPluggy,
     });
@@ -819,6 +821,33 @@ async function carregarRevisaoPluggy() {
     </div>`
     });
 
+    // Com mais de uma conta na fila, cada conta vira um grupo (Nubank: Crédito,
+    // Mercado Pago: Conta...) com os 3 grupos de sempre dentro; com uma só, fica
+    // como sempre foi.
+    const notaDup = `<p class="import-csv-nota">Mesmo tipo, data (± 2 dias) e valor de algo já lançado no app. Vêm com X (não entram) — clique no ↺ pra reativar se for mesmo um lançamento novo.</p>`;
+    const tresGrupos = (pref, lRev, lDup, lPro) =>
+        grupo(`${pref}revisar`, '⚠️ Para revisar', lRev) +
+        grupo(`${pref}duplicatas`, '🔁 Possíveis duplicatas — já existe algo parecido no app', lDup, notaDup) +
+        grupo(`${pref}prontas`, '✓ Prontas', lPro);
+    const blocosPorConta = () => {
+        const ids = [...new Set(marcados.map(i => i.conta_id))];
+        if (ids.length <= 1) return tresGrupos('pluggy-', revisar, duplicatas, prontas);
+        const nomes = ids.map(id => contasPorId[id] ? tituloContaPluggyCurto(contasPorId[id]) : 'Conta');
+        return ids.map((id, k) => {
+            const dela = l => l.filter(i => i.conta_id === id);
+            const lRev = dela(revisar), lDup = dela(duplicatas), lPro = dela(prontas);
+            const total = lRev.length + lDup.length + lPro.length;
+            const repetido = nomes.filter(n => n === nomes[k]).length > 1;
+            const c = contasPorId[id];
+            const nome = repetido && c && c.numero_mascarado ? `${nomes[k]} (${String(c.numero_mascarado).slice(-4)})` : nomes[k];
+            return _grupoColapsavelConciliar({
+                id: `pluggy-conta-${id}`, abertos: _abertosPluggy, padraoAberto: true,
+                titulo: `🏦 ${nome} (${total})`,
+                corpo: tresGrupos(`pluggy-c${id}-`, lRev, lDup, lPro),
+            });
+        }).join('');
+    };
+
     container.innerHTML = [
         `<p class="import-csv-resumo">
             <b>${pendentesBrutos.length}</b> linha${pendentesBrutos.length === 1 ? '' : 's'} na fila —
@@ -826,10 +855,7 @@ async function carregarRevisaoPluggy() {
             ${aRevisarAoVivo.length ? ` · <span class="alerta">${aRevisarAoVivo.length} para revisar</span>` : ''}
             ${duplicatas.length ? ` · <span class="alerta">${duplicatas.length} possível${duplicatas.length === 1 ? '' : 'is'} duplicata${duplicatas.length === 1 ? '' : 's'}</span>` : ''}
         </p>`,
-        grupo('pluggy-revisar', '⚠️ Para revisar', revisar),
-        grupo('pluggy-duplicatas', '🔁 Possíveis duplicatas — já existe algo parecido no app', duplicatas,
-            `<p class="import-csv-nota">Mesmo tipo, data (± 2 dias) e valor de algo já lançado no app. Vêm com X (não entram) — clique no ↺ pra reativar se for mesmo um lançamento novo.</p>`),
-        grupo('pluggy-prontas', '✓ Prontas', prontas),
+        blocosPorConta(),
         `<div class="import-csv-acoes">
             <button type="button" class="btn-submit" id="btnImportarProntasPluggy"
                 title="${totalIgnoradas ? `As ${totalIgnoradas} linha(s) com X serão descartadas da fila.` : ''}"
