@@ -264,9 +264,4 @@ async function recarregarDados() {
     atualizarUI();
     // Navegou de mês: o campo Data acompanha o mês em exibição (se intocado)
     if (typeof aplicarDataPadrao === 'function') aplicarDataPadrao(false);
-    // Mesma coisa pro "Mês de competência" do Importar CSV — não é mais um
-    // campo editável, segue sempre o mês selecionado aqui em cima.
-    if (typeof estadoImportCSV !== 'undefined' && estadoImportCSV && typeof _recomputarImportCSV === 'function') {
-        _recomputarImportCSV({ forcarData: true, refazerDuplicatas: true });
-    }
 }

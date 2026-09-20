@@ -90,3 +90,20 @@ function htmlGrupoRevisao({ id, titulo, abertos, padraoAberto, itens, tipoDe, co
         corpo: nota + htmlSubgruposRevisao({ idPai: id, abertos, itens, tipoDe, colunas, htmlLinha })
     });
 }
+
+/** Diferença em dias entre duas datas ISO (usada na detecção de duplicatas). */
+function _diffDias(iso1, iso2) {
+    const a = new Date(iso1 + 'T00:00:00'), b = new Date(iso2 + 'T00:00:00');
+    return Math.abs((a - b) / 86400000);
+}
+
+/** Grupo colapsável (<details>) — aberto/fechado por padrão conforme
+ *  `padraoAberto`; depois disso o estado manual, lido de `abertos`, vence. */
+function _grupoColapsavelConciliar({ id, abertos, padraoAberto, titulo, corpo }) {
+    const aberto = abertos[id] !== undefined ? abertos[id] : padraoAberto;
+    return `
+        <details class="import-csv-grupo" data-grupo-id="${id}" ${aberto ? 'open' : ''}>
+          <summary class="import-csv-grupo-titulo">${titulo}</summary>
+          ${corpo}
+        </details>`;
+}
