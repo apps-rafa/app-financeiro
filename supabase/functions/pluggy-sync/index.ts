@@ -328,10 +328,42 @@ Deno.serve(async (req: Request) => {
     let novasNoTotal = 0;
     let erroConta: string | null = null;
 
+    // Mês (yyyy-mm) que o usuário escolheu no seletor — só existe quando o
+    // client manda dateFrom/dateTo cobrindo um mês inteiro.
+    const mesAlvo: string | null = dateToOverride && dateFromOverride &&
+        dateToOverride.slice(0, 7) === dateFromOverride.slice(0, 7)
+      ? dateToOverride.slice(0, 7)
+      : null;
+
     for (const conta of contas) {
-      const dateFrom = dateFromOverride ?? (conta.ultimo_sync
+      const ehCredito = conta.tipo_conta === "CREDIT";
+      let dateFrom = dateFromOverride ?? (conta.ultimo_sync
         ? String(conta.ultimo_sync).slice(0, 10)
         : new Date(Date.now() - DIAS_HISTORICO_PRIMEIRA_SYNC * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
+
+      // Cartão de crédito: o mês escolhido é a COMPETÊNCIA DA FATURA. A fatura
+      // de M cobre compras do fim de M-1 até o fechamento em M, então a janela
+      // de busca começa um mês antes e depois só ficam as compras cuja fatura
+      // vence em M (ver filtro abaixo).
+      if (ehCredito && mesAlvo && dateFromOverride) {
+        const d = new Date(`${dateFromOverride}T12:00:00Z`);
+        d.setUTCMonth(d.getUTCMonth() - 1);
+        dateFrom = d.toISOString().slice(0, 10);
+      }
+
+      // billId -> mês (yyyy-mm) de vencimento da fatura. Falha ao ler as
+      // faturas não derruba o sync: cai na regra por data.
+      const mesFaturaPorBill = new Map<string, string>();
+      if (ehCredito) {
+        try {
+          const bills = await pluggyGet(`/bills?accountId=${conta.account_id}`, apiKey);
+          for (const b of bills.results ?? []) {
+            if (b?.id && b?.dueDate) mesFaturaPorBill.set(b.id, String(b.dueDate).slice(0, 7));
+          }
+        } catch (e) {
+          console.error(`Faturas indisponíveis (conta ${conta.id}):`, e);
+        }
+      }
 
       try {
         const linhas: Record<string, unknown>[] = [];
@@ -378,6 +410,15 @@ Deno.serve(async (req: Request) => {
               }
               continue;
             }
+            // Competência da fatura (mês do vencimento) quando a Pluggy liga a
+            // compra a uma fatura; senão null e o app usa data + fechamento.
+            const mesFatura = ehCredito
+              ? (mesFaturaPorBill.get(t.creditCardMetadata?.billId ?? "") ?? null)
+              : null;
+            if (ehCredito && mesAlvo) {
+              // Só a fatura escolhida; sem fatura conhecida, vale a data no mês.
+              if (mesFatura ? mesFatura !== mesAlvo : dataTransacao.slice(0, 7) !== mesAlvo) continue;
+            }
             const descricaoBanco = t.description || t.descriptionRaw || "";
             const transacaoJaExistente = transacaoIdPorPluggyId.get(t.id);
             linhas.push({
@@ -390,6 +431,7 @@ Deno.serve(async (req: Request) => {
               categoria_pluggy: categoriaTraduzida,
               categoria_sugerida: sugerirCategoria(categoriaTraduzida, descricaoBanco, tipo, categoriasApp ?? []),
               metodo_sugerido: conta.metodo_id ?? null,
+              competencia_fatura: mesFatura ? `${mesFatura}-01` : null,
               status: transacaoJaExistente ? "confirmada" : "pendente",
               transacao_id: transacaoJaExistente ?? null,
               user_id: user.id,
