@@ -1,8 +1,7 @@
 /**
  * DADOS
- * Backup (baixar tudo em JSON) e apagar tudo — sub-aba "Dados" em
- * Configurações. A restauração do backup fica em Importar > Backup, mais
- * abaixo neste arquivo.
+ * Importar Backup (restaurar), Baixar Backup (tudo em JSON) e Apagar — sub-aba
+ * "Dados" em Configurações. A restauração fica mais abaixo neste arquivo.
  */
 
 function iniciarDados() {
@@ -62,7 +61,7 @@ async function renderDados() {
     if (!sec) return;
     sec.innerHTML = `
     <p class="menu-hint">
-        Baixe uma cópia de tudo que você já lançou num arquivo de backup — dá pra restaurar depois em Importar &gt; Backup.
+        Baixe uma cópia de tudo que você já lançou num arquivo de backup — dá pra restaurar depois com "Importar Backup". Restaurar <b>adiciona</b> os dados do arquivo por cima do que já existe — pra uma restauração limpa, apague tudo antes.
     </p>
     <div class="modo-lista dados-incluir">
         <button type="button" class="modo-btn" data-dados-incluir="categorias"><span class="dados-incluir-check">✓</span> Categorias</button>
@@ -76,11 +75,17 @@ async function renderDados() {
     </div>
     <p class="menu-hint" id="dadosContagem"></p>
     <div class="dados-acoes">
-        <button type="button" class="btn-submit" id="btnBaixarBackup">⬇️ Baixar backup</button>
-        <button type="button" class="mini-btn armed" id="btnApagarDados">🗑 Apagar</button>
+        <input type="file" id="importBackupArquivo" accept=".json,application/json" hidden>
+        <button type="button" class="dados-btn" id="btnImportarBackup">📁 Importar Backup</button>
+        <button type="button" class="dados-btn" id="btnBaixarBackup">⬇️ Baixar Backup</button>
+        <button type="button" class="dados-btn dados-btn-perigo" id="btnApagarDados">🗑 Apagar</button>
     </div>
+    <div id="secImportarBackup"></div>
     <div id="dadosStatus" class="import-csv-progresso" hidden></div>
     `;
+    document.getElementById('btnImportarBackup')?.addEventListener('click', () => document.getElementById('importBackupArquivo')?.click());
+    document.getElementById('importBackupArquivo')?.addEventListener('change', onBackupArquivoEscolhido);
+    renderImportarBackup();
 
     const contagem = await _contagemDados();
 
@@ -270,32 +275,16 @@ function confirmarApagarDados() {
     });
 }
 
-/* ================= Importar > Backup (restaurar) ================= */
+/* ================= Importar Backup (restaurar) ================= */
 
 let estadoImportarBackup = null;
-
-function iniciarImportarBackup() {
-    const sec = document.getElementById('secImportarBackup');
-    if (!sec) return;
-    estadoImportarBackup = null;
-    renderImportarBackup();
-}
 
 function renderImportarBackup() {
     const sec = document.getElementById('secImportarBackup');
     if (!sec) return;
 
     if (!estadoImportarBackup) {
-        sec.innerHTML = `
-        <p class="menu-hint">
-            Restaura um arquivo baixado em Configurações &gt; Dados. Isso <b>adiciona</b> os dados do backup por
-            cima do que já existe — pra uma restauração limpa, apague tudo antes em Configurações &gt; Dados.
-        </p>
-        <div class="import-csv-upload">
-            <input type="file" id="importBackupArquivo" accept=".json,application/json">
-            <label class="import-csv-upload-label" for="importBackupArquivo">📁 Escolher arquivo</label>
-        </div>`;
-        document.getElementById('importBackupArquivo')?.addEventListener('change', onBackupArquivoEscolhido);
+        sec.innerHTML = '';
         return;
     }
 
@@ -316,6 +305,8 @@ function renderImportarBackup() {
     document.getElementById('btnRestaurarBackup')?.addEventListener('click', onRestaurarBackup);
     document.getElementById('btnCancelarBackup')?.addEventListener('click', () => {
         estadoImportarBackup = null;
+        const inp = document.getElementById('importBackupArquivo');
+        if (inp) inp.value = '';
         renderImportarBackup();
     });
 }

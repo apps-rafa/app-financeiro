@@ -42,7 +42,6 @@ async function carregarAbaMenus() {
             <span class="subtab-texto met-curto">Pgtos.</span>
           </button>
           <button class="subtab" data-sub="fer">📅 <span class="subtab-texto">Feriados</span></button>
-          <button class="subtab" data-sub="importar">📥 <span class="subtab-texto">Importar</span></button>
           <button class="subtab" data-sub="of">🏦 <span class="subtab-texto">Open Finance</span></button>
           <button class="subtab" data-sub="dados">💾 <span class="subtab-texto">Dados</span></button>
         </div>
@@ -106,41 +105,6 @@ async function carregarAbaMenus() {
           </summary>
           <div class="menu-list" id="feriados-${cat}-list"></div>
         </details>`).join('')}
-      </div>
-
-      <div class="menu-section" data-sub="importar" hidden>
-        <div class="modo-lista importar-toggle" role="tablist">
-          <button type="button" class="modo-btn importar-toggle-btn active" data-importar-modo="csv">CSV</button>
-          <button type="button" class="modo-btn importar-toggle-btn" data-importar-modo="pdf">PDF</button>
-          <button type="button" class="modo-btn importar-toggle-btn" data-importar-modo="backup">Backup</button>
-        </div>
-
-        <div data-importar-modo="csv">
-          <div class="form-group import-formato-group">
-            <label for="importCsvFormato">Formato</label>
-            <select id="importCsvFormato">
-              <option value="">Selecione...</option>
-              <option value="pessoal">Minha planilha (CSV pessoal)</option>
-              <option value="nubank">Fatura Crédito Nubank</option>
-              <option value="mp">Extrato Mercado Pago</option>
-            </select>
-          </div>
-          <div id="importCsvConteudo"></div>
-        </div>
-
-        <div data-importar-modo="pdf" hidden>
-          <div class="form-group import-formato-group">
-            <label for="importPdfFormato">Formato</label>
-            <select id="importPdfFormato">
-              <option value="">Selecione...</option>
-              <option value="bradesco">Fatura Crédito Bradesco</option>
-              <option value="mp">Extrato Mercado Pago</option>
-            </select>
-          </div>
-          <div id="importPdfConteudo"></div>
-        </div>
-
-        <div id="secImportarBackup" data-importar-modo="backup" hidden></div>
       </div>
 
       <div class="menu-section" data-sub="of" hidden>
@@ -215,22 +179,8 @@ async function carregarAbaMenus() {
     });
   }
 
-  if (typeof iniciarImportarUnificado === 'function') iniciarImportarUnificado();
-  if (typeof iniciarImportarBackup === 'function') iniciarImportarBackup();
   if (typeof iniciarPluggy === 'function') iniciarPluggy();
   if (typeof iniciarDados === 'function') iniciarDados();
-
-  // Sub-toggle "CSV" / "PDF" dentro da sub-aba "Importar"
-  document.querySelectorAll('.importar-toggle-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const modo = btn.dataset.importarModo;
-      document.querySelectorAll('.importar-toggle-btn').forEach(b =>
-        b.classList.toggle('active', b.dataset.importarModo === modo));
-      document.querySelectorAll('[data-importar-modo]:not(.importar-toggle-btn)').forEach(el => {
-        el.hidden = el.dataset.importarModo !== modo;
-      });
-    });
-  });
 }
 
 let feriadosAnoView = new Date().getFullYear();

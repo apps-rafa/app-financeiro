@@ -1376,18 +1376,29 @@ button.import-csv-campo-caixa { justify-content: center; font-size: .78rem; font
   opacity: .4;
   cursor: not-allowed;
 }
-.dados-acoes .btn-submit,
-.dados-acoes .armed {
+/* 3 botões lado a lado, mesma altura, dividindo 100% da largura */
+.dados-acoes .dados-btn {
+  flex: 1 1 0;
+  min-width: 0;
   height: 2.75rem;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 .6rem;
-  font-size: .85rem;
+  padding: 0 .4rem;
+  font-size: .8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid var(--border-strong, #D1D5DB);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
 }
-.dados-acoes .btn-submit { width: auto; flex: 7 1 0; }
-.dados-acoes .armed { flex: 3 1 0; }
+.dados-acoes .dados-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.dados-acoes .dados-btn-perigo { color: var(--despesa-text); border-color: var(--despesa-text); }
+.dados-acoes .dados-btn-perigo:hover:not(:disabled) { color: var(--despesa-text); border-color: var(--despesa-text); }
+@media (max-width: 420px) { .dados-acoes .dados-btn { font-size: .68rem; } }
 
 /* <span role="button"> dentro de <summary> (ver events.js): reproduz o padrão
    que o navegador dá a um <button> (fonte Arial, texto centralizado, 13.33px
