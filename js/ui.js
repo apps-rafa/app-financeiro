@@ -22,6 +22,7 @@ function atualizarUI() {
     // Atualizar listas
     atualizarEntradasLista();
     atualizarSaidasLista();
+    atualizarBuscaGlobal();
 
     // "Próximas" acompanha o mês em exibição
     if (document.getElementById('proximas')?.classList.contains('active')) {
@@ -511,27 +512,17 @@ function resetarModosListaParaCronologica() {
         localStorage.setItem('modoListaProximas', 'cronologica');
     } catch (_) {}
 
-    // Busca também some — um termo de outra vez que a aba esteve aberta
-    // (ou de outro mês) escondendo lançamentos sem nenhum aviso é mais
-    // confuso do que útil.
-    buscaEntradas = '';
-    buscaSaidas = '';
-    buscaProximas = '';
-    const buscaProximasEl = document.getElementById('buscaProximas');
-    if (buscaProximasEl) buscaProximasEl.value = '';
-    const buscaEntradasEl = document.getElementById('buscaEntradas');
-    if (buscaEntradasEl) buscaEntradasEl.value = '';
-    const buscaSaidasEl = document.getElementById('buscaSaidas');
-    if (buscaSaidasEl) buscaSaidasEl.value = '';
+    // A busca universal também some ao trocar de mês — um termo de antes
+    // escondendo tudo sem aviso é mais confuso do que útil.
+    const buscaGlobalEl = document.getElementById('buscaGlobal');
+    if (buscaGlobalEl) buscaGlobalEl.value = '';
+    atualizarBuscaGlobal();
 }
 
 /** Busca em tempo real por descrição/categoria/forma de pagamento — filtra
  *  ANTES de passar pro modo de visualização escolhido, então funciona
  *  igual em qualquer modo (Cronológica/Recorrência/Forma de pgto./
  *  Categoria) sem precisar mexer em cada um deles. */
-let buscaEntradas = '';
-let buscaSaidas = '';
-let buscaProximas = '';
 
 const _REGEX_DIACRITICOS = new RegExp('[' + String.fromCharCode(0x0300) + '-' + String.fromCharCode(0x036f) + ']', 'g');
 function _normalizarBusca(s) {
@@ -554,19 +545,57 @@ function _filtrarPorBusca(transacoes, termo) {
     });
 }
 
-function definirBuscaEntradas(termo) {
-    buscaEntradas = termo;
-    atualizarEntradasLista();
+/** Itens que a aba Próximos mostraria (A receber / A pagar sem cartão + tudo
+ *  do cartão de crédito no mês) que batem com o termo. */
+function _itensProximosBusca(termo) {
+    const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
+    const credito = new Set(metodos.filter(m => m.metodoKind === 'Crédito').map(m => rotuloMetodo(m)));
+    const todos = [...(estadoApp.transacoes.entradas || []), ...(estadoApp.transacoes.saidas || [])];
+    return _filtrarPorBusca(todos, termo)
+        .filter(t => credito.has(t.metodo) || !_transacaoRealizada(t));
 }
 
-function definirBuscaProximas(termo) {
-    buscaProximas = termo;
-    atualizarProximasTransacoes();
-}
+/** Busca UNIVERSAL: um campo só, de qualquer tela. Com termo, esconde o
+ *  conteúdo da aba atual e mostra o resultado agrupado em Receitas / Despesas
+ *  / Próximos (o mesmo lançamento pode aparecer em mais de um grupo — cada
+ *  grupo espelha a sua aba). Sem termo, volta tudo como estava. */
+function atualizarBuscaGlobal() {
+    const termo = (document.getElementById('buscaGlobal')?.value || '').trim();
+    const box = document.getElementById('resultadoBusca');
+    document.body.classList.toggle('buscando', !!termo);
+    if (!box) return;
+    box.hidden = !termo;
+    if (!termo) { box.innerHTML = ''; box.onclick = null; return; }
 
-function definirBuscaSaidas(termo) {
-    buscaSaidas = termo;
-    atualizarSaidasLista();
+    const abertos = _lerAbertosRecGrupo(box);
+    const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
+    const receitas = _filtrarPorBusca(estadoApp.transacoes.entradas, termo).sort(_porDataDesc);
+    const despesas = _filtrarPorBusca(estadoApp.transacoes.saidas, termo).sort(_porDataDesc);
+    const proximosItens = _itensProximosBusca(termo);
+    const pendentesHTML = renderPendentesProximas({}, termo);
+    const faturasHTML = renderFaturasCartao(null, termo);
+
+    const grupo = (nome, titulo, cor, qtd, total, corpo) => !qtd ? '' : `
+    <details class="rec-grupo" data-nome="${nome}" style="--cor-rec:${cor}" ${abertos[nome] !== false ? 'open' : ''}>
+      <summary>
+        <span class="rec-grupo-nome">${titulo}</span>
+        <span class="rec-grupo-contagem">${qtd}</span>
+        <span class="rec-grupo-total">${formatarMoeda(total)}</span>
+      </summary>
+      <div class="rec-grupo-itens">${corpo}</div>
+    </details>`;
+
+    const html =
+        grupo('__busca_receitas__', '⬇️ Receitas', 'var(--receita-text)', receitas.length,
+            receitas.reduce((s, t) => s + valorDe(t), 0), receitas.map(t => gerarHTMLTransacao(t, 'entrada')).join('')) +
+        grupo('__busca_despesas__', '⬆️ Despesas', 'var(--despesa-text)', despesas.length,
+            despesas.reduce((s, t) => s + valorDe(t), 0), despesas.map(t => gerarHTMLTransacao(t, 'saida')).join('')) +
+        grupo('__busca_proximos__', '⏰ Próximos', 'var(--primary)', proximosItens.length,
+            proximosItens.reduce((s, t) => s + (t.tipo === 'entradas' ? -valorDe(t) : valorDe(t)), 0),
+            pendentesHTML + (faturasHTML || ''));
+
+    box.innerHTML = html || `<div class="rec-grupo rec-grupo--vazio"><span class="rec-grupo-nome">🔎 Nada encontrado pra "${termo}"</span></div>`;
+    box.onclick = _onCliqueProximas;
 }
 
 function atualizarEntradasLista() {
@@ -576,12 +605,7 @@ function atualizarEntradasLista() {
     document.getElementById('modoEntradasIcone')?.classList.toggle('ativo', modoListaEntradas !== 'cronologica');
     _ajustarLabelsFiltro(document.getElementById('modoEntradas'));
     const container = document.querySelector(SELECTORS.entradasLista);
-    const termo = buscaEntradas.trim();
-    if (termo) {
-        _renderListaBusca(container, estadoApp.transacoes.entradas, 'entrada', termo);
-    } else {
-        renderListaPorModo(container, estadoApp.transacoes.entradas, 'entrada', modoListaEntradas, 'Nenhuma receita neste mês');
-    }
+    renderListaPorModo(container, estadoApp.transacoes.entradas, 'entrada', modoListaEntradas, 'Nenhuma receita neste mês');
 }
 
 // 'metodo' | 'categoria' | 'cronologica' (padrão) — visão da aba Despesas
@@ -603,50 +627,7 @@ function atualizarSaidasLista() {
     document.getElementById('modoSaidasIcone')?.classList.toggle('ativo', modoListaSaidas !== 'cronologica');
     _ajustarLabelsFiltro(document.getElementById('modoSaidas'));
     const container = document.querySelector(SELECTORS.saidasLista);
-    const termo = buscaSaidas.trim();
-    if (termo) {
-        _renderListaBusca(container, estadoApp.transacoes.saidas, 'saida', termo);
-    } else {
-        renderListaPorModo(container, estadoApp.transacoes.saidas, 'saida', modoListaSaidas, 'Nenhuma despesa neste mês');
-    }
-}
-
-/** Quando há termo de busca: some com tudo (Duplicatas, grupos de
- *  Recorrência/Método/Categoria/Cronológica) e mostra só 1 grupo "Resultado
- *  da busca" com os achados dentro — assim funciona igual em qualquer modo
- *  de visualização escolhido, sem espalhar lógica de busca nos outros
- *  renderizadores. */
-function _renderListaBusca(container, transacoes, tipoUI, termo) {
-    if (!container) return;
-    const abertos = _lerAbertosRecGrupo(container);
-    const encontrados = _filtrarPorBusca(transacoes, termo).sort(_porDataDesc);
-
-    if (!encontrados.length) {
-        container.innerHTML = `
-        <div class="rec-grupo rec-grupo--vazio">
-            <span class="rec-grupo-nome">🔎 Nada encontrado pra "${termo}"</span>
-        </div>`;
-        container.onclick = null;
-        return;
-    }
-
-    const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
-    const total = encontrados.reduce((s, t) => s + valorDe(t), 0);
-    // Aberto por padrão (é o único grupo, e o usuário buscou justamente pra
-    // ver o resultado) — só fecha se o usuário mesmo fechar manualmente.
-    const aberto = abertos.__busca__ !== false;
-    container.innerHTML = `
-    <details class="rec-grupo" data-nome="__busca__" style="--cor-rec:var(--primary)" ${aberto ? 'open' : ''}>
-      <summary>
-        <span class="rec-grupo-nome">🔎 Resultado da busca "${termo}"</span>
-        <span class="rec-grupo-contagem">${encontrados.length}</span>
-        <span class="rec-grupo-total">${formatarMoeda(total)}</span>
-      </summary>
-      <div class="rec-grupo-itens">
-        ${encontrados.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
-      </div>
-    </details>`;
-    container.onclick = onListaTransacaoClick;
+    renderListaPorModo(container, estadoApp.transacoes.saidas, 'saida', modoListaSaidas, 'Nenhuma despesa neste mês');
 }
 
 /** Agrupa e renderiza `transacoes` por `chaveDe(t)`, ordenado por total (maior primeiro).
@@ -1391,13 +1372,10 @@ async function atualizarProximasTransacoes() {
         // Lê o aberto/fechado ANTES de reescrever (a fatura também usa essa chave).
         const abertosPend = {};
         container.querySelectorAll('details.fatura-item[data-pend]').forEach(d => { abertosPend[d.dataset.pend] = d.open; });
-        const termo = buscaProximas.trim();
-        const pendentesHTML = renderPendentesProximas(abertosPend, termo);
-        const faturasHTML = renderFaturasCartao(container, termo);
+        const pendentesHTML = renderPendentesProximas(abertosPend);
+        const faturasHTML = renderFaturasCartao(container);
         const html = pendentesHTML + (faturasHTML || '');
-        container.innerHTML = html || (termo
-            ? `<div class="rec-grupo rec-grupo--vazio"><span class="rec-grupo-nome">🔎 Nada encontrado pra "${termo}"</span></div>`
-            : `<p class="empty-message">Nada a receber, a pagar nem fatura neste mês</p>`);
+        container.innerHTML = html || `<p class="empty-message">Nada a receber, a pagar nem fatura neste mês</p>`;
         container.onclick = html ? _onCliqueProximas : null;
         container.querySelectorAll('.faturas-cartao .subgrupo-organizador').forEach(_ajustarLabelsFiltro);
     } catch (error) {

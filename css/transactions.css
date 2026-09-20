@@ -699,3 +699,8 @@
   color: var(--gray);
   padding-left: .25rem;
 }
+
+/* Busca universal: com termo, o resultado agrupado ocupa o lugar do conteúdo
+   de qualquer aba (inclusive Configurações) */
+.busca-global { margin: var(--spacing-sm) 0; }
+body.buscando .tab-content { display: none !important; }
