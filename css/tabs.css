@@ -10,20 +10,24 @@
    dashboard já abrem a aba correspondente. */
 .tabs {
     display: grid;
-    grid-template-columns: 2fr 2fr 150px;
+    grid-template-columns: 1fr 130px auto;
     gap: var(--spacing-md);
     margin-bottom: var(--spacing-md);
 }
-.tabs [data-tab="adicionar"] { grid-column: 1 / span 2; }
-.tabs [data-tab="proximas"]  { grid-column: 3; }
+.tabs [data-tab="adicionar"] { grid-column: 1; }
+.tabs [data-tab="proximas"]  { grid-column: 2; }
+.tabs [data-tab="lixeira"]   { grid-column: 3; }
+/* Lixeira: só o emoji — ocupa o mínimo necessário, com respiro */
+.tab-btn-icone { padding: 0.55rem 0.7rem; }
 
 /* Espaço realmente apertado: meio a meio, mesmo fallback do .dashboard. */
 @media (max-width: 480px) {
     .tabs {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 1fr auto;
     }
     .tabs [data-tab="adicionar"] { grid-column: 1; }
     .tabs [data-tab="proximas"]  { grid-column: 2; }
+    .tabs [data-tab="lixeira"]   { grid-column: 3; }
 }
 
 .tab-btn {
@@ -87,3 +91,23 @@
 }
 
 /* Modo dark (futuro) */
+
+/* Lixeira */
+.lixeira-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6rem;
+    padding: .55rem .7rem;
+    margin-bottom: .4rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+.lixeira-info { min-width: 0; flex: 1 1 auto; }
+.lixeira-linha1 { display: flex; align-items: baseline; gap: .5rem; min-width: 0; }
+.lixeira-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .85rem; }
+.lixeira-valor.receita { color: var(--receita-text); }
+.lixeira-valor.despesa { color: var(--despesa-text); }
+.lixeira-linha2 { font-size: .72rem; color: var(--text-muted); margin-top: .15rem; }
+.lixeira-acoes { display: flex; gap: .35rem; flex: none; }

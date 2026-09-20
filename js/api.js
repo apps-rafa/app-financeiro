@@ -395,11 +395,17 @@ async function deletarTransacaoAPI(id) {
             err.detalhe = { tipo: 'parcela-nao-original', competenciaOriginal: orig?.competencia || alvo.competencia };
             throw err;
         }
+        const { data: linhas, error: eSel } = await sb.from('transacoes').select('*').eq('grupo_id', alvo.grupo_id);
+        if (eSel) throw eSel;
+        await moverParaLixeira(linhas);
         const { error } = await sb.from('transacoes').delete().eq('grupo_id', alvo.grupo_id);
         if (error) throw error;
         return { mensagem: 'Parcelamento removido' };
     }
 
+    const { data: linha, error: eSel } = await sb.from('transacoes').select('*').eq('id', id);
+    if (eSel) throw eSel;
+    await moverParaLixeira(linha);
     const { error } = await sb.from('transacoes').delete().eq('id', id);
     if (error) throw error;
     return { mensagem: 'Transação removida' };

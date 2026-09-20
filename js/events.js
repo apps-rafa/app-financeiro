@@ -384,6 +384,8 @@ function mudarAba(novaAba) {
     } else if (novaAba === 'proximas') {
         // Carregar próximas transações
         atualizarProximasTransacoes();
+    } else if (novaAba === 'lixeira') {
+        if (typeof carregarLixeira === 'function') carregarLixeira();
     } else if (novaAba === 'menus') {
         // Carregar aba de gerenciamento de menus
         carregarAbaMenus();
@@ -421,6 +423,12 @@ async function submeterFormulario(e) {
             await adicionarTransacaoAPI(dados);
             mostrarNotificacao('✓ Lançamento adicionado!', 'sucesso');
             limparFormulario();
+            // Depois de lançar, a interface volta no MESMO tipo do último
+            // lançamento (Receita/Despesa) pra encadear vários. Abrir "+
+            // Lançamento" de novo (mudarAba) continua começando em Despesa.
+            if (dados.tipo && dados.tipo !== 'saidas') {
+                document.querySelector('#formTransacao .tipo-btn[data-tipo="' + dados.tipo + '"]')?.click();
+            }
         }
 
         // Recarregar dados
