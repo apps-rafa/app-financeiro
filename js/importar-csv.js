@@ -273,6 +273,7 @@ function _recalcularLinhas() {
 
 /** Data, forma de pgto., categoria e valor resolvidos (independe de X). */
 function _dadosCompletosCSV(l) {
+    if (l.metodoResolvido) _validarMetodoCategoriaCSV(l); // Estorno x Reembolso vs. forma de pgto.
     return !!l.dataISO && !!l.metodoResolvido && !!l.categoriaResolvida && l.valor > 0;
 }
 
@@ -530,6 +531,7 @@ function renderImportCSV() {
             const i = parseInt(e.target.dataset.importCategoria, 10);
             const v = e.target.value;
             st.linhas[i].categoriaResolvida = v === '__nova__' ? { criar: true, nome: st.linhas[i].categoriaCSV } : (v || null);
+            _validarMetodoCategoriaCSV(st.linhas[i]);
             _aplicarStatusDuplicata(st.linhas, st._existentes || []);
             _renderImportCSVPreservandoScroll();
         });
@@ -618,6 +620,22 @@ function _htmlSelectCompetenciaCSV(l, i, dis) {
     return `<select data-import-competencia="${i}" name="competencia-${i}" aria-label="Mês de competência" title="Mês de competência (sugerido pela data e pelo fechamento do cartão)" ${dis}>${opcoes}</select>`;
 }
 
+/** Regra da receita: categoria "Estorno" só com cartão de crédito;
+ *  "Reembolso" só com forma que NÃO é crédito (Pix/Débito, Dinheiro). */
+function _metodoPermitidoCSV(l, m) {
+    if (l.tipo !== 'entradas') return true;
+    const cat = _rotuloCategoriaResolvida(l);
+    if (cat === CATEGORIA_ESTORNO) return m.metodoKind === 'Crédito';
+    if (cat === CATEGORIA_REEMBOLSO) return m.metodoKind !== 'Crédito';
+    return true;
+}
+
+/** Se a categoria escolhida invalida a forma de pgto. já marcada, limpa. */
+function _validarMetodoCategoriaCSV(l) {
+    const m = ((estadoApp.menus && estadoApp.menus.metodos) || []).find(x => rotuloMetodo(x) === l.metodoResolvido);
+    if (m && !_metodoPermitidoCSV(l, m)) l.metodoResolvido = null;
+}
+
 function _renderLinhaImportCSV(l, i) {
     const ignorada = _ignoradaCSV(l);
     const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
@@ -638,7 +656,7 @@ function _renderLinhaImportCSV(l, i) {
                 <option value="">Selecione...</option>
                 ${metodos.map(m => {
                     const rot = rotuloMetodo(m);
-                    return `<option value="${rot}" ${l.metodoResolvido === rot ? 'selected' : ''}>${rot}</option>`;
+                    return `<option value="${rot}" ${l.metodoResolvido === rot ? 'selected' : ''} ${_metodoPermitidoCSV(l, m) ? '' : 'disabled'}>${rot}</option>`;
                 }).join('')}
             </select>
         </td>
