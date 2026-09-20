@@ -1404,3 +1404,5 @@ summary [role="button"] { font-family: Arial; text-align: center; }
 @media (max-width: 600px) {
   .import-csv-grupo .import-csv-grupo > .import-csv-tabela-wrap--solta { margin: 0 -.15rem; }
 }
+
+select.import-csv-campo-caixa { display: block; font-weight: 600; }

@@ -30,7 +30,35 @@ function _competenciaSugeridaCSV(l) {
     return competenciaDe(l.dataCompletaISO, fechamento);
 }
 
+/** Dropdown "Mês de competência": os meses que EXISTEM no arquivo (data
+ *  completa). Sem data completa (só o dia) não há meses no arquivo — oferece
+ *  o mês do calendário ±3 só como ponto de partida. */
+function _htmlSelectMesCompetenciaCSV(st, dataCompleta) {
+    const mesDe = iso => `${String(iso).slice(0, 7)}-01`;
+    const rot = iso => competenciaParaBR(iso);
+    let opcoes, atual;
+    if (dataCompleta) {
+        const meses = [...new Set(st.linhas.map(l => mesDe(l.dataCompletaISO)))].sort();
+        const escolhido = st.linhas.every(l => l.competenciaEditada && l.competenciaEditada === st.linhas[0].competenciaEditada)
+            ? st.linhas[0].competenciaEditada : '';
+        atual = escolhido || '';
+        opcoes = [`<option value="" ${atual ? '' : 'selected'}>Pela data de cada linha</option>`]
+            .concat(meses.map(m => `<option value="${m}" ${m === atual ? 'selected' : ''}>${rot(m)}</option>`));
+    } else {
+        const base = st.competencia || _competenciaAtualISO();
+        const [a, m] = base.slice(0, 7).split('-').map(Number);
+        opcoes = [-3, -2, -1, 0, 1, 2, 3].map(d => {
+            const dt = new Date(a, m - 1 + d, 1);
+            const v = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-01`;
+            return `<option value="${v}" ${v === base ? 'selected' : ''}>${rot(v)}</option>`;
+        });
+    }
+    return `<select id="importCsvCompetencia" class="import-csv-campo-caixa" name="csv-competencia">${opcoes.join('')}</select>`;
+}
+
 function _competenciaAtualISO() {
+    // Planilha só com o dia: vale o mês escolhido no dropdown (não o calendário).
+    if (estadoImportCSV && estadoImportCSV.competencia) return estadoImportCSV.competencia;
     const m = (typeof estadoApp !== 'undefined' && estadoApp.mesAtual) ? estadoApp.mesAtual : new Date();
     return `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}-01`;
 }
@@ -425,10 +453,10 @@ function renderImportCSV() {
     sec.innerHTML = `
     <div class="import-csv-contexto">
         <div class="import-csv-campo">
-            <span class="import-csv-campo-label">Mês de competência
-                <span class="import-csv-ajuda" title="Segue o mês em exibição no topo do app — pra importar num mês diferente, troca por lá antes.">?</span>
-            </span>
-            <div class="import-csv-campo-caixa import-csv-competencia"><b>${typeof obterMesAnoCurto === 'function' ? obterMesAnoCurto(estadoApp.mesAtual || new Date()) : ''}</b></div>
+            <label class="import-csv-campo-label" for="importCsvCompetencia">Mês de competência
+                <span class="import-csv-ajuda" title="Meses que existem no arquivo. &quot;Pela data de cada linha&quot; usa a data (e o fechamento do cartão); escolher um mês aplica a todas as linhas — dá pra ajustar linha a linha na coluna Mês.">?</span>
+            </label>
+            ${_htmlSelectMesCompetenciaCSV(st, todasComDataCompleta)}
         </div>
         <div class="import-csv-campo" ${todasComDataCompleta ? 'hidden' : ''}>
             <label class="import-csv-campo-label" for="importCsvCorte">Dia de corte
@@ -465,6 +493,16 @@ function renderImportCSV() {
         const v = parseInt(e.target.value, 10);
         st.corte = Number.isInteger(v) ? v : null;
         _recomputarImportCSV({ forcarData: true, refazerDuplicatas: true });
+    });
+    document.getElementById('importCsvCompetencia')?.addEventListener('change', e => {
+        const v = e.target.value;
+        if (todasComDataCompleta) {
+            st.linhas.forEach(l => { if (v) l.competenciaEditada = v; else delete l.competenciaEditada; });
+            _renderImportCSVPreservandoScroll();
+        } else {
+            st.competencia = v;
+            _recomputarImportCSV({ forcarData: true, refazerDuplicatas: true });
+        }
     });
     document.getElementById('importCsvTrocarArquivo')?.addEventListener('click', () => {
         estadoImportCSV = null;
