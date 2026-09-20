@@ -448,3 +448,11 @@ function obterDadosFormulario() {
         descricao: document.querySelector(SELECTORS.descricao).value
     };
 }
+
+/** Texto normalizado pra comparar (sem acento, minúsculo, só letras/números) —
+ *  usado na detecção de duplicatas (ui.js). */
+function _normalizarChave(s) {
+    return String(s || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/[^a-z0-9]/g, '');
+}
