@@ -105,6 +105,10 @@ function configurarEventListeners() {
     if (buscaEntradasEl) buscaEntradasEl.addEventListener('input', e => {
         if (typeof definirBuscaEntradas === 'function') definirBuscaEntradas(e.target.value);
     });
+    const buscaProximasEl = document.getElementById('buscaProximas');
+    if (buscaProximasEl) buscaProximasEl.addEventListener('input', e => {
+        if (typeof definirBuscaProximas === 'function') definirBuscaProximas(e.target.value);
+    });
 
     // Aba Próximas: filtro de tipo (Despesa/Receita) + modo de agrupamento
     // (o conjunto de modos disponíveis muda conforme o tipo escolhido)
