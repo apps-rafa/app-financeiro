@@ -516,6 +516,9 @@ function resetarModosListaParaCronologica() {
     // confuso do que útil.
     buscaEntradas = '';
     buscaSaidas = '';
+    buscaProximas = '';
+    const buscaProximasEl = document.getElementById('buscaProximas');
+    if (buscaProximasEl) buscaProximasEl.value = '';
     const buscaEntradasEl = document.getElementById('buscaEntradas');
     if (buscaEntradasEl) buscaEntradasEl.value = '';
     const buscaSaidasEl = document.getElementById('buscaSaidas');
@@ -528,6 +531,7 @@ function resetarModosListaParaCronologica() {
  *  Categoria) sem precisar mexer em cada um deles. */
 let buscaEntradas = '';
 let buscaSaidas = '';
+let buscaProximas = '';
 
 const _REGEX_DIACRITICOS = new RegExp('[' + String.fromCharCode(0x0300) + '-' + String.fromCharCode(0x036f) + ']', 'g');
 function _normalizarBusca(s) {
@@ -553,6 +557,11 @@ function _filtrarPorBusca(transacoes, termo) {
 function definirBuscaEntradas(termo) {
     buscaEntradas = termo;
     atualizarEntradasLista();
+}
+
+function definirBuscaProximas(termo) {
+    buscaProximas = termo;
+    atualizarProximasTransacoes();
 }
 
 function definirBuscaSaidas(termo) {
@@ -1382,10 +1391,13 @@ async function atualizarProximasTransacoes() {
         // Lê o aberto/fechado ANTES de reescrever (a fatura também usa essa chave).
         const abertosPend = {};
         container.querySelectorAll('details.fatura-item[data-pend]').forEach(d => { abertosPend[d.dataset.pend] = d.open; });
-        const pendentesHTML = renderPendentesProximas(abertosPend);
-        const faturasHTML = renderFaturasCartao(container);
+        const termo = buscaProximas.trim();
+        const pendentesHTML = renderPendentesProximas(abertosPend, termo);
+        const faturasHTML = renderFaturasCartao(container, termo);
         const html = pendentesHTML + (faturasHTML || '');
-        container.innerHTML = html || `<p class="empty-message">Nada a receber, a pagar nem fatura neste mês</p>`;
+        container.innerHTML = html || (termo
+            ? `<div class="rec-grupo rec-grupo--vazio"><span class="rec-grupo-nome">🔎 Nada encontrado pra "${termo}"</span></div>`
+            : `<p class="empty-message">Nada a receber, a pagar nem fatura neste mês</p>`);
         container.onclick = html ? _onCliqueProximas : null;
         container.querySelectorAll('.faturas-cartao .subgrupo-organizador').forEach(_ajustarLabelsFiltro);
     } catch (error) {
@@ -1398,11 +1410,11 @@ async function atualizarProximasTransacoes() {
  *  exibição que ainda não aconteceram (mesma regra do card de resumo —
  *  _transacaoRealizada), fora os de cartão de crédito, que aparecem em
  *  "Faturas". Abertos por padrão. */
-function renderPendentesProximas(abertos = {}) {
+function renderPendentesProximas(abertos = {}, termo = '') {
     const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
     const rotulosCredito = new Set(metodos.filter(m => m.metodoKind === 'Crédito').map(m => rotuloMetodo(m)));
     const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
-    const pend = lista => (lista || [])
+    const pend = lista => _filtrarPorBusca(lista || [], termo)
         .filter(t => !rotulosCredito.has(t.metodo) && !_transacaoRealizada(t))
         .sort((a, b) => String(a.data).localeCompare(String(b.data)));
     const grupo = (nome, chave, lista, tipoUI) => {
@@ -1427,7 +1439,7 @@ function renderPendentesProximas(abertos = {}) {
  *  mês e o dia de vencimento — colapsável, com os lançamentos daquele
  *  cartão dentro (despesas + estornos/reembolsos que abatem a fatura),
  *  fechado por padrão. */
-function renderFaturasCartao(container) {
+function renderFaturasCartao(container, termo = '') {
     const cartoes = ((estadoApp.menus && estadoApp.menus.metodos) || [])
         .filter(m => m.metodoKind === 'Crédito');
     if (!cartoes.length) return '';
@@ -1446,10 +1458,10 @@ function renderFaturasCartao(container) {
 
     const linhas = cartoes.map(m => {
         const rot = (typeof rotuloMetodo === 'function') ? rotuloMetodo(m) : m.nome;
-        const despesas = estadoApp.transacoes.saidas.filter(t => t.metodo === rot);
+        const despesas = _filtrarPorBusca(estadoApp.transacoes.saidas.filter(t => t.metodo === rot), termo);
         // Receita com esse método = estorno/reembolso lançado na fatura —
         // abate do total, não é receita separada (ver calcularResumoMes).
-        const estornos = estadoApp.transacoes.entradas.filter(t => t.metodo === rot);
+        const estornos = _filtrarPorBusca(estadoApp.transacoes.entradas.filter(t => t.metodo === rot), termo);
         const totalDespesas = despesas.reduce((s, t) => s + valorDe(t), 0);
         const totalEstornos = estornos.reduce((s, t) => s + valorDe(t), 0);
         const total = totalDespesas - totalEstornos;
