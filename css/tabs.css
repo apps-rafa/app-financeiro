@@ -10,24 +10,26 @@
    dashboard já abrem a aba correspondente. */
 .tabs {
     display: grid;
-    grid-template-columns: 1fr 130px auto;
+    /* mesmas colunas do .dashboard: "Lançamento" fica sob Receita+Despesa e
+       "Próximos"+lixeira sob Balanço/Gasto diário */
+    grid-template-columns: 2fr 2fr 150px;
     gap: var(--spacing-md);
     margin-bottom: var(--spacing-md);
 }
-.tabs [data-tab="adicionar"] { grid-column: 1; }
-.tabs [data-tab="proximas"]  { grid-column: 2; }
-.tabs [data-tab="lixeira"]   { grid-column: 3; }
+.tabs [data-tab="adicionar"] { grid-column: 1 / span 2; }
+.tabs-dir { grid-column: 3; display: flex; gap: .4rem; min-width: 0; }
+.tabs-dir .tab-btn { min-width: 0; }
+.tabs-dir [data-tab="proximas"] { flex: 1 1 auto; }
 /* Lixeira: só o emoji — ocupa o mínimo necessário, com respiro */
-.tab-btn-icone { padding: 0.55rem 0.7rem; }
+.tab-btn-icone { flex: none; padding: 0.55rem 0.7rem; }
 
 /* Espaço realmente apertado: meio a meio, mesmo fallback do .dashboard. */
 @media (max-width: 480px) {
     .tabs {
-        grid-template-columns: 1fr 1fr auto;
+        grid-template-columns: 1fr 1fr;
     }
     .tabs [data-tab="adicionar"] { grid-column: 1; }
-    .tabs [data-tab="proximas"]  { grid-column: 2; }
-    .tabs [data-tab="lixeira"]   { grid-column: 3; }
+    .tabs-dir { grid-column: 2; }
 }
 
 .tab-btn {
