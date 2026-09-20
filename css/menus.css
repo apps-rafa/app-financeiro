@@ -1182,3 +1182,23 @@ summary [role="button"] { font-family: Arial; text-align: center; }
 @media (max-width: 600px) {
   .import-csv-grupo .import-csv-grupo > .import-csv-tabela-wrap--solta { margin: 0 -.15rem; }
 }
+
+/* Botões "+" de todo o app (círculos .h3-add e quadrados .btn-mini-add): o
+   sinal é desenhado com 2 barras de gradiente no centro exato do botão — o
+   caractere "+" da fonte nunca ficava centralizado na vertical. O texto do
+   botão fica escondido (font-size:0), só continua lá pra leitores de tela. */
+.h3-add:not(.h3-az),
+.cat-coluna-topo .h3-add:not(.h3-az),
+.btn-mini-add {
+  font-size: 0 !important;
+  line-height: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-image: linear-gradient(currentColor, currentColor), linear-gradient(currentColor, currentColor) !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 46% 2px, 2px 46% !important;
+}
+.cat-coluna-topo .h3-add:not(.h3-az) { background-size: 50% 1.5px, 1.5px 50% !important; }
