@@ -258,10 +258,11 @@
 
 /* Ícones de editar/excluir menores nas listas */
 .despesa-actions .btn-icon {
-    min-width: 24px;
-    width: 24px;
-    height: 24px;
-    font-size: 13px;
+    min-width: 18px;
+    width: 18px;
+    height: 18px;
+    font-size: 11px;
+    line-height: 1;
     padding: 0;
 }
 
@@ -601,7 +602,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: .15rem;
+  gap: .1rem;
 }
 .despesa-actions .btn-icon.armed {
   width: auto;
