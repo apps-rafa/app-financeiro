@@ -176,12 +176,33 @@ function ligarCampoData(input) {
     input.addEventListener('keydown', mascaraDataKeydown);
     input.addEventListener('focus', () => {
         input.dataset.qtdDigitos = String((input.value.match(/\d/g) || []).length);
+        // Entrou pelo teclado (Tab): cursor no começo, pra já digitar por cima.
+        // Com o mouse o cursor fica onde o usuário clicou.
+        setTimeout(() => {
+            try { if (input.matches(':focus-visible')) input.setSelectionRange(0, 0); } catch (_) {}
+        }, 0);
     });
 }
 
 /** keydown p/ campos de data: Backspace logo depois de uma "/" apaga o dígito antes dela */
 function mascaraDataKeydown(e) {
     const input = e.target;
+    // Modo "sobrescrever" (como a tecla Insert): digitar um número troca o
+    // dígito que está sob o cursor em vez de empurrar o resto — dá pra
+    // corrigir só o dia ou só o mês sem apagar tudo.
+    if (/^\d$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey
+        && input.selectionStart === input.selectionEnd && input.value.length) {
+        let p = input.selectionStart;
+        if (input.value[p] === '/') p++;
+        if (p < input.value.length) {
+            e.preventDefault();
+            input.value = input.value.slice(0, p) + e.key + input.value.slice(p + 1);
+            const prox = input.value[p + 1] === '/' ? p + 2 : p + 1;
+            try { input.setSelectionRange(prox, prox); } catch (_) {}
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            return;
+        }
+    }
     if (e.key !== 'Backspace') return;
     if (input.selectionStart !== input.selectionEnd || input.selectionStart < 2) return;
     if (input.value[input.selectionStart - 1] !== '/') return;

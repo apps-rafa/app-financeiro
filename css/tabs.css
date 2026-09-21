@@ -19,7 +19,7 @@
 .tabs [data-tab="adicionar"] { grid-column: 1 / span 2; }
 .tabs-dir { grid-column: 3; display: flex; gap: .4rem; min-width: 0; }
 .tabs-dir { container-type: inline-size; }
-.tabs-dir .tab-btn { min-width: 0; font-size: .8rem; padding-left: .3rem; padding-right: .3rem; }
+.tabs-dir .tab-btn { min-width: 0; font-size: min(var(--font-size-base), .8rem); padding-left: .3rem; padding-right: .3rem; }
 /* "Próximos" encolhe conforme a coluna aperta: completo → "Próx." → só o emoji */
 .tabs-dir .t-curto { display: none; }
 @container (max-width: 135px) {

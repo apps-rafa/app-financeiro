@@ -588,8 +588,29 @@ function atualizarBuscaGlobal() {
             proximosItens.reduce((s, t) => s + (t.tipo === 'entradas' ? -valorDe(t) : valorDe(t)), 0),
             pendentesHTML + (faturasHTML || ''));
 
-    box.innerHTML = html || `<div class="rec-grupo rec-grupo--vazio"><span class="rec-grupo-nome">🔎 Nada encontrado pra "${termo}"</span></div>`;
-    box.onclick = _onCliqueProximas;
+    box.innerHTML = html;
+    // Cliques: itens da lixeira (restaurar/apagar) ou o resto (editar, excluir, faturas...)
+    box.onclick = e => (e.target.closest('[data-lixeira-restaurar], [data-lixeira-apagar]')
+        ? onCliqueLixeira(e) : _onCliqueProximas(e));
+
+    // A lixeira (excluídos nos últimos 30 dias) também entra na busca — vem
+    // depois, de forma assíncrona; só aplica se o termo ainda for o mesmo.
+    const vazio = () => `<div class="rec-grupo rec-grupo--vazio"><span class="rec-grupo-nome">🔎 Nada encontrado pra "${termo}"</span></div>`;
+    if (typeof buscarLixeira !== 'function') { if (!html) box.innerHTML = vazio(); return; }
+    buscarLixeira(termo).then(itens => {
+        if ((document.getElementById('buscaGlobal')?.value || '').trim() !== termo) return;
+        if (!itens.length) { if (!html) box.innerHTML = vazio(); return; }
+        const total = itens.reduce((s, i) => s + (Number((i.dados || {}).valor) || 0), 0);
+        box.innerHTML = html + `
+        <details class="rec-grupo" data-nome="__busca_lixeira__" style="--cor-rec:var(--text-muted)" ${abertos.__busca_lixeira__ !== false ? 'open' : ''}>
+          <summary>
+            <span class="rec-grupo-nome">🗑️ Lixeira</span>
+            <span class="rec-grupo-contagem">${itens.length}</span>
+            <span class="rec-grupo-total">${formatarMoeda(total)}</span>
+          </summary>
+          <div class="rec-grupo-itens">${itens.map(htmlItemLixeira).join('')}</div>
+        </details>`;
+    });
 }
 
 function atualizarEntradasLista() {

@@ -158,9 +158,7 @@ function configurarEventListeners() {
             if (!dataInput.readOnly) dataInput.dataset.userVal = dataInput.value;
             recalcularCompetencia();
             atualizarCampoParcelas();
-            // Digitou um mês diferente do que tá navegado no topo? A navegação acompanha.
-            const m = String(dataInput.value || '').match(/^\d{1,2}\/(\d{1,2})$/);
-            if (m) sincronizarMesComFormulario(parseInt(m[1], 10));
+            // (o mês digitado aqui NÃO muda o mês do calendário no topo)
         });
     }
 
@@ -169,7 +167,6 @@ function configurarEventListeners() {
     if (compInput) {
         compInput.addEventListener('change', () => {
             compInput.dataset.editado = '1';
-            sincronizarMesComFormulario(parseInt(compInput.value, 10));
         });
     }
 
