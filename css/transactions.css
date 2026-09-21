@@ -703,4 +703,7 @@
 /* Busca universal: com termo, o resultado agrupado ocupa o lugar do conteúdo
    de qualquer aba (inclusive Configurações) */
 .busca-global { margin: 0 0 var(--spacing-md); }
-/* (a busca fica sempre visível acima da aba aberta; só some ao limpar o campo) */
+/* (a busca fica sempre visível acima da aba aberta; só some ao limpar o campo)
+   — exceto em Configurações, que abre por cima e esconde a busca. */
+.area-conteudo:has(#menus.active) > .busca-global,
+.area-conteudo:has(#menus.active) > #resultadoBusca { display: none !important; }
