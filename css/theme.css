@@ -63,8 +63,7 @@ footer.footer {
 .summary-card.saidas.active   { border-color: var(--despesa-text); outline: 2px solid var(--despesa-text); outline-offset: -2px; }
 
 /* Fundo da aba de conteúdo segue o padrão (Próximas fica branco, como os chips) */
-#entradas.tab-content.active { background: var(--receita-bg); }
-#saidas.tab-content.active   { background: var(--despesa-bg); }
+/* (o tingimento agora é da .area-conteudo — ver layout.css) */
 
 /* ---------- Texto ---------- */
 h1, h2, h3, h4, label, .item-nome, .despesa-categoria, .amount { color: var(--text); }
