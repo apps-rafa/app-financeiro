@@ -724,3 +724,19 @@
     .ordem-criacao-btn { padding: .12rem .38rem; gap: .2rem; }
     .despesa-dia, .despesa-dow, .despesa-valor, .despesa-valor .valor-meta { font-size: .76rem; }
 }
+
+/* Mobile: total do grupo em 2 linhas alinhadas à direita — valor em cima,
+   porcentagem embaixo (o filtro/organizador do cabeçalho ganha espaço). */
+@media (max-width: 480px) {
+    .rec-grupo-total, .subgrupo-total {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        text-align: right;
+        line-height: 1.15;
+        flex: none;
+    }
+    .rec-grupo-total .tot-valor, .subgrupo-total .tot-valor { font-size: .68rem; }
+    .rec-grupo-total .tot-pct, .subgrupo-total .tot-pct { font-size: .58rem; opacity: .75; font-weight: 500; }
+    .tot-sep { display: none; }
+}

@@ -688,7 +688,7 @@ function _renderListaAgrupadaPorTotal(container, transacoes, tipoUI, msgVazia, {
             <span class="rec-grupo-espaco"></span>
             ${submenuHTML}
             <span class="rec-grupo-contagem">${itens.length}</span>
-            <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
+            <span class="rec-grupo-total"><span class="tot-valor">${formatarMoeda(total)}</span>${totalGeral ? `<span class="tot-pct"><i class="tot-sep"> · </i>${formatarPct(pct)}%</span>` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
             ${corpoItens}
@@ -786,7 +786,7 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
             ${_renderOrdemCriacaoToggle(`${tipoUI}:cronologica:${nome}`)}
             <span class="rec-grupo-espaco"></span>
             <span class="rec-grupo-contagem">${itens.length}</span>
-            <span class="rec-grupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
+            <span class="rec-grupo-total"><span class="tot-valor">${formatarMoeda(total)}</span>${totalGeral ? `<span class="tot-pct"><i class="tot-sep"> · </i>${formatarPct(pct)}%</span>` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
             ${itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
@@ -937,7 +937,7 @@ function _renderItensSubagrupados(itens, tipoUI, dimCfg, abertos, chavePrefixo) 
             ${_renderOrdemCriacaoToggle(`${chavePrefixo}:sub:${nome}`)}
             <span class="subgrupo-espaco"></span>
             <span class="subgrupo-contagem">${its.length}</span>
-            <span class="subgrupo-total">${formatarMoeda(total)}${totalGeral ? ` · ${formatarPct(pct)}%` : ''}</span>
+            <span class="subgrupo-total"><span class="tot-valor">${formatarMoeda(total)}</span>${totalGeral ? `<span class="tot-pct"><i class="tot-sep"> · </i>${formatarPct(pct)}%</span>` : ''}</span>
           </summary>
           ${its.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
         </details>`;
@@ -1497,7 +1497,7 @@ function renderFaturasCartao(container, termo = '') {
                     ${_renderOrdemCriacaoToggle(`${chaveFatura}:sub:${nome}`)}
                     <span class="subgrupo-espaco"></span>
                     <span class="subgrupo-contagem">${its.length}</span>
-                    <span class="subgrupo-total">${formatarMoeda(totalSub)}${total ? ` · ${formatarPct(pctSub)}%` : ''}</span>
+                    <span class="subgrupo-total"><span class="tot-valor">${formatarMoeda(totalSub)}</span>${total ? `<span class="tot-pct"><i class="tot-sep"> · </i>${formatarPct(pctSub)}%</span>` : ''}</span>
                   </summary>
                   ${its.map(t => gerarHTMLTransacao(t, tipoUiDe(t), { semMetodoChip: true })).join('')}
                 </details>`;
