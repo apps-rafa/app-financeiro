@@ -123,3 +123,25 @@
 .lixeira-valor.despesa { color: var(--despesa-text); }
 .lixeira-linha2 { font-size: .72rem; color: var(--text-muted); margin-top: .15rem; }
 .lixeira-acoes { display: flex; gap: .35rem; flex: none; }
+
+.lixeira-linha3 { font-size: .68rem; color: var(--text-muted); opacity: .8; margin-top: .05rem; }
+/* Mobile: texto menor (o "* { font-size }" global inflava os spans) e o botão
+   Restaurar vira só o ↩ */
+@media (max-width: 480px) {
+    .lixeira-item { padding: .4rem .5rem; gap: .4rem; }
+    .lixeira-valor, .lixeira-desc { font-size: .74rem; }
+    .lixeira-linha2 { font-size: .62rem; }
+    .lixeira-linha3 { font-size: .58rem; }
+    .lixeira-acoes { gap: .25rem; }
+    .lixeira-acoes .mini-btn { font-size: .74rem; padding: .2rem .45rem; min-width: 0; }
+    .lixeira-acoes .lx-txt { display: none; }
+    #lixeira .menu-hint { font-size: .68rem; }
+}
+
+/* Nada da lixeira pode alargar a página: tudo encolhe (descrição longa vira "…") */
+#lixeira, #lixeira .proximas-container, #lixeiraLista { min-width: 0; max-width: 100%; }
+.lixeira-item { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.lixeira-info { overflow: hidden; }
+.lixeira-linha1 > * { min-width: 0; }
+.lixeira-valor { flex: none; white-space: nowrap; }
+.lixeira-desc { flex: 0 1 auto; min-width: 0; }

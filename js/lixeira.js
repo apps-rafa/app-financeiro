@@ -37,12 +37,12 @@ function htmlItemLixeira(item) {
                 <span class="lixeira-desc">${esc(t.descricao) || esc(t.categoria)}</span>${parcela}
             </div>
             <div class="lixeira-linha2">
-                ${dd(t.data)} · ${esc(t.categoria)}${t.metodo ? ' · ' + esc(t.metodo) : ''} ·
-                excluído em ${dd(item.excluido_em)} (some em ${dias} d)
+                ${dd(t.data)} · ${esc(t.categoria)}${t.metodo ? ' · ' + esc(t.metodo) : ''}
             </div>
+            <div class="lixeira-linha3">excluído em ${dd(item.excluido_em)} (some em ${dias} d)</div>
         </div>
         <div class="lixeira-acoes">
-            <button type="button" class="mini-btn" data-lixeira-restaurar="${item.id}" title="Restaurar este lançamento">↩ Restaurar</button>
+            <button type="button" class="mini-btn" data-lixeira-restaurar="${item.id}" title="Restaurar este lançamento" aria-label="Restaurar">↩<span class="lx-txt"> Restaurar</span></button>
             <button type="button" class="mini-btn" data-lixeira-apagar="${item.id}" title="Apagar de vez" aria-label="Apagar de vez">✕</button>
         </div>
     </div>`;
