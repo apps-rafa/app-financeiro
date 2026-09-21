@@ -740,3 +740,18 @@
     .rec-grupo-total .tot-pct, .subgrupo-total .tot-pct { font-size: .58rem; opacity: .75; font-weight: 500; }
     .tot-sep { display: none; }
 }
+
+/* Barra do grupo aberto: "Ordem de criação" à esquerda (alinhada ao título) e
+   os botões de filtro ao lado — antes ficavam no cabeçalho, ao lado do título. */
+.grupo-barra {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-width: 0;
+    padding: .1rem 0 .45rem;
+}
+.grupo-barra .subgrupo-organizador { flex: 0 1 auto; }
+
+/* alinha a barra com o TÍTULO do grupo (depois da setinha) */
+.rec-grupo-itens > .grupo-barra { padding-left: 1.75rem; }
+@media (max-width: 480px) { .rec-grupo-itens > .grupo-barra { padding-left: 1.45rem; } }

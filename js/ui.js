@@ -684,13 +684,12 @@ function _renderListaAgrupadaPorTotal(container, transacoes, tipoUI, msgVazia, {
         <details class="rec-grupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" style="--cor-rec:${c}" ${abertos[nome] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
-            ${ordemCriacaoHTML}
             <span class="rec-grupo-espaco"></span>
-            ${submenuHTML}
             <span class="rec-grupo-contagem">${itens.length}</span>
             <span class="rec-grupo-total"><span class="tot-valor">${formatarMoeda(total)}</span>${totalGeral ? `<span class="tot-pct"><i class="tot-sep"> · </i>${formatarPct(pct)}%</span>` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
+            ${_barraGrupo(ordemCriacaoHTML + submenuHTML)}
             ${corpoItens}
           </div>
         </details>`;
@@ -783,12 +782,12 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
         <details class="rec-grupo" data-nome="${nome}" style="--cor-rec:${cor}" ${abertos[nome] ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">${nome}</span>
-            ${_renderOrdemCriacaoToggle(`${tipoUI}:cronologica:${nome}`)}
             <span class="rec-grupo-espaco"></span>
             <span class="rec-grupo-contagem">${itens.length}</span>
             <span class="rec-grupo-total"><span class="tot-valor">${formatarMoeda(total)}</span>${totalGeral ? `<span class="tot-pct"><i class="tot-sep"> · </i>${formatarPct(pct)}%</span>` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
+            ${_barraGrupo(_renderOrdemCriacaoToggle(`${tipoUI}:cronologica:${nome}`))}
             ${itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
           </div>
         </details>`;
@@ -934,14 +933,20 @@ function _renderItensSubagrupados(itens, tipoUI, dimCfg, abertos, chavePrefixo) 
         <details class="subgrupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" ${abertos && abertos[nome] ? 'open' : ''}>
           <summary class="subgrupo-cab">
             <span class="subgrupo-nome">${nome}</span>
-            ${_renderOrdemCriacaoToggle(`${chavePrefixo}:sub:${nome}`)}
             <span class="subgrupo-espaco"></span>
             <span class="subgrupo-contagem">${its.length}</span>
             <span class="subgrupo-total"><span class="tot-valor">${formatarMoeda(total)}</span>${totalGeral ? `<span class="tot-pct"><i class="tot-sep"> · </i>${formatarPct(pct)}%</span>` : ''}</span>
           </summary>
+          ${_barraGrupo(_renderOrdemCriacaoToggle(`${chavePrefixo}:sub:${nome}`))}
           ${its.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
         </details>`;
     }).join('');
+}
+
+/** Primeira linha DENTRO do grupo aberto: "Ordem de criação" (à esquerda,
+ *  alinhado com o título) e, ao lado, os botões de filtro. */
+function _barraGrupo(html) {
+    return String(html || '').trim() ? `<div class="grupo-barra">${html}</div>` : '';
 }
 
 /** HTML do organizador inline (ícone de funil + botões das outras 2
@@ -1494,11 +1499,11 @@ function renderFaturasCartao(container, termo = '') {
                 <details class="subgrupo" data-nome="${String(nome).replace(/"/g, '&quot;')}" ${abertosSub[nome] ? 'open' : ''}>
                   <summary class="subgrupo-cab">
                     <span class="subgrupo-nome">${nome}</span>
-                    ${_renderOrdemCriacaoToggle(`${chaveFatura}:sub:${nome}`)}
                     <span class="subgrupo-espaco"></span>
                     <span class="subgrupo-contagem">${its.length}</span>
                     <span class="subgrupo-total"><span class="tot-valor">${formatarMoeda(totalSub)}</span>${total ? `<span class="tot-pct"><i class="tot-sep"> · </i>${formatarPct(pctSub)}%</span>` : ''}</span>
                   </summary>
+                  ${_barraGrupo(_renderOrdemCriacaoToggle(`${chaveFatura}:sub:${nome}`))}
                   ${its.map(t => gerarHTMLTransacao(t, tipoUiDe(t), { semMetodoChip: true })).join('')}
                 </details>`;
             }).join('');
@@ -1509,13 +1514,11 @@ function renderFaturasCartao(container, termo = '') {
         <details class="fatura-item" data-nome="${rot.replace(/"/g, '&quot;')}" style="--cor-cartao:${cor}" ${abertos[rot] ? 'open' : ''}>
           <summary>
             <span class="fatura-nome">${rot}</span>
-            ${_renderOrdemCriacaoToggle(chaveFatura)}
             <span class="fatura-espaco"></span>
-            ${organizadorHTML}
             <span class="fatura-venc">vcto. ${venc}</span>
             <span class="fatura-total">${formatarMoeda(total)}</span>
           </summary>
-          <div class="fatura-itens">${itensHTML}</div>
+          <div class="fatura-itens">${_barraGrupo(_renderOrdemCriacaoToggle(chaveFatura) + organizadorHTML)}${itensHTML}</div>
         </details>`;
     }).filter(Boolean).join('');
 
