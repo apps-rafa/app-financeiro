@@ -18,7 +18,17 @@
 }
 .tabs [data-tab="adicionar"] { grid-column: 1 / span 2; }
 .tabs-dir { grid-column: 3; display: flex; gap: .4rem; min-width: 0; }
-.tabs-dir .tab-btn { min-width: 0; }
+.tabs-dir { container-type: inline-size; }
+.tabs-dir .tab-btn { min-width: 0; font-size: .8rem; padding-left: .3rem; padding-right: .3rem; }
+/* "Próximos" encolhe conforme a coluna aperta: completo → "Próx." → só o emoji */
+.tabs-dir .t-curto { display: none; }
+@container (max-width: 135px) {
+    .tabs-dir .t-full { display: none; }
+    .tabs-dir .t-curto { display: inline; }
+}
+@container (max-width: 100px) {
+    .tabs-dir .t-curto { display: none; }
+}
 .tabs-dir [data-tab="proximas"] { flex: 1 1 auto; }
 /* Lixeira: só o emoji — ocupa o mínimo necessário, com respiro */
 .tab-btn-icone { flex: none; padding: 0.55rem 0.7rem; }

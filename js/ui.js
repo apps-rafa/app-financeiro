@@ -511,12 +511,6 @@ function resetarModosListaParaCronologica() {
         localStorage.setItem('modoListaSaidas', 'cronologica');
         localStorage.setItem('modoListaProximas', 'cronologica');
     } catch (_) {}
-
-    // A busca universal também some ao trocar de mês — um termo de antes
-    // escondendo tudo sem aviso é mais confuso do que útil.
-    const buscaGlobalEl = document.getElementById('buscaGlobal');
-    if (buscaGlobalEl) buscaGlobalEl.value = '';
-    atualizarBuscaGlobal();
 }
 
 /** Busca em tempo real por descrição/categoria/forma de pagamento — filtra

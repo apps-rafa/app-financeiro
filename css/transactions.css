@@ -703,4 +703,4 @@
 /* Busca universal: com termo, o resultado agrupado ocupa o lugar do conteúdo
    de qualquer aba (inclusive Configurações) */
 .busca-global { margin: 0 0 var(--spacing-md); }
-body.buscando .tab-content { display: none !important; }
+/* (a busca fica sempre visível acima da aba aberta; só some ao limpar o campo) */
