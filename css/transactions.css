@@ -707,3 +707,20 @@
    — exceto em Configurações, que abre por cima e esconde a busca. */
 .area-conteudo:has(#menus.active) > .busca-global,
 .area-conteudo:has(#menus.active) > #resultadoBusca { display: none !important; }
+
+/* Mobile (o "* { font-size }" global de responsive.css inflava os <span> soltos
+   dos cabeçalhos): tamanhos explícitos e menores em grupos, subgrupos, faturas
+   e na 1ª linha dos lançamentos (data e valor). */
+@media (max-width: 480px) {
+    .rec-grupo > summary,
+    .subgrupo-cab,
+    .fatura-item > summary { font-size: .74rem; padding: .4rem .5rem; gap: .3rem; }
+    .rec-grupo-nome, .rec-grupo-total,
+    .subgrupo-nome, .subgrupo-total,
+    .fatura-nome, .fatura-total { font-size: .74rem; }
+    .rec-grupo-total, .subgrupo-total, .fatura-total { white-space: nowrap; }
+    .rec-grupo-contagem, .subgrupo-contagem { font-size: .6rem; padding: .02rem .32rem; }
+    .ordem-criacao-btn, .ordem-criacao-btn span { font-size: .58rem; }
+    .ordem-criacao-btn { padding: .12rem .38rem; gap: .2rem; }
+    .despesa-dia, .despesa-dow, .despesa-valor, .despesa-valor .valor-meta { font-size: .76rem; }
+}

@@ -340,6 +340,9 @@
   cursor: pointer;
 }
 .mini-lancamento .tab-mais { color: #FFD54A; font-weight: 800; margin-right: .15rem; }
+/* "Próximos" + lixeira dividem a coluna do "Gasto diário" — só emojis */
+.mini-dir { grid-column: 4; display: flex; gap: .25rem; min-width: 0; }
+.mini-dir .mini-proximos { flex: 1 1 0; min-width: 0; padding: .4rem 0; }
 .mini-proximos {
   grid-column: span 1;
   padding: .4rem .3rem;

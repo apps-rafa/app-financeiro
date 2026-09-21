@@ -29,7 +29,7 @@ async function semearMenusPadraoSeVazio() {
             ...CATEGORIAS_DESPESA_SEED.map(nome => ({ tipo: 'Categoria', nome, categoria_tipo: 'saidas', cor: cor(nome) })),
             ...CATEGORIAS_RECEITA_SEED.map(nome => ({ tipo: 'Categoria', nome, categoria_tipo: 'entradas', cor: cor(nome) })),
             { tipo: 'Método', nome: 'Dinheiro', metodo_kind: 'Dinheiro', cor: cor('Dinheiro') },
-            { tipo: 'Método', nome: 'PIX/Débito', metodo_kind: 'PIX/Débito', cor: cor('PIX/Débito') }
+            { tipo: 'Método', nome: 'PIX', metodo_kind: 'PIX', cor: cor('PIX') }
         ];
 
         // Usuário de teste (login anônimo, "Testar sem cadastro"): já entra
@@ -107,7 +107,9 @@ function mapearItemMenu(row) {
 /** Rótulo mostrado no dropdown do formulário para um método */
 function rotuloMetodo(item) {
     if (!item.metodoKind || item.metodoKind === 'Dinheiro') return item.nome;
-    return item.banco ? `${item.metodoKind} ${item.banco}` : item.metodoKind;
+    // O tipo "PIX/Débito" aparece só como "PIX" (o valor interno do tipo não muda)
+    const tipo = item.metodoKind === 'PIX/Débito' ? 'PIX' : item.metodoKind;
+    return item.banco ? `${tipo} ${item.banco}` : tipo;
 }
 
 /**
