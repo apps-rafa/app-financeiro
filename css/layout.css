@@ -387,17 +387,21 @@ main.main {
     scrollbar-gutter: stable;
 }
 
-/* A partir das abas, o fundo é branco ocupando 100% da largura */
-.tab-content.active {
+/* Faixa de conteúdo abaixo do dashboard (100% da largura): a busca universal
+   fica no topo dela e a aba aberta logo abaixo — nunca dentro do dashboard. */
+.area-conteudo {
     background: var(--surface);
     color: var(--text);
     margin-left: calc(-1 * var(--pad-main));
     margin-right: calc(-1 * var(--pad-main));
     padding: var(--spacing-lg) var(--pad-main) var(--spacing-xl);
-    border-radius: 0;
     border-top: 1px solid var(--border);
-    min-height: 60vh;
 }
+.area-conteudo:has(.tab-content.active) { min-height: 60vh; }
+.tab-content.active { color: var(--text); }
+/* Receitas/Despesas tingem a faixa inteira (antes tingiam só a aba) */
+.area-conteudo:has(#entradas.active) { background: var(--receita-bg); }
+.area-conteudo:has(#saidas.active)   { background: var(--despesa-bg); }
 
 /* Footer */
 footer.footer {
