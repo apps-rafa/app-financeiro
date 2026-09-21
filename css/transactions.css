@@ -729,17 +729,11 @@
 /* Mobile: total do grupo em 2 linhas alinhadas à direita — valor em cima,
    porcentagem embaixo (o filtro/organizador do cabeçalho ganha espaço). */
 @media (max-width: 480px) {
-    .rec-grupo-total, .subgrupo-total {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        text-align: right;
-        line-height: 1.15;
-        flex: none;
-    }
-    .rec-grupo-total .tot-valor, .subgrupo-total .tot-valor { font-size: .68rem; }
-    .rec-grupo-total .tot-pct, .subgrupo-total .tot-pct { font-size: .58rem; opacity: .75; font-weight: 500; }
-    .tot-sep { display: none; }
+    /* valor e porcentagem de volta na mesma linha (menores) */
+    .rec-grupo-total, .subgrupo-total { flex: none; white-space: nowrap; }
+    .rec-grupo-total .tot-valor, .subgrupo-total .tot-valor,
+    .rec-grupo-total .tot-pct, .subgrupo-total .tot-pct { font-size: .7rem; }
+    .rec-grupo-total .tot-pct, .subgrupo-total .tot-pct { opacity: .8; font-weight: 500; }
 }
 
 /* Barra do grupo aberto: "Ordem de criação" à esquerda (alinhada ao título) e
@@ -756,3 +750,16 @@
 /* alinha a barra com o TÍTULO do grupo (depois da setinha) */
 .rec-grupo-itens > .grupo-barra { padding-left: 1.75rem; }
 @media (max-width: 480px) { .rec-grupo-itens > .grupo-barra { padding-left: 1.45rem; } }
+
+/* Cabeçalho do grupo: título, chip com a contagem logo ao lado, depois o espaço
+   e o total à direita (só a ordem visual — vale pra todo grupo/subgrupo). */
+.rec-grupo-nome, .subgrupo-nome { order: 1; }
+.rec-grupo-contagem, .subgrupo-contagem { order: 2; }
+.rec-grupo-espaco, .subgrupo-espaco { order: 3; }
+.rec-grupo-total, .subgrupo-total { order: 4; }
+
+/* "Ordem de criação" e o filtro na barra do grupo: mesma altura */
+.grupo-barra { align-items: stretch; }
+.grupo-barra > .ordem-criacao-btn,
+.grupo-barra > .subgrupo-organizador { box-sizing: border-box; height: 1.7rem; }
+.grupo-barra > .ordem-criacao-btn { padding-top: 0; padding-bottom: 0; }
