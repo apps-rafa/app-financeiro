@@ -7,6 +7,8 @@
  *  dos gráficos/listas agrupadas; sem isso um grupo pequeno (ex. 0,4%)
  *  aparecia arredondado pra "0%", sem dar pra saber que ele tinha algo. */
 function formatarPct(pct) {
+    // Inteiro exato (ex.: 100,0) mostra sem casa decimal: "100"
+    if (Math.abs(pct - Math.round(pct)) < 0.05) return String(Math.round(pct));
     return pct.toFixed(1).replace('.', ',');
 }
 
@@ -154,7 +156,7 @@ function ajustarFonteParaCaber(el, minPx = 10) {
 /** Elementos de valor que podem precisar encolher — reavaliados também no
  *  resize (a largura do card muda, então o que cabia pode deixar de caber). */
 function ajustarFontesDashboard() {
-    ['totalEntradas', 'totalSaidas', 'balanco', 'gastoDiario', 'miniProximos']
+    ['totalEntradas', 'totalSaidas', 'balanco', 'gastoDiario']
         .forEach(id => ajustarFonteParaCaber(document.getElementById(id)));
 }
 
@@ -1744,7 +1746,7 @@ function abrirNovoMetodo() {
             <div class="campo"><label for="dlgMetKind">Tipo</label>
                 <select id="dlgMetKind">
                     <option value="">Selecione...</option>
-                    <option value="PIX/Débito">PIX/Débito</option>
+                    <option value="PIX">PIX</option>
                     <option value="Crédito">Crédito</option>
                 </select></div>
             <div class="campo"><label for="dlgMetBanco">Banco <span class="opt" id="dlgMetBancoOpt">(opcional)</span></label>
@@ -1860,7 +1862,7 @@ function atualizarCampoMetodoReceita() {
         metodoSel.innerHTML = '<option value="">Selecione...</option>';
         if (comMetodo) {
             (estadoApp.menus.metodos || [])
-                .filter(m => ehEstorno ? m.metodoKind === 'Crédito' : m.metodoKind === 'PIX/Débito')
+                .filter(m => ehEstorno ? m.metodoKind === 'Crédito' : (m.metodoKind === 'PIX' || m.metodoKind === 'PIX/Débito'))
                 .forEach(m => {
                     const label = rotuloMetodo(m);
                     const o = document.createElement('option');

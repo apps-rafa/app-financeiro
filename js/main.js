@@ -96,6 +96,10 @@ function configurarMiniResumo() {
     if (miniProximos) miniProximos.addEventListener('click', () => {
         if (typeof mudarAba === 'function') mudarAba('proximas');
     });
+    // Lixeira (emoji) — divide com "Próximos" a coluna do "Gasto diário"
+    document.getElementById('miniLixeira')?.addEventListener('click', () => {
+        if (typeof mudarAba === 'function') mudarAba('lixeira');
+    });
 
     // Limite em scrollY (não em getBoundingClientRect ao vivo) — mostrar o
     // mini engorda a barra fixa (".topo" fica mais alta), o que empurra

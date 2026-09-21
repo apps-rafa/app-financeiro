@@ -384,8 +384,8 @@ function renderizarItemsMenu(tipo, containerId, itens, grupo) {
         // na tela, mesmo sendo outro método (o nome real no banco não mudava,
         // só a legenda mostrada aqui — por isso o dropdown do lançamento,
         // que usa rotuloMetodo(), continuava mostrando o nome certo).
-        titulo = item.banco || item.nome || 'PIX/Débito';
-        sub = item.banco ? (item.metodoKind || 'PIX/Débito') : '';
+        titulo = item.banco || item.nome || 'PIX';
+        sub = item.banco ? (item.metodoKind === 'PIX/Débito' ? 'PIX' : (item.metodoKind || 'PIX')) : '';
       }
     }
 
