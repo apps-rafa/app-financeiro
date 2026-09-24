@@ -391,11 +391,16 @@ function renderizarItemsMenu(tipo, containerId, itens, grupo) {
 
     // Dinheiro é método fixo: nunca pode ser removido nem editado (não tem
     // campo pra configurar mesmo), mas pode ser desativado como qualquer um.
-    // "Estorno"/"Reembolso"/"Dinheiro" são categorias de receita fixas
-    // ("Estorno"/"Reembolso" ligam o campo Método no formulário — ver
+    // PIX (sem banco — o método base) também não pode ser removido, mas o
+    // NOME dele continua editável (diferente de Dinheiro). "Estorno"/
+    // "Reembolso"/"Dinheiro" são categorias de receita fixas ("Estorno"/
+    // "Reembolso" ligam o campo Método no formulário — ver
     // atualizarCampoMetodoReceita), então também não podem ser removidas
     // (editar o nome ainda é permitido).
-    const semRemocao = (tipo === 'Método' && (item.metodoKind === 'Dinheiro' || item.nome === 'Dinheiro'))
+    const ehDinheiro = tipo === 'Método' && (item.metodoKind === 'Dinheiro' || item.nome === 'Dinheiro');
+    const ehPixBase = tipo === 'Método' && (item.metodoKind === 'PIX' || item.metodoKind === 'PIX/Débito') && !item.banco;
+    const semEdicao = ehDinheiro;
+    const semRemocao = ehDinheiro || ehPixBase
         || (tipo === 'Categoria' && item.categoriaTipo === 'entradas'
             && (item.nome === CATEGORIA_ESTORNO || item.nome === CATEGORIA_REEMBOLSO || item.nome === CATEGORIA_DINHEIRO_RECEITA));
 
@@ -413,7 +418,7 @@ function renderizarItemsMenu(tipo, containerId, itens, grupo) {
     const acoes = `
       <div class="item-actions">
         ${swatch}
-        ${semRemocao ? '' : `<button class="btn-icon" data-act="editar" data-tipo="${tipo}" data-id="${item.linha}" title="Editar">✏️</button>`}
+        ${semEdicao ? '' : `<button class="btn-icon" data-act="editar" data-tipo="${tipo}" data-id="${item.linha}" title="Editar">✏️</button>`}
         <button class="btn-icon ${item.status === 'Ativo' ? 'btn-warning' : 'btn-success'}"
                 data-act="${item.status === 'Ativo' ? 'desativar' : 'ativar'}" data-id="${item.linha}"
                 title="${item.status === 'Ativo' ? 'Desativar' : 'Ativar'}">${item.status === 'Ativo' ? '⊘' : '↻'}</button>
@@ -427,7 +432,7 @@ function renderizarItemsMenu(tipo, containerId, itens, grupo) {
           <div class="item-nome">${titulo}</div>
           ${sub ? `<div class="item-descricao">${sub}</div>` : ''}
         </div>
-        <div class="item-status">${semRemocao ? 'fixo' : statusLabel}</div>
+        <div class="item-status">${semEdicao ? 'fixo' : statusLabel}</div>
         ${acoes}
       </div>
     `;
@@ -600,8 +605,16 @@ function abrirEdicaoInline(row, id, tipo) {
 
   // Método (PIX/Débito ou Crédito)
   const ehCredito = item.metodoKind === 'Crédito';
+  // PIX/Débito "base" (sem banco — o único método assim que não pode ser
+  // removido, ver semRemocao): sem banco pra derivar o nome, o campo Nome
+  // fica editável direto (ver rotuloMetodo em menus-api.js).
+  const ehSemBanco = !ehCredito && !item.banco;
   row.innerHTML = `
     <div class="item-edit">
+      ${ehSemBanco ? `
+        <div class="campo"><label>Nome</label>
+          <input type="text" class="edt-nome" name="nome" aria-label="Nome" value="${esc(item.nome)}"></div>
+      ` : ''}
       <div class="campo"><label>Banco ${ehCredito ? '' : '<span class="opt">(opcional)</span>'}</label>
         <input type="text" class="edt-banco" name="banco" aria-label="Banco" value="${esc(item.banco)}"></div>
       ${ehCredito ? `
@@ -627,7 +640,10 @@ function abrirEdicaoInline(row, id, tipo) {
     // seed original) — sem esse fallback pro nome atual, salvar sem mudar o
     // banco gravava nome:null e apagava o método.
     const kind = item.metodoKind || item.nome;
-    const campos = { banco, nome: banco ? `${kind} — ${banco}` : kind };
+    const nome = banco
+      ? `${kind} — ${banco}`
+      : (ehSemBanco ? (row.querySelector('.edt-nome').value.trim() || kind) : kind);
+    const campos = { banco, nome };
     if (ehCredito) {
       const fechRaw = row.querySelector('.edt-fech').value.trim();
       const fech = parseInt(fechRaw, 10);

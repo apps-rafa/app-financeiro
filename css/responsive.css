@@ -367,3 +367,13 @@
         page-break-inside: avoid;
     }
 }
+
+/* "+ Lançamento" x "⏰ Próximos"/lixeira no mobile: as regras de breakpoint
+   acima davam tamanhos diferentes por acidente de especificidade (Próximos
+   saía maior que Lançamento). Mesmo tamanho, Lançamento um pouco maior —
+   por último no arquivo de propósito, pra ganhar o empate de especificidade
+   com ".tabs .tab-btn"/".tabs-dir .tab-btn" (mesmo peso, 2 classes cada). */
+@media (max-width: 480px) {
+    .tabs [data-tab="adicionar"] { font-size: 0.85rem; }
+    .tabs-dir .tab-btn { font-size: 0.78rem; }
+}

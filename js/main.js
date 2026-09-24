@@ -17,6 +17,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Tema claro/escuro
     configurarTema();
 
+    // Mostrar/esconder valores do dashboard (olho — no lugar onde era o tema)
+    configurarOlhoValores();
+
     // Configurar event listeners
     configurarEventListeners();
 
@@ -169,6 +172,24 @@ function configurarTema() {
         btn.textContent = temaEfetivo() === 'dark' ? '☀️' : '🌙';
         btn.addEventListener('click', () => aplicar(temaEfetivo() === 'dark' ? 'light' : 'dark'));
     }
+}
+
+/** Botão "olho" (🙈/👁️) — no lugar onde era o toggle de tema, na barra do
+ *  mês (ver btnTema, que se mudou pro cabeçalho). */
+function configurarOlhoValores() {
+    const btn = document.getElementById('btnOlhoValores');
+    if (!btn) return;
+    const atualizarIcone = () => {
+        btn.textContent = valoresOcultos ? '🙈' : '👁️';
+        btn.title = valoresOcultos ? 'Mostrar valores do dashboard' : 'Esconder valores do dashboard';
+    };
+    atualizarIcone();
+    btn.addEventListener('click', () => {
+        valoresOcultos = !valoresOcultos;
+        try { localStorage.setItem('valoresOcultos', valoresOcultos ? '1' : '0'); } catch (_) {}
+        atualizarIcone();
+        if (typeof atualizarResumo === 'function') atualizarResumo();
+    });
 }
 
 function adicionarEstilosDinamicos() {

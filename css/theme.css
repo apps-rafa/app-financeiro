@@ -231,6 +231,25 @@ input.campo-travado,
 }
 #btnLogout:hover { background: rgba(255, 255, 255, 0.28); }
 
+/* Tema (☀️/🌙), agora no cabeçalho — à esquerda do e-mail e do "Sair",
+   mesma pílula translúcida do "Sair" (era só ícone, no lugar do olho de
+   esconder valores, na barra do mês; ver .month-btn--tema em layout.css). */
+.month-btn--tema-header {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--header-text);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: var(--radius-xs);
+    width: 1.9rem;
+    height: 1.9rem;
+    flex: none;
+    font-size: .9rem;
+    cursor: pointer;
+}
+.month-btn--tema-header:hover { background: rgba(255, 255, 255, 0.28); }
+
 .user-email {
     color: var(--header-text);
     opacity: .75;
@@ -329,7 +348,8 @@ input.campo-travado,
    densidade "compacta" do tema escuro andava anulando esse escalonamento
    e deixando esses 2 cards com espaço vazio sobrando. */
 .summary-card.balanco, .summary-card.gasto-diario { padding: 0.4rem var(--spacing-md); }
-.summary-card.balanco h3, .summary-card.gasto-diario h3 { margin-bottom: 0; font-size: 0.62rem; }
+/* Título do mesmo tamanho que Receita/Despesa (.summary-card h3 acima) —
+   tinha um font-size próprio, menor, sem motivo pra ser diferente. */
 .despesa-item { padding: 0.5rem 0.7rem; }
 .menu-section { padding: 0; }
 

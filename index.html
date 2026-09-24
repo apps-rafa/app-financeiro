@@ -38,6 +38,7 @@
                     <div class="header-info">
                         <span id="modoTesteBadge" class="modo-teste-badge" hidden><span class="header-emoji">🧪</span><span class="modo-teste-full">modo teste</span><span class="modo-teste-curto">TESTE</span></span>
                         <button id="btnApagarTudo" type="button" class="btn-apagar-tudo" hidden title="Apagar todos os dados de teste"><span class="header-emoji">🗑</span><span class="apagar-full">Apagar tudo</span><span class="apagar-curto">Apagar</span></button>
+                        <button id="btnTema" type="button" class="month-btn month-btn--tema-header" title="Alternar tema claro/escuro">🌙</button>
                         <span id="userEmail" class="user-email" hidden></span>
                         <button id="btnLogout" class="month-btn" hidden title="Sair"><span class="header-emoji sair-ico">🚪</span><span class="sair-texto">Sair</span></button>
                     </div>
@@ -55,7 +56,7 @@
                     <span class="ano-atual" id="anoAtualLabel"></span>
                 </div>
                 <div class="month-bar-acoes">
-                    <button id="btnTema" type="button" class="month-btn month-btn--tema" title="Alternar tema claro/escuro">🌙</button>
+                    <button id="btnOlhoValores" type="button" class="month-btn month-btn--tema" title="Mostrar/esconder valores do dashboard">🙈</button>
                     <button id="btnConfig" class="month-btn month-btn--config" data-tab="menus"
                             aria-pressed="false" title="Configurações"><span class="cfg-ico">⚙️</span>
                         <span class="cfg-label cfg-label-full">Configurações</span>
@@ -132,7 +133,7 @@
             <div class="area-conteudo">
             <!-- Busca universal: procura em Receitas, Despesas e Próximos, de qualquer tela -->
             <section class="busca-global">
-                <input type="search" id="buscaGlobal" name="busca-global" aria-label="Buscar em todo o app" class="busca-lista" placeholder="🔎 Buscar em tudo: descrição, categoria, forma de pgto., valor..." autocomplete="off">
+                <input type="search" id="buscaGlobal" name="busca-global" aria-label="Buscar em todo o app" class="busca-lista" placeholder="🔎 Buscar em tudo..." autocomplete="off">
             </section>
             <section id="resultadoBusca" class="resultado-busca" hidden></section>
 
