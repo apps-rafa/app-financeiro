@@ -338,6 +338,33 @@ function competenciaDe(dataISO: string, diaFechamento: number | null): string {
   return `${ano}-${String(mes + 1).padStart(2, "0")}-01`;
 }
 
+/** Grava de vez um rascunho (ver RascunhoLancamento) como lançamento de
+ *  verdade em `transacoes` — chamado tanto pelo teclado (texto exato
+ *  "✅ Confirmar") quanto pelo botão inline antigo (callback "nlconfirmar",
+ *  mantido por compatibilidade). */
+async function confirmarRascunhoNoBanco(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  userId: string,
+  d: RascunhoLancamento,
+): Promise<{ erro: unknown }> {
+  const ehCredito = d.metodoKind === "Crédito";
+  const competencia = competenciaDe(d.data, ehCredito ? d.diaFechamento : null);
+  const { error } = await supabaseAdmin.from("transacoes").insert({
+    tipo: d.tipo,
+    data: d.data,
+    valor: d.valor,
+    metodo: d.tipo === "saidas" ? d.metodo : null,
+    categoria: d.categoria,
+    descricao: d.descricao,
+    forma_pagamento: "À vista",
+    tipo_recorrencia: "Pontual",
+    competencia,
+    status: "Ativa",
+    user_id: userId,
+  });
+  return { erro: error };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") {
     return json({ error: "Método não suportado" }, 405);
@@ -358,8 +385,10 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  // deno-lint-ignore no-explicit-any
+  let update: any;
   try {
-    const update = await req.json();
+    update = await req.json();
 
     // ---------- Mensagem de texto (só tratamos "/start CODIGO" por ora) ----------
     if (update.message?.text) {
@@ -472,6 +501,41 @@ Deno.serve(async (req: Request) => {
         return json({ ok: true });
       }
 
+      // Resposta pelo TECLADO (não um botão dentro da mensagem) do rascunho
+      // de lançamento — texto exato de um dos 2 botões mandados junto do
+      // rascunho, ver mais abaixo. Só existe 1 rascunho pendente por chat
+      // de cada vez (um texto novo substitui o anterior), então não precisa
+      // de id — o mais recente do chat já resolve. "Cancelar" sempre junto
+      // do "Confirmar", nunca só um dos dois.
+      if (texto === "✅ Confirmar" || texto === "❌ Cancelar") {
+        const { data: tgUser } = await supabaseAdmin.from("telegram_users").select("user_id").eq("chat_id", chatId).maybeSingle();
+        const { data: rascunho } = tgUser
+          ? await supabaseAdmin.from("telegram_rascunhos").select("id, dados")
+              .eq("chat_id", chatId).eq("user_id", tgUser.user_id)
+              .order("criado_em", { ascending: false }).limit(1).maybeSingle()
+          : { data: null };
+        if (!rascunho) {
+          await tg(token, "sendMessage", {
+            chat_id: chatId, text: "Não tem nenhum rascunho esperando confirmação.",
+            reply_markup: { remove_keyboard: true },
+          });
+          return json({ ok: true });
+        }
+        await supabaseAdmin.from("telegram_rascunhos").delete().eq("id", rascunho.id);
+        if (texto === "❌ Cancelar") {
+          await tg(token, "sendMessage", { chat_id: chatId, text: "❌ Cancelado.", reply_markup: { remove_keyboard: true } });
+          return json({ ok: true });
+        }
+        const { erro } = await confirmarRascunhoNoBanco(supabaseAdmin, tgUser!.user_id, rascunho.dados as RascunhoLancamento);
+        if (erro) {
+          console.error(erro);
+          await tg(token, "sendMessage", { chat_id: chatId, text: "Erro ao confirmar — tenta de novo.", reply_markup: { remove_keyboard: true } });
+          return json({ ok: true });
+        }
+        await tg(token, "sendMessage", { chat_id: chatId, text: "✅ Lançado!", reply_markup: { remove_keyboard: true } });
+        return json({ ok: true });
+      }
+
       // Texto livre: tenta entender como um lançamento ("gastei 35,90 no
       // mercado", "recebi 200 de salário"). Sem um valor em dinheiro no
       // texto, não dá pra saber o que é — cai no "não entendi" de sempre.
@@ -479,7 +543,7 @@ Deno.serve(async (req: Request) => {
       if (!achado) {
         await tg(token, "sendMessage", {
           chat_id: chatId,
-          text: "Não entendi. Pra lançar por aqui, manda algo tipo \"gastei 35,90 no mercado\" ou \"recebi 200 de salário\" — eu monto um rascunho e só grava depois de você confirmar. Também entendo os botões de Confirmar/Ignorar e o comando /atualizar.",
+          text: "Não entendi. Pra lançar por aqui, manda algo tipo \"gastei 35,90 no mercado\" ou \"recebi 200 de salário\" — eu monto um rascunho e só grava depois de você confirmar no teclado. Também entendo os botões de Confirmar/Ignorar (quando chegam da Pluggy) e o comando /atualizar.",
         });
         return json({ ok: true });
       }
@@ -506,12 +570,15 @@ Deno.serve(async (req: Request) => {
       // não pede método no formulário do app (só Estorno/Reembolso, caso
       // raro demais pra tentar adivinhar por texto livre). Tenta achar o
       // nome/banco de um método do usuário mencionado no texto; senão
-      // prefere Pix/Dinheiro (o caso comum de "gastei X no Y" avulso).
+      // Crédito, depois Pix, depois Dinheiro (o caso comum de "20 no
+      // mercado" sem dizer a forma é ter pago no cartão — Dinheiro só
+      // entra por último, e só se estiver ativo pro usuário).
       let metodoObj: { nome: string; metodo_kind: string | null; banco: string | null; dia_fechamento: number | null } | null = null;
       if (tipo === "saidas") {
         const alvo = texto.toLowerCase();
         const lista = (metodosApp ?? []) as { nome: string; metodo_kind: string | null; banco: string | null; dia_fechamento: number | null }[];
         metodoObj = lista.find((m) => alvo.includes(m.nome.toLowerCase()) || (m.banco && alvo.includes(m.banco.toLowerCase())))
+          || lista.find((m) => m.metodo_kind === "Crédito")
           || lista.find((m) => m.metodo_kind === "PIX")
           || lista.find((m) => m.metodo_kind === "Dinheiro")
           || lista[0]
@@ -548,14 +615,17 @@ Deno.serve(async (req: Request) => {
         "",
         "Confirma?",
       ].filter((l) => l !== null).join("\n");
+      // Teclado (embaixo, onde se digita) em vez de botão dentro da
+      // mensagem — as opções ficam no MESMO lugar de sempre, junto do
+      // teclado numérico, em vez de ter que rolar até a mensagem certa pra
+      // tocar. "one_time_keyboard" some sozinho depois de usado.
       await tg(token, "sendMessage", {
         chat_id: chatId,
         text: linhas,
         reply_markup: {
-          inline_keyboard: [[
-            { text: "✅ Confirmar", callback_data: `nlconfirmar:${novoRascunho.id}` },
-            { text: "❌ Cancelar", callback_data: `nlcancelar:${novoRascunho.id}` },
-          ]],
+          keyboard: [[{ text: "✅ Confirmar" }, { text: "❌ Cancelar" }]],
+          resize_keyboard: true,
+          one_time_keyboard: true,
         },
       });
       return json({ ok: true });
@@ -608,22 +678,7 @@ Deno.serve(async (req: Request) => {
           return json({ ok: true });
         }
 
-        const d = rascunho.dados as RascunhoLancamento;
-        const ehCredito = d.metodoKind === "Crédito";
-        const competencia = competenciaDe(d.data, ehCredito ? d.diaFechamento : null);
-        const { error: insertError } = await supabaseAdmin.from("transacoes").insert({
-          tipo: d.tipo,
-          data: d.data,
-          valor: d.valor,
-          metodo: d.tipo === "saidas" ? d.metodo : null,
-          categoria: d.categoria,
-          descricao: d.descricao,
-          forma_pagamento: "À vista",
-          tipo_recorrencia: "Pontual",
-          competencia,
-          status: "Ativa",
-          user_id: tgUser.user_id,
-        });
+        const { erro: insertError } = await confirmarRascunhoNoBanco(supabaseAdmin, tgUser.user_id, rascunho.dados as RascunhoLancamento);
         await supabaseAdmin.from("telegram_rascunhos").delete().eq("id", rascunhoId);
         if (insertError) {
           console.error(insertError);
@@ -757,6 +812,15 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true });
   } catch (e) {
     console.error(e);
+    // Qualquer erro inesperado aqui em cima retornava 200 pro Telegram sem
+    // nunca avisar o usuário — a mensagem simplesmente "não respondia",
+    // sem pista de que algo deu errado. Tenta mandar um aviso genérico pro
+    // mesmo chat (melhor esforço — se isso também falhar, azar, mas pelo
+    // menos tentou).
+    try {
+      const chatId = update?.message?.chat?.id ?? update?.callback_query?.message?.chat?.id;
+      if (chatId) await tg(token, "sendMessage", { chat_id: chatId, text: "Deu um erro aqui do meu lado — tenta de novo em instantes." });
+    } catch (_) { /* melhor esforço mesmo */ }
     return json({ ok: true }); // sempre 200 pro Telegram não reenviar em loop
   }
 });
