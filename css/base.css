@@ -114,6 +114,18 @@ html {
     scroll-behavior: smooth;
 }
 
+/* iOS/Android dão "zoom in" sozinhos ao focar um campo com font-size menor
+   que 16px — a tela "pula" a cada toque. Nenhum campo em que o usuário
+   digita ou escolhe pode ficar abaixo disso, não importa o que outra regra
+   (feita pra caber mais compacto) tenha pedido depois — por isso o
+   !important e max(): nunca deixa MENOR que 16px, mas respeita se alguma
+   regra pediu maior. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+select,
+textarea {
+    font-size: max(16px, 1em) !important;
+}
+
 /* Scrollbar personalizada */
 ::-webkit-scrollbar {
     width: 8px;
