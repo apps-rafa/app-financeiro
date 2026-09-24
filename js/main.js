@@ -20,6 +20,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Mostrar/esconder valores do dashboard (olho — no lugar onde era o tema)
     configurarOlhoValores();
 
+    // Reserva a faixa da barra de rolagem só quando ela existe de fato
+    configurarGutterScroll();
+
     // Configurar event listeners
     configurarEventListeners();
 
@@ -59,6 +62,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('✓ Aplicação iniciada com sucesso!');
     console.log('Estado:', estadoApp);
 });
+
+/**
+ * Reserva a faixa da barra de rolagem (scrollbar-gutter) só quando o
+ * conteúdo do <main> realmente precisa rolar. Fixo no CSS (sempre
+ * reservado) deixava uma faixa vazia sobrando à direita da tela toda vez
+ * que o conteúdo cabia sem rolar — que é a maioria das telas, já que o
+ * dashboard é curto. A classe no <html> liga o scrollbar-gutter (ver
+ * css/layout.css) só quando main.scrollHeight excede sua altura visível.
+ */
+function configurarGutterScroll() {
+    const main = document.querySelector('main.main');
+    if (!main) return;
+
+    const sincronizar = () => {
+        const temScroll = main.scrollHeight > main.clientHeight + 1;
+        document.documentElement.classList.toggle('tem-scroll-conteudo', temScroll);
+    };
+
+    sincronizar();
+    new ResizeObserver(sincronizar).observe(main);
+    new MutationObserver(sincronizar).observe(main, { childList: true, subtree: true });
+    window.addEventListener('resize', sincronizar);
+}
 
 /**
  * Mostra a barra de resumo compacto quando o card "Gasto diário" sai da tela
