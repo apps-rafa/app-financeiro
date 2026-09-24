@@ -271,6 +271,11 @@ Deno.serve(async (req: Request) => {
             // existia aqui antes só valia pro conector sandbox de teste.
             const tipo: "entradas" | "saidas" = t.type === "CREDIT" ? "entradas" : "saidas";
             const categoriaTraduzida = t.category ? traduzirCategoriaPluggy(t.category) : null;
+            // "Rendimentos e dividendos" (juros de conta remunerada etc.) nunca
+            // entra na fila nem manda aviso — são muitos e minúsculos, sem
+            // toggle aqui (diferente do "Sincronizar agora" do app): sempre
+            // ignorado no aviso em tempo real do bot.
+            if (categoriaTraduzida === "Rendimentos e dividendos") continue;
             const descricaoBanco = t.description || t.descriptionRaw || "";
             linhas.push({
               pluggy_transaction_id: t.id,
