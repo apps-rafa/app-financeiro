@@ -119,7 +119,10 @@ html {
    digita ou escolhe pode ficar abaixo disso, não importa o que outra regra
    (feita pra caber mais compacto) tenha pedido depois — por isso o
    !important e max(): nunca deixa MENOR que 16px, mas respeita se alguma
-   regra pediu maior. */
+   regra pediu maior. Exceção: Forma de pgto./Mês/Parcelas (ver
+   forms.css:#metodoBloco), que abrem mão dessa proteção de propósito —
+   são caixas pequenas por natureza, 16px ficava apertado/truncando texto
+   ("Crédito Brad...", só "Out" cabendo). */
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
 select,
 textarea {

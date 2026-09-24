@@ -164,6 +164,16 @@
 }
 #metodoBloco > .form-group { margin: 0; min-width: 0; }
 #metodoBloco > #metodoGroup { flex: 1 1 8rem; }
+/* Forma de pgto./Mês/Parcelas: mesmo tamanho de texto entre os 3, menor
+   que o padrão de 16px forçado em base.css (a proteção contra zoom
+   automático do celular) — aqui abrimos mão dela de propósito, porque
+   16px nessas caixas estreitas ficava apertado e truncando ("Crédito
+   Brad...", só "Out" cabendo no "Mês"). */
+#metodoGroup select,
+#competenciaGroup select,
+#parceleGroup input {
+    font-size: 0.85rem !important;
+}
 /* Select "Mês" — tricode (Jan, Fev...), caixa pequena. width:100% (não
    "auto") pra preencher toda a caixa reservada pelo flex-basis — sem isso
    o <select> encolhia pro tamanho do texto ("Dez") e sobrava um vão vazio
