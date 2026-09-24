@@ -1202,3 +1202,19 @@ summary [role="button"] { font-family: Arial; text-align: center; }
   background-size: 46% 2px, 2px 46% !important;
 }
 .cat-coluna-topo .h3-add:not(.h3-az) { background-size: 50% 1.5px, 1.5px 50% !important; }
+
+/* Contas Pluggy: layout mobile — ícones de ação alinhados ao topo do card;
+   campo "Forma de pagamento" empilha (select em cima, botão + embaixo, 100%
+   da largura) em vez de dividir a linha, que espremia o + a quase nada. */
+@media (max-width: 480px) {
+  #pluggyContasList .menu-item { align-items: flex-start; }
+  #pluggyContasList .item-actions { margin-top: .1rem; }
+  #pluggyContasList .campo-metodo-conta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: .2rem;
+  }
+  #pluggyContasList .campo-com-add--mini { width: 100%; }
+  #pluggyContasList .campo-com-add--mini select { flex: 1 1 auto; min-width: 0; }
+  #pluggyContasList .campo-com-add--mini .btn-mini-add { flex: 0 0 2.2rem; width: 2.2rem; }
+}
