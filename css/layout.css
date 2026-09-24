@@ -38,6 +38,12 @@
        (não se aplica a quem não é container de scroll) — nunca corta nada
        aqui, porque o header/barra de mês não crescem verticalmente. */
     overflow-y: hidden;
+}
+/* Só reserva a faixa da barra de rolagem quando o main abaixo realmente
+   tem uma pra mostrar (ver configurarGutterScroll em js/main.js) — fixo
+   sempre deixava uma faixa vazia sobrando à direita em qualquer tela
+   curta o bastante pra não rolar (a maioria). */
+html.tem-scroll-conteudo .topo {
     scrollbar-gutter: stable;
 }
 
@@ -384,6 +390,8 @@ main.main {
     flex: 1;
     padding: var(--pad-main);
     overflow-y: auto;
+}
+html.tem-scroll-conteudo main.main {
     scrollbar-gutter: stable;
 }
 
