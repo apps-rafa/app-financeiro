@@ -135,8 +135,11 @@
     min-width: 11rem;
 }
 /* Largura calculada pro conteúdo mais largo que a caixa precisa mostrar
-   ("00/00", medido) + padding — só o suficiente, sobra tudo pra "Valor". */
-#dataValorBloco > #dataGroup { flex: 0 0 3.9rem; min-width: 0; margin: 0; }
+   ("00/00", medido) + padding — só o suficiente, sobra tudo pra "Valor".
+   4.9rem (não 3.9rem) porque o campo agora nunca fica abaixo de 16px de
+   fonte (ver base.css — evita o zoom automático do celular ao focar),
+   e "00/00" nesse tamanho não cabia mais nos 3.9rem antigos. */
+#dataValorBloco > #dataGroup { flex: 0 0 4.9rem; min-width: 0; margin: 0; }
 /* "Valor" e "Total" ficam sempre colados, dividindo 50/50 o espaço que
    sobrar (nunca quebram um pro outro lado nem soltam do "Data") — quando
    "Total" está escondido, "Valor" ocupa os 100% sozinho. */

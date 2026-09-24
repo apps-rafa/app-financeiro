@@ -357,17 +357,22 @@ function mostrarNotificacao(mensagem, tipo = 'sucesso') {
     
     const cor = cores[tipo] || cores.info;
     
+    // Fixo embaixo (não em cima): a barra do topo é "position: sticky" e,
+    // com a página rolada, um popup fixo perto DELA podia ficar tampado
+    // por ela ou fora da área visível confortável — embaixo nunca disputa
+    // espaço com nada fixo e continua visível não importa o quanto rolou.
     notif.style.cssText = `
         position: fixed;
-        top: 20px;
+        bottom: 20px;
         right: 20px;
+        max-width: min(420px, calc(100vw - 40px));
         background: linear-gradient(135deg, ${cor}, ${cor}99);
         color: white;
         padding: 1rem 1.5rem;
         border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         z-index: 1000;
-        animation: slideInDown 0.3s ease;
+        animation: slideInUp 0.3s ease;
         font-weight: 600;
     `;
     notif.textContent = mensagem;

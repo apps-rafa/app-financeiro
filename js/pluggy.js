@@ -1147,20 +1147,39 @@ async function importarProntasPluggy() {
 
 /** "Cancelar": desfaz as categorias escolhidas ainda não importadas —
  *  volta tudo pra "Pendentes para revisar"/"Duplicatas", sem mexer no banco. */
-function cancelarProntasPluggy() {
+async function cancelarProntasPluggy() {
     for (const key of Object.keys(_categoriaEscolhidaPluggy)) delete _categoriaEscolhidaPluggy[key];
     for (const key of Object.keys(_descricaoEditadaPluggy)) delete _descricaoEditadaPluggy[key];
+    // Os X's marcados nesta sessão já bateram no banco (ver
+    // alternarIgnorarImportadaPluggy) — "Cancelar" precisa desfazer essa
+    // escrita também, não só a marca local, senão a linha ficava presa em
+    // "Já ignoradas" mesmo depois de cancelar.
+    const idsParaReativar = [..._ignoradasPluggy];
     _ignoradasPluggy.clear();
     _duplicatasIniciadasPluggy.clear(); // carregarRevisao re-marca as duplicatas com X
+    if (idsParaReativar.length) {
+        const { error } = await sb.from('transacoes_importadas').update({ status: 'pendente' }).in('id', idsParaReativar);
+        if (error) console.error('Erro ao desfazer X do Pluggy:', error);
+    }
     carregarRevisaoPluggy();
 }
 
-/** "X": marca/desmarca a linha como "não importar" — só visual/local, a
- *  linha fica na tela (esmaecida e travada) até o "Importar". */
-function alternarIgnorarImportadaPluggy(id) {
-    if (_ignoradasPluggy.has(id)) _ignoradasPluggy.delete(id);
-    else _ignoradasPluggy.add(id);
+/** "X": marca/desmarca a linha como "não importar" — a linha fica na tela
+ *  (esmaecida e travada), igual sempre foi, MAS agora bate no banco na
+ *  hora (status: 'ignorada'/'pendente'), não só localmente. Antes, um X
+ *  que o usuário nunca "importava" (não clicava em Importar antes de sair
+ *  da tela) se perdia ao recarregar a página — a transação voltava a
+ *  aparecer como se fosse nova. Persistir na hora corrige isso: mesmo sem
+ *  Importar, ela passa a aparecer em "Já ignoradas" (riscada) da próxima
+ *  vez, nunca mais como nova. "Cancelar" desfaz essas escritas (ver
+ *  cancelarProntasPluggy). */
+async function alternarIgnorarImportadaPluggy(id) {
+    const ligar = !_ignoradasPluggy.has(id);
+    if (ligar) _ignoradasPluggy.add(id);
+    else _ignoradasPluggy.delete(id);
     _renderRevisaoPluggyPreservandoScroll();
+    const { error } = await sb.from('transacoes_importadas').update({ status: ligar ? 'ignorada' : 'pendente' }).eq('id', id);
+    if (error) console.error('Erro ao persistir X do Pluggy:', error);
 }
 
 /** Chamado ao entrar na sub-aba "Pluggy" de Importar (ver menus-ui.js). */

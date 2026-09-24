@@ -763,3 +763,15 @@
 .grupo-barra > .ordem-criacao-btn,
 .grupo-barra > .subgrupo-organizador { box-sizing: border-box; height: 1.7rem; }
 .grupo-barra > .ordem-criacao-btn { padding-top: 0; padding-bottom: 0; }
+
+/* Chip de método (Crédito Bradesco, PIX Mercado Pago...): encolhe em telas
+   estreitas em vez de estourar/cortar a linha do lançamento. */
+.chip .met-tier-media, .chip .met-tier-curto { display: none; }
+@media (max-width: 700px) {
+    .chip .met-tier-full { display: none; }
+    .chip .met-tier-media { display: inline; }
+}
+@media (max-width: 420px) {
+    .chip .met-tier-media { display: none; }
+    .chip .met-tier-curto { display: inline; }
+}

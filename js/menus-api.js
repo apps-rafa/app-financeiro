@@ -109,7 +109,36 @@ function rotuloMetodo(item) {
     if (!item.metodoKind || item.metodoKind === 'Dinheiro') return item.nome;
     // O tipo "PIX/Débito" aparece só como "PIX" (o valor interno do tipo não muda)
     const tipo = item.metodoKind === 'PIX/Débito' ? 'PIX' : item.metodoKind;
-    return item.banco ? `${tipo} ${item.banco}` : tipo;
+    if (item.banco) return `${tipo} ${item.banco}`;
+    // Sem banco (o PIX "base"): o nome cadastrado vale por si — editável em
+    // Configurações > Formas de pagamento, mesmo esse método não podendo
+    // ser removido. Sem edição nenhuma, item.nome já é "PIX" (do seed).
+    return item.nome || tipo;
+}
+
+/** "Mercado Pago" -> "M. Pago" (2+ palavras: inicial de cada uma, menos a
+ *  última, que fica por extenso). Banco de 1 palavra só (ex. "Bradesco")
+ *  volta como veio — quem encurta esse caso é rotuloMetodoNiveis(). */
+function _abreviarBanco(banco) {
+    const partes = String(banco).trim().split(/\s+/);
+    if (partes.length < 2) return banco;
+    return partes.slice(0, -1).map(p => p[0].toUpperCase() + '.').join(' ') + ' ' + partes[partes.length - 1];
+}
+
+/** 3 níveis do rótulo de um método, do mais completo ao mais curto — pros
+ *  lugares (chip da lista, principalmente) onde o espaço aperta:
+ *    "Crédito Bradesco" -> "CC Bradesco" -> "CC Brad."
+ *    "PIX Mercado Pago"  -> "PIX M. Pago" (já cabe, os 2 níveis ficam iguais)
+ *  Dinheiro/PIX sem banco não têm o que encurtar — os 3 níveis saem iguais. */
+function rotuloMetodoNiveis(item) {
+    const full = rotuloMetodo(item);
+    if (!item.metodoKind || item.metodoKind === 'Dinheiro' || !item.banco) {
+        return { full, media: full, curto: full };
+    }
+    const tipo = item.metodoKind === 'PIX/Débito' ? 'PIX' : (item.metodoKind === 'Crédito' ? 'CC' : item.metodoKind);
+    const bancoMedio = _abreviarBanco(item.banco);
+    const bancoCurto = bancoMedio !== item.banco ? bancoMedio : (item.banco.length > 5 ? item.banco.slice(0, 4) + '.' : item.banco);
+    return { full, media: `${tipo} ${bancoMedio}`, curto: `${tipo} ${bancoCurto}` };
 }
 
 /**

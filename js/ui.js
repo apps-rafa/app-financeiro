@@ -165,22 +165,27 @@ function ajustarFontesDashboard() {
  */
 function atualizarResumo() {
     const resumo = obterResumoFormatado();
+    // "Olho" do cabeçalho (ver configurarOlhoValores em main.js) — esconde só
+    // os NÚMEROS do dashboard, nada mais (listas, formulário etc. continuam
+    // normais). Mascara depois de formatar, então o "R$" contextual some
+    // junto — "••••" sozinho já deixa claro que é um valor escondido.
+    const mask = s => (typeof valoresOcultos !== 'undefined' && valoresOcultos) ? '••••' : s;
 
     const totalEntradasEl = document.querySelector(SELECTORS.totalEntradas);
     const totalSaidasEl = document.querySelector(SELECTORS.totalSaidas);
     const balancoEl = document.querySelector(SELECTORS.balanco);
 
-    if (totalEntradasEl) totalEntradasEl.textContent = resumo.entradas;
-    if (totalSaidasEl) totalSaidasEl.textContent = resumo.saidas;
+    if (totalEntradasEl) totalEntradasEl.textContent = mask(resumo.entradas);
+    if (totalSaidasEl) totalSaidasEl.textContent = mask(resumo.saidas);
 
-    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = formatarMoeda(v || 0); };
+    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = mask(formatarMoeda(v || 0)); };
     setTxt('entradasAtual', estadoApp.resumo.entradasAtual);
     setTxt('entradasAReceber', estadoApp.resumo.entradasAReceber);
     setTxt('saidasAtual', estadoApp.resumo.saidasAtual);
     setTxt('saidasAPagar', estadoApp.resumo.saidasAPagar);
 
     if (balancoEl) {
-        balancoEl.textContent = resumo.balanco;
+        balancoEl.textContent = mask(resumo.balanco);
         // Balanço sempre com a cor "balanço" (amarelo) — sem tema por saldo.
         const card = balancoEl.closest('.summary-card');
         if (card) card.style.cssText = '';
@@ -192,12 +197,12 @@ function atualizarResumo() {
     const dias = diasRestantesMesVigente();
     const gastoDiarioValor = dias > 0 ? (estadoApp.resumo.balanco || 0) / dias : 0;
     if (gd) {
-        gd.textContent = formatarMoeda(gastoDiarioValor);
+        gd.textContent = mask(formatarMoeda(gastoDiarioValor));
         if (gdSub) gdSub.textContent = `${dias} dia${dias === 1 ? '' : 's'} restante${dias === 1 ? '' : 's'}`;
     }
 
     // Espelha os totais no resumo compacto (barra fixa) — com "R$", sem centavos ",00"
-    const setMini = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = formatarMoeda(v || 0); };
+    const setMini = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = mask(formatarMoeda(v || 0)); };
     setMini('miniEntradas', estadoApp.resumo.entradas);
     setMini('miniSaidas', estadoApp.resumo.saidas);
     setMini('miniBalanco', estadoApp.resumo.balanco);
@@ -1033,7 +1038,14 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
     let metaChip = '';
     if (!opts.semMetodoChip) {
         if (trans.metodo) {
-            metaChip = chip(cor(cores.metodo, trans.metodo), trans.metodo);
+            // Encolhe em telas estreitas (CSS troca qual span aparece) —
+            // "Crédito Bradesco" -> "CC Bradesco" -> "CC Brad.".
+            const itemMetodo = ((estadoApp.menus && estadoApp.menus.metodos) || []).find(m => rotuloMetodo(m) === trans.metodo);
+            const niveis = itemMetodo && typeof rotuloMetodoNiveis === 'function' ? rotuloMetodoNiveis(itemMetodo) : null;
+            const txtChip = (niveis && niveis.curto !== niveis.full)
+                ? `<span class="met-tier-full">${niveis.full}</span><span class="met-tier-media">${niveis.media}</span><span class="met-tier-curto">${niveis.curto}</span>`
+                : trans.metodo;
+            metaChip = `<span class="chip" style="background:${cor(cores.metodo, trans.metodo)}" title="${String(trans.metodo).replace(/"/g, '&quot;')}">${txtChip}</span>`;
         } else if (trans.formaPagamento && trans.formaPagamento !== 'À vista') {
             metaChip = `<span class="chip chip--neutro">${trans.formaPagamento}</span>`;
         }
