@@ -402,7 +402,11 @@ html.tem-scroll-conteudo main.main {
     color: var(--text);
     margin-left: calc(-1 * var(--pad-main));
     margin-right: calc(-1 * var(--pad-main));
-    padding: var(--spacing-lg) var(--pad-main) var(--spacing-xl);
+    /* Topo (até a busca) com o mesmo espaço que separa os botões
+       Lançamento/Próximos/lixeira da linha acima — igual ao margin-bottom
+       de .tabs (tabs.css), não o --spacing-lg de antes, que deixava mais
+       longe da linha do que os botões ficam por cima dela. */
+    padding: var(--spacing-md) var(--pad-main) var(--spacing-xl);
     border-top: 1px solid var(--border);
 }
 .area-conteudo:has(.tab-content.active) { min-height: 60vh; }
