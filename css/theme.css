@@ -98,8 +98,10 @@ h1, h2, h3, h4, label, .item-nome, .despesa-categoria, .amount { color: var(--te
 .busca-lista::placeholder { color: var(--text-muted); }
 
 /* Busca universal (topo do dashboard) — sem o fundo mais claro dos outros
-   campos, pra não destacar como se fosse um card por cima da página. */
-.busca-global .busca-lista { background-color: transparent; }
+   campos (pra não destacar como se fosse um card por cima da página) e com
+   a borda mais sutil dos outros elementos do dashboard (--border), não a
+   --border-strong dos campos de formulário, que aqui ficava destoando. */
+.busca-global .busca-lista { background-color: transparent; border-color: var(--border); }
 
 /* Lista de opções de QUALQUER <select> do app (nativa do navegador, um
    popup à parte que não herda o fundo/cor do próprio <select> fechado —
