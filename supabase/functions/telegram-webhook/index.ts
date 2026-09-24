@@ -608,9 +608,11 @@ Deno.serve(async (req: Request) => {
       const sinal = tipo === "entradas" ? "💰 Receita" : "💸 Despesa";
       const dataFmt = new Date(`${rascunho.data}T00:00:00`).toLocaleDateString("pt-BR");
       const linhas = [
-        `${sinal} — ${formatarMoedaBR(valor)}`,
-        `${dataFmt} · ${categoria}`,
-        descricao,
+        sinal,
+        `Valor: ${formatarMoedaBR(valor)}`,
+        `Data: ${dataFmt}`,
+        `Categoria: ${categoria}`,
+        `Descrição: ${descricao}`,
         tipo === "saidas" ? `Forma de pgto.: ${rascunho.metodo || "nenhuma cadastrada — ajuste no app"}` : null,
         "",
         "Confirma?",
