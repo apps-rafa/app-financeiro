@@ -44,6 +44,95 @@ function rotuloMetodo(m: { nome: string; metodo_kind: string | null; banco: stri
   return m.banco ? `${m.metodo_kind} ${m.banco}` : m.metodo_kind;
 }
 
+// ---------- Linguagem natural: "gastei 35,90 no mercado" vira um rascunho de
+// lançamento (mesma ideia da fila de revisão — nada é gravado sem um toque
+// em "✅ Confirmar"). Fase 2 prometida no comentário antigo aqui embaixo. ----------
+
+// Mesma heurística por palavra-chave do pluggy-sync/pluggy-webhook, duplicada
+// aqui só pra também sugerir categoria a partir do texto digitado no bot.
+const PALAVRAS_CHAVE_CATEGORIA: { padrao: RegExp; categoria: string }[] = [
+  { padrao: /drogaria|farm[aá]cia|droga ?raia|pacheco|pague ?menos|rem[eé]dio/, categoria: "Saúde" },
+  { padrao: /hospital|cl[ií]nica|laborat[oó]rio|dentista|odont|m[eé]dico|consulta/, categoria: "Saúde" },
+  { padrao: /academia|smart ?fit|bodytech|bio ?ritmo/, categoria: "Saúde" },
+  { padrao: /supermercado|hortifruti|atacad[ãa]o|carrefour|extra|p[ãa]o de a[çc][uú]car|assa[íi]|mercado|feira/, categoria: "Mercado" },
+  { padrao: /restaurante|lanchonete|padaria|pizzaria|churrascaria|almo[çc]o|janta|comida/, categoria: "Alimentação" },
+  { padrao: /ifood|rappi|mcdonalds|burger king|habib|subway/, categoria: "Alimentação" },
+  { padrao: /uber|99app|99pop|t[áa]xi|[oô]nibus|metr[oô]/, categoria: "Transporte" },
+  { padrao: /posto|ipiranga|shell|petrobras|ale combust|gasolina/, categoria: "Transporte" },
+  { padrao: /estacionamento|zona azul/, categoria: "Transporte" },
+  { padrao: /netflix|spotify|disney|amazon prime|hbo|paramount|assinatura/, categoria: "Assinaturas" },
+  { padrao: /cinema|cinemark|teatro|show|festa|balada/, categoria: "Lazer" },
+  { padrao: /escola|faculdade|universidade|udemy|alura|curso/, categoria: "Educação" },
+  { padrao: /condom[ií]nio|imobili[aá]ria|aluguel|luz|[aá]gua|g[aá]s\b|internet\b/, categoria: "Casa" },
+  { padrao: /sal[aá]rio|sal[aá]rios/, categoria: "Salário" },
+];
+
+function sugerirCategoriaPorPalavraChave(texto: string): string | null {
+  const alvo = texto.toLowerCase();
+  const achado = PALAVRAS_CHAVE_CATEGORIA.find((p) => p.padrao.test(alvo));
+  return achado ? achado.categoria : null;
+}
+
+/** Categoria pro rascunho: (1) nome de categoria do próprio usuário que
+ *  apareça no texto; (2) palavra-chave; (3) "Outros"/1ª categoria do tipo,
+ *  só pra nunca deixar o campo (obrigatório) vazio — o usuário troca depois
+ *  se a sugestão não fizer sentido. */
+function sugerirCategoriaTexto(
+  texto: string,
+  tipo: "entradas" | "saidas",
+  categoriasApp: { nome: string; categoria_tipo: string | null }[],
+): string {
+  const candidatas = categoriasApp.filter((c) => c.categoria_tipo === tipo);
+  const alvo = texto.toLowerCase();
+  const porNome = candidatas.find((c) => alvo.includes(c.nome.toLowerCase()));
+  if (porNome) return porNome.nome;
+
+  const porPalavraChave = sugerirCategoriaPorPalavraChave(texto);
+  if (porPalavraChave) {
+    const achada = candidatas.find((c) => c.nome.toLowerCase() === porPalavraChave.toLowerCase());
+    if (achada) return achada.nome;
+  }
+
+  const outros = candidatas.find((c) => c.nome.toLowerCase() === "outros");
+  return outros?.nome || candidatas[0]?.nome || (tipo === "entradas" ? "Outros" : "Outros");
+}
+
+interface RascunhoLancamento {
+  tipo: "entradas" | "saidas";
+  valor: number;
+  descricao: string;
+  categoria: string;
+  metodo: string | null;
+  metodoKind: string | null;
+  diaFechamento: number | null;
+  data: string;
+}
+
+/** 'YYYY-MM-DD' de hoje em horário de Brasília (sem lib de timezone —
+ *  Brasil não observa horário de verão desde 2019, então UTC-3 fixo). */
+function hojeBrasiliaISO(): string {
+  return new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+/** Interpreta uma mensagem de texto livre como um lançamento — "gastei
+ *  35,90 no mercado", "recebi 200 de salário". Precisa achar um valor em
+ *  dinheiro no texto; sem isso, não é um lançamento (retorna null e o bot
+ *  cai no "não entendi"). */
+function interpretarValorETipo(texto: string): { valor: number; tipo: "entradas" | "saidas"; resto: string } | null {
+  const m = texto.match(/(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?|\d+(?:,\d{1,2})?)/);
+  if (!m) return null;
+  const valor = parseFloat(m[1].replace(/\./g, "").replace(",", "."));
+  if (!isFinite(valor) || valor <= 0) return null;
+
+  const ehReceita = /\b(recebi|ganhei|caiu|entrou|sal[aá]rio ca[ií]u)\b/i.test(texto);
+  const tipo: "entradas" | "saidas" = ehReceita ? "entradas" : "saidas";
+  const resto = (texto.slice(0, m.index) + texto.slice((m.index ?? 0) + m[0].length))
+    .replace(/\b(r\$|reais?|conto|pila|de|no|na|em|com|paguei|gastei|comprei|recebi|ganhei)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return { valor, tipo, resto };
+}
+
 interface ContaPluggy {
   id: number;
   item_id: string;
@@ -137,6 +226,15 @@ function formatarMoedaBR(valor: number): string {
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+/** "Rendimentos e dividendos" da Pluggy (juros de conta remunerada etc.) —
+ *  sempre fora do /atualizar: são muitos, minúsculos, e não é isso que o
+ *  usuário quer ver ao pedir as últimas transações. Mesma categoria que o
+ *  toggle "Ignorar" do app usa (ver TRADUCAO_CATEGORIA_PLUGGY em
+ *  pluggy-sync), só que aqui é sempre — sem toggle. */
+function ehRendimentoPluggy(categoriaBruta: string | null | undefined): boolean {
+  return (categoriaBruta || "").trim().toLowerCase() === "proceeds interests and dividends";
+}
+
 /** Força a Pluggy buscar dados novos AGORA nas contas passadas (PATCH
  *  /items/{id}, mesma chamada do "Sincronizar agora" no app) e manda de
  *  volta um log com as 3 transações mais recentes de cada uma. Usado pelo
@@ -174,6 +272,7 @@ async function executarAtualizacaoPluggy(
       try {
         const resp = await pluggyGet(`/v2/transactions?accountId=${conta.account_id}&dateFrom=${dateFrom}`, apiKey);
         const ultimas = [...(resp.results ?? [])]
+          .filter((t: { category?: string }) => !ehRendimentoPluggy(t.category))
           .sort((a: { date: string }, b: { date: string }) => (a.date < b.date ? 1 : -1))
           .slice(0, 3);
         if (!ultimas.length) {
@@ -373,10 +472,91 @@ Deno.serve(async (req: Request) => {
         return json({ ok: true });
       }
 
-      // Fase 1 (só notificação) — ainda não entende linguagem natural.
+      // Texto livre: tenta entender como um lançamento ("gastei 35,90 no
+      // mercado", "recebi 200 de salário"). Sem um valor em dinheiro no
+      // texto, não dá pra saber o que é — cai no "não entendi" de sempre.
+      const achado = interpretarValorETipo(texto);
+      if (!achado) {
+        await tg(token, "sendMessage", {
+          chat_id: chatId,
+          text: "Não entendi. Pra lançar por aqui, manda algo tipo \"gastei 35,90 no mercado\" ou \"recebi 200 de salário\" — eu monto um rascunho e só grava depois de você confirmar. Também entendo os botões de Confirmar/Ignorar e o comando /atualizar.",
+        });
+        return json({ ok: true });
+      }
+
+      const { data: tgUser } = await supabaseAdmin.from("telegram_users").select("user_id").eq("chat_id", chatId).maybeSingle();
+      if (!tgUser) {
+        await tg(token, "sendMessage", {
+          chat_id: chatId,
+          text: "Pra lançar por aqui eu preciso que você vincule sua conta primeiro — gere o código em Configurações > Open Finance no app e toque no link.",
+        });
+        return json({ ok: true });
+      }
+
+      const [{ data: categoriasApp }, { data: metodosApp }] = await Promise.all([
+        supabaseAdmin.from("menu_itens").select("nome, categoria_tipo").eq("tipo", "Categoria").eq("status", "Ativo").eq("user_id", tgUser.user_id),
+        supabaseAdmin.from("menu_itens").select("nome, metodo_kind, banco, dia_fechamento").eq("tipo", "Método").eq("status", "Ativo").eq("user_id", tgUser.user_id).order("ordem"),
+      ]);
+
+      const { valor, tipo, resto } = achado;
+      const descricao = resto ? resto.charAt(0).toUpperCase() + resto.slice(1) : (tipo === "entradas" ? "Recebido" : "Gasto");
+      const categoria = sugerirCategoriaTexto(texto, tipo, categoriasApp ?? []);
+
+      // Forma de pgto.: só faz sentido perguntar/usar em despesa — receita
+      // não pede método no formulário do app (só Estorno/Reembolso, caso
+      // raro demais pra tentar adivinhar por texto livre). Tenta achar o
+      // nome/banco de um método do usuário mencionado no texto; senão
+      // prefere Pix/Dinheiro (o caso comum de "gastei X no Y" avulso).
+      let metodoObj: { nome: string; metodo_kind: string | null; banco: string | null; dia_fechamento: number | null } | null = null;
+      if (tipo === "saidas") {
+        const alvo = texto.toLowerCase();
+        const lista = (metodosApp ?? []) as { nome: string; metodo_kind: string | null; banco: string | null; dia_fechamento: number | null }[];
+        metodoObj = lista.find((m) => alvo.includes(m.nome.toLowerCase()) || (m.banco && alvo.includes(m.banco.toLowerCase())))
+          || lista.find((m) => m.metodo_kind === "PIX")
+          || lista.find((m) => m.metodo_kind === "Dinheiro")
+          || lista[0]
+          || null;
+      }
+
+      const rascunho: RascunhoLancamento = {
+        tipo, valor, descricao, categoria,
+        metodo: metodoObj ? rotuloMetodo(metodoObj) : null,
+        metodoKind: metodoObj?.metodo_kind ?? null,
+        diaFechamento: metodoObj?.dia_fechamento ?? null,
+        data: hojeBrasiliaISO(),
+      };
+
+      // Só 1 rascunho pendente por vez por chat — um novo texto substitui o anterior.
+      await supabaseAdmin.from("telegram_rascunhos").delete().eq("chat_id", chatId);
+      const { data: novoRascunho, error: erroRascunho } = await supabaseAdmin
+        .from("telegram_rascunhos")
+        .insert({ user_id: tgUser.user_id, chat_id: chatId, dados: rascunho })
+        .select("id").single();
+      if (erroRascunho || !novoRascunho) {
+        console.error(erroRascunho);
+        await tg(token, "sendMessage", { chat_id: chatId, text: "Deu erro ao montar o rascunho — tenta de novo." });
+        return json({ ok: true });
+      }
+
+      const sinal = tipo === "entradas" ? "💰 Receita" : "💸 Despesa";
+      const dataFmt = new Date(`${rascunho.data}T00:00:00`).toLocaleDateString("pt-BR");
+      const linhas = [
+        `${sinal} — ${formatarMoedaBR(valor)}`,
+        `${dataFmt} · ${categoria}`,
+        descricao,
+        tipo === "saidas" ? `Forma de pgto.: ${rascunho.metodo || "nenhuma cadastrada — ajuste no app"}` : null,
+        "",
+        "Confirma?",
+      ].filter((l) => l !== null).join("\n");
       await tg(token, "sendMessage", {
         chat_id: chatId,
-        text: "Por enquanto eu só aviso sobre lançamentos novos, entendo os botões de Confirmar/Ignorar e o comando /atualizar (força buscar dados novos nas suas contas e manda as últimas transações de cada) — perguntas em texto livre chegam numa próxima etapa.",
+        text: linhas,
+        reply_markup: {
+          inline_keyboard: [[
+            { text: "✅ Confirmar", callback_data: `nlconfirmar:${novoRascunho.id}` },
+            { text: "❌ Cancelar", callback_data: `nlcancelar:${novoRascunho.id}` },
+          ]],
+        },
       });
       return json({ ok: true });
     }
@@ -395,6 +575,65 @@ Deno.serve(async (req: Request) => {
         await tg(token, "editMessageText", {
           chat_id: chatId, message_id: cq.message.message_id,
           text: `${cq.message.text}\n\n❌ Cancelado`,
+        });
+        return json({ ok: true });
+      }
+
+      // Rascunho de lançamento por texto livre (ver interpretarValorETipo
+      // acima) — "❌ Cancelar" só apaga o rascunho; "✅ Confirmar" grava de
+      // verdade em transacoes.
+      if ((acao === "nlconfirmar" || acao === "nlcancelar") && chatId) {
+        const rascunhoId = Number(idStr);
+        const { data: tgUser } = await supabaseAdmin.from("telegram_users").select("user_id").eq("chat_id", chatId).maybeSingle();
+        if (!tgUser) {
+          await tg(token, "answerCallbackQuery", { callback_query_id: cq.id, text: "Conta não vinculada" });
+          return json({ ok: true });
+        }
+        const { data: rascunho } = await supabaseAdmin
+          .from("telegram_rascunhos").select("dados")
+          .eq("id", rascunhoId).eq("chat_id", chatId).eq("user_id", tgUser.user_id) // nunca confia só no id vindo do botão
+          .maybeSingle();
+        if (!rascunho) {
+          await tg(token, "answerCallbackQuery", { callback_query_id: cq.id, text: "Esse rascunho já não existe mais" });
+          return json({ ok: true });
+        }
+
+        if (acao === "nlcancelar") {
+          await supabaseAdmin.from("telegram_rascunhos").delete().eq("id", rascunhoId);
+          await tg(token, "answerCallbackQuery", { callback_query_id: cq.id, text: "Cancelado" });
+          await tg(token, "editMessageText", {
+            chat_id: chatId, message_id: cq.message.message_id,
+            text: `${cq.message.text}\n\n❌ Cancelado`,
+          });
+          return json({ ok: true });
+        }
+
+        const d = rascunho.dados as RascunhoLancamento;
+        const ehCredito = d.metodoKind === "Crédito";
+        const competencia = competenciaDe(d.data, ehCredito ? d.diaFechamento : null);
+        const { error: insertError } = await supabaseAdmin.from("transacoes").insert({
+          tipo: d.tipo,
+          data: d.data,
+          valor: d.valor,
+          metodo: d.tipo === "saidas" ? d.metodo : null,
+          categoria: d.categoria,
+          descricao: d.descricao,
+          forma_pagamento: "À vista",
+          tipo_recorrencia: "Pontual",
+          competencia,
+          status: "Ativa",
+          user_id: tgUser.user_id,
+        });
+        await supabaseAdmin.from("telegram_rascunhos").delete().eq("id", rascunhoId);
+        if (insertError) {
+          console.error(insertError);
+          await tg(token, "answerCallbackQuery", { callback_query_id: cq.id, text: "Erro ao confirmar" });
+          return json({ ok: true });
+        }
+        await tg(token, "answerCallbackQuery", { callback_query_id: cq.id, text: "Lançado ✅" });
+        await tg(token, "editMessageText", {
+          chat_id: chatId, message_id: cq.message.message_id,
+          text: `${cq.message.text}\n\n✅ Lançado`,
         });
         return json({ ok: true });
       }
