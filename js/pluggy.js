@@ -290,9 +290,10 @@ function gerarHTMLContaPluggy(c) {
             <div class="item-nome">${tituloContaPluggy(c)}
                 ${statusTag}
             </div>
-            <div class="item-descricao">${ultimoSync}${saldoTxt ? ' · ' + saldoTxt : ''}</div>
+            <div class="item-descricao">${ultimoSync}</div>
+            ${saldoTxt ? `<div class="item-descricao">${saldoTxt}</div>` : ''}
             <div class="item-descricao campo-metodo-conta">
-                <label for="metodo-conta-${c.id}">Método do app:</label>
+                <label for="metodo-conta-${c.id}">Forma de pagamento:</label>
                 <div class="campo-com-add campo-com-add--mini">
                     <select id="metodo-conta-${c.id}" data-act="metodo-conta" data-id="${c.id}">
                         <option value="">Selecione...</option>
