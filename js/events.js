@@ -177,17 +177,12 @@ function configurarEventListeners() {
     const btnMet = document.getElementById('btnNovoMetodo');
     if (btnMet) btnMet.addEventListener('click', abrirNovoMetodo);
 
+    // Valor: máscara de banco (dígitos entram como centavos, da direita pra
+    // esquerda — ver mascaraValorMoeda em utils.js).
     const valorInput = document.querySelector(SELECTORS.valor);
     if (valorInput) {
-        // type="number" ainda deixa passar "e"/"+"/"-" (notação científica/negativo,
-        // que não fazem sentido pra um valor de lançamento) — bloqueia na digitação.
-        valorInput.addEventListener('keydown', e => {
-            if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
-        });
         valorInput.addEventListener('input', () => {
-            // Cobre o caso de colar "1e5" (válido pro <input type=number>, mas
-            // sem sentido aqui) — se sobrou "e"/"+"/"-", zera o valor.
-            if (/[eE+-]/.test(valorInput.value)) valorInput.value = '';
+            mascaraValorMoeda(valorInput);
             if (typeof atualizarValorTotal === 'function') atualizarValorTotal();
         });
     }

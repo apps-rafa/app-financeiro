@@ -1223,7 +1223,7 @@ function iniciarEdicaoTransacao(trans, tipoTransacao) {
     atualizarLabelsPorTipo();
 
     document.querySelector(SELECTORS.data).value = isoParaDiaMes(trans.data);
-    document.querySelector(SELECTORS.valor).value = trans.valor;
+    document.querySelector(SELECTORS.valor).value = formatarValorParaCampo(trans.valor);
     document.querySelector(SELECTORS.categoria).value = trans.categoria;
     document.querySelector(SELECTORS.descricao).value = trans.descricao || '';
     // Precisa vir depois de setar a categoria: é ela que decide se o campo
@@ -1633,7 +1633,7 @@ function atualizarCampoParcelas() {
 function atualizarValorTotal() {
     const tot = document.getElementById('valorTotal');
     if (!tot) return;
-    const v = parseFloat(document.querySelector(SELECTORS.valor)?.value) || 0;
+    const v = valorCampoParaNumero(document.querySelector(SELECTORS.valor));
     const mult = typeof _parcelasNumero === 'function' ? _parcelasNumero(document.getElementById('parcelas')) : 1;
     tot.value = formatarMoeda(v * mult);
 }

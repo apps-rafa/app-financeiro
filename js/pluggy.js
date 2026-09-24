@@ -717,7 +717,7 @@ async function carregarRevisaoPluggy() {
     const container = document.getElementById('pluggyRevisaoLista');
     if (!container) return;
 
-    const [{ data, error }, { data: historico }, { data: contasRows }] = await Promise.all([
+    const [{ data, error }, { data: historico }, { data: contasRows }, { data: jaIgnoradasBrutas }] = await Promise.all([
         sb.from('transacoes_importadas').select('*').eq('status', 'pendente').order('data', { ascending: false }),
         // Junta com a transação de verdade — categoria/descrição podem ter
         // sido ajustadas na revisão antes de importar, diferentes do que a
@@ -726,8 +726,15 @@ async function carregarRevisaoPluggy() {
             .select('*, transacao:transacao_id(id, data, valor, tipo, categoria, descricao, metodo, competencia)')
             .eq('status', 'confirmada').order('criado_em', { ascending: false }).limit(20),
         sb.from('pluggy_contas').select('*'),
+        // Marcadas com X numa revisão anterior (status 'ignorada' — ficam
+        // fora da fila 'pendente' pra sempre). Sem isso, sincronizar de novo
+        // um período já revisado achava "0 novas" e a tela ficava vazia,
+        // sem rastro do que já tinha sido visto — agora aparecem aqui,
+        // riscadas, em vez de simplesmente sumir.
+        sb.from('transacoes_importadas').select('*').eq('status', 'ignorada').order('data', { ascending: false }).limit(100),
     ]);
     const contasPorId = Object.fromEntries((contasRows || []).map(c => [c.id, c]));
+    const jaIgnoradas = jaIgnoradasBrutas || [];
 
     if (error) {
         console.error(error);
@@ -780,11 +787,11 @@ async function carregarRevisaoPluggy() {
     const duplicatas = daFila('duplicatas');
     const prontas = daFila('prontas');
 
-    // "Limpar" só habilita se há algo visível pra limpar (pendentes ou histórico).
+    // "Limpar" só habilita se há algo visível pra limpar (pendentes, histórico ou já ignoradas).
     const btnLimparRevisao = document.getElementById('btnLimparRevisaoPluggy');
-    if (btnLimparRevisao) btnLimparRevisao.disabled = !pendentesBrutos.length && !historicoValido.length;
+    if (btnLimparRevisao) btnLimparRevisao.disabled = !pendentesBrutos.length && !historicoValido.length && !jaIgnoradas.length;
 
-    if (!pendentesBrutos.length && !historicoValido.length) {
+    if (!pendentesBrutos.length && !historicoValido.length && !jaIgnoradas.length) {
         container.innerHTML = '<p class="empty-message">Nada pendente — toque em "Sincronizar agora" pra buscar transações novas</p>';
         container.onclick = null;
         container.onchange = null;
@@ -849,6 +856,17 @@ async function carregarRevisaoPluggy() {
         }).join('');
     };
 
+    // Marcadas com X numa revisão anterior (status 'ignorada' no banco) — não
+    // entram na fila de novo, mas ficam visíveis aqui, riscadas, em vez de
+    // sumir sem deixar rastro (ver query em cima). O ↺ manda de volta pra
+    // "Para revisar" (bate no banco na hora, não é local como o X normal).
+    const jaIgnoradasHTML = !jaIgnoradas.length ? '' : htmlGrupoRevisao({
+        id: 'pluggy-ja-ignoradas', titulo: '✕ Já ignoradas (não entraram)', abertos: _abertosPluggy, padraoAberto: false,
+        itens: jaIgnoradas, tipoDe: i => i.tipo, colunas: ['Data', 'Valor', 'Categoria', 'Descrição'],
+        htmlLinha: gerarHTMLIgnoradaDbPluggy,
+        nota: `<p class="import-csv-nota">Ficam aqui riscadas — não somem mais. Clique no ↺ pra mandar de volta pra "Para revisar".</p>`,
+    });
+
     container.innerHTML = [
         `<p class="import-csv-resumo">
             <b>${pendentesBrutos.length}</b> linha${pendentesBrutos.length === 1 ? '' : 's'} na fila —
@@ -868,6 +886,7 @@ async function carregarRevisaoPluggy() {
                 ${temAlteracoes ? '' : 'disabled'}>Cancelar</button>
         </div>
         <div id="pluggyImportProgresso" class="import-csv-progresso" hidden></div>`,
+        jaIgnoradasHTML,
         tabelaHistorico,
     ].join('');
 
@@ -988,7 +1007,38 @@ function _renderRevisaoPluggyPreservandoScroll() {
     window.scrollTo(0, y);
 }
 
+/** Linha do grupo "Já ignoradas" (status 'ignorada' no banco, de uma
+ *  revisão anterior) — sempre riscada/travada, sem edição; o ↺ reativa
+ *  direto no banco (ver reativarIgnoradaDbPluggy). */
+function gerarHTMLIgnoradaDbPluggy(item) {
+    const categoriaTxt = item.categoria_sugerida || item.categoria_pluggy || '';
+    return htmlLinhaRevisao({
+        atributos: `data-importada-id="${item.id}"`,
+        ignorada: true,
+        celulaAcao: `<button type="button" class="import-x" data-reativar-db="${item.id}" title="Reativar — volta pra 'Para revisar'" aria-label="Reativar">↺</button>`,
+        dataISO: item.data, valor: item.valor,
+        celulasMeio: `<td>${escAttrRevisao(categoriaTxt)}</td>`,
+        descricao: item.descricao_banco || '',
+    });
+}
+
+/** Manda uma linha "já ignorada" de volta pra fila (status -> 'pendente').
+ *  Bate no banco na hora (diferente do X normal, que só sai da tela e some
+ *  de verdade quando aperta "Importar"). */
+async function reativarIgnoradaDbPluggy(id) {
+    const { error } = await sb.from('transacoes_importadas').update({ status: 'pendente' }).eq('id', id);
+    if (error) {
+        console.error(error);
+        mostrarNotificacao('Erro ao reativar', 'erro');
+        return;
+    }
+    mostrarNotificacao('↺ De volta pra revisar', 'sucesso');
+    carregarRevisaoPluggy();
+}
+
 function onRevisaoPluggyClick(e) {
+    const reativarDb = e.target.closest('[data-reativar-db]');
+    if (reativarDb) { reativarIgnoradaDbPluggy(Number(reativarDb.dataset.reativarDb)); return; }
     const x = e.target.closest('[data-rev-x]');
     if (x) { alternarIgnorarImportadaPluggy(Number(x.dataset.revX)); return; }
     const btn = e.target.closest('[data-act]');

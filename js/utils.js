@@ -87,6 +87,31 @@ const MESES_TRI = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET'
 function mesTri(m) { return MESES_TRI[(parseInt(m, 10) || 0) - 1] || ''; }
 
 /**
+ * Máscara de valor em dinheiro, igual a de app de banco: o usuário só digita
+ * dígitos, e eles vão entrando da DIREITA pra esquerda como centavos — "1"
+ * vira "0,01", "150" vira "1,50", "15000" vira "150,00". Backspace apaga o
+ * último dígito (o de trás), não precisa mirar numa posição especial. Não dá
+ * pra editar "no meio" do número — é assim em qualquer banco.
+ */
+function mascaraValorMoeda(input) {
+    const centavos = input.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, 12);
+    input.value = centavos ? (parseInt(centavos, 10) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+    try { input.setSelectionRange(input.value.length, input.value.length); } catch (_) {}
+}
+
+/** Valor numérico (float) de um campo com mascaraValorMoeda — "1.234,56" -> 1234.56. */
+function valorCampoParaNumero(input) {
+    const centavos = String(input?.value ?? '').replace(/\D/g, '');
+    return centavos ? parseInt(centavos, 10) / 100 : 0;
+}
+
+/** Formata um número pro campo de valor mascarado (usado ao abrir edição). */
+function formatarValorParaCampo(numero) {
+    const n = Number(numero) || 0;
+    return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/**
  * Máscara dd/mm (sem ano — ele já está definido no mês em exibição).
  * - Ao DIGITAR: insere a "/" e preserva a posição do cursor.
  * - Ao APAGAR: não reinsere a "/" nem reformata (evita a barra "pular pra
@@ -458,7 +483,7 @@ function obterDadosFormulario() {
     return {
         tipo: document.querySelector(SELECTORS.tipoTransacao).value,
         data: dataISO,
-        valor: parseFloat(document.querySelector(SELECTORS.valor).value),
+        valor: valorCampoParaNumero(document.querySelector(SELECTORS.valor)),
         metodo: document.querySelector(SELECTORS.metodo).value,
         categoria: document.querySelector(SELECTORS.categoria).value,
         formaPagamento: tipoRecorrencia === 'Parcelada' ? 'Parcelada' : 'À vista',
