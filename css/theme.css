@@ -520,3 +520,7 @@ body .rec-grupo--vazio { padding-left: .8rem; padding-right: .8rem; }
 @media (max-width: 480px) {
     body .rec-grupo > summary, body .subgrupo-cab, body .rec-grupo--vazio { padding-left: .65rem; padding-right: .65rem; }
 }
+
+/* Ícones Radix no lugar dos emojis (js/icons.js) */
+.rx-ico { display: inline-flex; vertical-align: -0.16em; line-height: 1; }
+.rx-ico svg { display: block; }
