@@ -620,6 +620,8 @@ async function mostrarRecemLancados(qtd = 5) {
     if (!box) return;
     box.hidden = false;
     box.dataset.modo = 'ampla'; // não deixa a atualização da tela/lixeira sobrescrever
+    box.dataset.recentes = '1';
+    document.getElementById('btnRecentes')?.classList.add('active');
     document.body.classList.add('buscando');
     if (!box.querySelector('.rec-grupo-itens')) box.innerHTML = '<p class="loading">Carregando...</p>';
     const { data, error } = await sb.from('transacoes').select('*')
@@ -641,7 +643,7 @@ async function mostrarRecemLancados(qtd = 5) {
     box.innerHTML = `
         <div class="busca-ampla-resumo">
             <b>🕓 Recém-lançados</b>
-            <span>Os ${itens.length} últimos lançamentos criados</span>
+            <span>${itens.length} últimos</span>
             <button type="button" class="mini-btn" data-recentes-fechar aria-label="Fechar" title="Fechar">✕</button>
         </div>
         <div class="rec-grupo-itens recentes-lista">${itens.map(i => gerarHTMLTransacao(i, i.tipo === 'entradas' ? 'entrada' : 'saida', { semAcoes: true })).join('') || '<p class="empty-message">Nenhum lançamento ainda</p>'}</div>
@@ -730,6 +732,8 @@ function atualizarBuscaGlobal() {
     if (!box) return;
     box.hidden = !termo;
     box.dataset.modo = '';
+    box.dataset.recentes = '';
+    document.getElementById('btnRecentes')?.classList.remove('active');
     if (!termo) { box.innerHTML = ''; box.onclick = null; return; }
 
     const abertos = _lerAbertosRecGrupo(box);
