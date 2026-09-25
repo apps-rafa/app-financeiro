@@ -649,14 +649,12 @@ async function mostrarRecemLancados(qtd = 5) {
         <div class="busca-ampla-resumo">
             <b>🕓 Recém-lançados</b>
             <span>${itens.length} últimos</span>
-            <button type="button" class="mini-btn" data-recentes-fechar aria-label="Fechar" title="Fechar">✕</button>
         </div>
         <div class="rec-grupo-itens recentes-lista">${itens.map(i => gerarHTMLTransacao(i, i.tipo === 'entradas' ? 'entrada' : 'saida')).join('') || '<p class="empty-message">Nenhum lançamento ainda</p>'}</div>
         ${temMais ? `<button type="button" class="busca-ampla-btn" data-recentes-mais="${qtd + 5}">Carregar mais 5</button>` : ''}`;
     box.onclick = e => {
         const mais = e.target.closest('[data-recentes-mais]');
         if (mais) return mostrarRecemLancados(Number(mais.dataset.recentesMais));
-        if (e.target.closest('[data-recentes-fechar]')) { atualizarBuscaGlobal(); return; }
         onListaTransacaoClick(e);
     };
 }

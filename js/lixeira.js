@@ -42,7 +42,7 @@ function htmlItemLixeira(item) {
             <div class="lixeira-linha3">excluído em ${dd(item.excluido_em)} (some em ${dias} d)</div>
         </div>
         <div class="lixeira-acoes">
-            <button type="button" class="mini-btn" data-lixeira-restaurar="${item.id}" title="Restaurar este lançamento" aria-label="Restaurar">↩<span class="lx-txt"> Restaurar</span></button>
+            <button type="button" class="mini-btn" data-lixeira-restaurar="${item.id}" title="Restaurar este lançamento" aria-label="Restaurar">↩</button>
             <button type="button" class="mini-btn" data-lixeira-apagar="${item.id}" title="Apagar de vez" aria-label="Apagar de vez">✕</button>
         </div>
     </div>`;
@@ -56,7 +56,10 @@ async function moverParaLixeira(linhas) {
     if (error) throw error;
 }
 
-async function carregarLixeira() {
+let _lixeiraQtd = 5; // quantos itens a aba Lixeira mostra (5 por vez, "Carregar mais")
+async function carregarLixeira(qtd) {
+    _lixeiraQtd = qtd || (_lixeiraMantem ? _lixeiraQtd : 5);
+    _lixeiraMantem = false;
     const box = document.getElementById('lixeiraLista');
     if (!box) return;
     box.innerHTML = '<p class="empty-message">Carregando...</p>';
@@ -79,12 +82,16 @@ async function carregarLixeira() {
         return;
     }
 
-    box.innerHTML = data.map(htmlItemLixeira).join('');
+    box.innerHTML = data.slice(0, _lixeiraQtd).map(htmlItemLixeira).join('')
+        + (data.length > _lixeiraQtd ? `<button type="button" class="busca-ampla-btn" data-lixeira-mais>Carregar mais 5</button>` : '');
     box.onclick = onCliqueLixeira;
 }
 
+let _lixeiraMantem = false;
 async function onCliqueLixeira(e) {
     _lixeiraBuscaCache = null;
+    if (e.target.closest('[data-lixeira-mais]')) { carregarLixeira(_lixeiraQtd + 5); return; }
+    _lixeiraMantem = true; // restaurar/apagar recarregam mantendo a quantidade já aberta
     const btnR = e.target.closest('[data-lixeira-restaurar]');
     const btnA = e.target.closest('[data-lixeira-apagar]');
     if (btnR) {
