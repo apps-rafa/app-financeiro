@@ -169,6 +169,17 @@ async function finalizarConexaoPluggy(itemId) {
     }
 }
 
+/** Soma o saldo das contas BANCÁRIAS conectadas (Open Finance) pro cartão
+ *  "Saldo em contas" do dashboard; sem nenhuma conta com saldo, esconde. */
+async function carregarSaldoContas() {
+    const { data, error } = await sb.from('pluggy_contas')
+        .select('saldo, tipo_conta').eq('tipo_conta', 'BANK').in('status', ['ativo', 'erro']);
+    if (error) { console.error(error); return; }
+    const saldos = (data || []).map(c => c.saldo).filter(s => typeof s === 'number');
+    estadoApp.saldoContas = saldos.length ? saldos.reduce((a, b) => a + b, 0) : null;
+    if (typeof atualizarResumo === 'function') atualizarResumo();
+}
+
 /** Carrega e renderiza as contas conectadas (Importar > Pluggy). */
 async function carregarContasConectadas() {
     const container = document.getElementById('pluggyContasList');
@@ -614,6 +625,7 @@ async function sincronizarPluggyAgora() {
             'sucesso'
         );
         await carregarRevisaoPluggy();
+        carregarSaldoContas();
     } catch (e) {
         console.error(e);
         mostrarNotificacao('Erro ao sincronizar com a Pluggy', 'erro');

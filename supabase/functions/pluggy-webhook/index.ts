@@ -27,6 +27,16 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+/** Movimentos que só trocam o dinheiro de lugar (resgate/aplicação, saldo
+ *  reservado, pagamento da fatura do cartão) — não são receita nem despesa de
+ *  verdade. Entram na fila já como "ignorada" (visível em "Já ignoradas",
+ *  com ↺ pra reativar), sem avisar no Telegram. */
+function ehMovimentoInterno(operationType: string | null | undefined): boolean {
+  const op = String(operationType ?? "").toUpperCase();
+  return op === "RESGATE_APLIC_FINANCEIRA" || op.startsWith("APLIC")
+    || op === "TRANSFERENCIA_SALDO_RESERVADO" || op === "PAGAMENTO_FATURA";
+}
+
 async function getPluggyApiKey(): Promise<string> {
   const clientId = Deno.env.get("PLUGGY_CLIENT_ID");
   const clientSecret = Deno.env.get("PLUGGY_CLIENT_SECRET");
@@ -287,7 +297,7 @@ Deno.serve(async (req: Request) => {
               categoria_pluggy: categoriaTraduzida,
               categoria_sugerida: sugerirCategoria(categoriaTraduzida, descricaoBanco, tipo, categoriasApp ?? []),
               metodo_sugerido: conta.metodo_id ?? null,
-              status: "pendente",
+              status: ehMovimentoInterno(t.operationType) ? "ignorada" : "pendente",
               user_id: conta.user_id,
             });
           }
@@ -298,15 +308,22 @@ Deno.serve(async (req: Request) => {
           const { data: inseridas, error: upsertError } = await supabaseAdmin
             .from("transacoes_importadas")
             .upsert(linhas, { onConflict: "user_id,pluggy_transaction_id", ignoreDuplicates: true })
-            .select("id, tipo, valor, data, descricao_banco, categoria_sugerida, metodo_sugerido");
+            .select("id, tipo, valor, data, descricao_banco, categoria_sugerida, metodo_sugerido, status");
           if (upsertError) throw upsertError;
           novasNoTotal += inseridas?.length ?? 0;
-          await notificarTelegramNovas(supabaseAdmin, conta.user_id, inseridas ?? []);
+          await notificarTelegramNovas(supabaseAdmin, conta.user_id, (inseridas ?? []).filter((i) => i.status === "pendente"));
         }
 
+        let saldoAtual: number | null = null;
+        try {
+          const acc = await pluggyGet(`/accounts/${conta.account_id}`, apiKey);
+          if (typeof acc?.balance === "number") saldoAtual = acc.balance;
+        } catch (e) {
+          console.error(`Saldo indisponível (conta ${conta.id}):`, e);
+        }
         await supabaseAdmin
           .from("pluggy_contas")
-          .update({ ultimo_sync: new Date().toISOString(), status: "ativo" })
+          .update({ ultimo_sync: new Date().toISOString(), status: "ativo", ...(saldoAtual !== null ? { saldo: saldoAtual } : {}) })
           .eq("id", conta.id);
       } catch (e) {
         console.error(`Erro sincronizando conta ${conta.id} via webhook:`, e);

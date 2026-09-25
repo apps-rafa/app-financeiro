@@ -26,6 +26,16 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+/** Movimentos que só trocam o dinheiro de lugar (resgate/aplicação, saldo
+ *  reservado, pagamento da fatura do cartão) — não são receita nem despesa de
+ *  verdade. Entram na fila já como "ignorada" (visível em "Já ignoradas",
+ *  com ↺ pra reativar), sem avisar no Telegram. */
+function ehMovimentoInterno(operationType: string | null | undefined): boolean {
+  const op = String(operationType ?? "").toUpperCase();
+  return op === "RESGATE_APLIC_FINANCEIRA" || op.startsWith("APLIC")
+    || op === "TRANSFERENCIA_SALDO_RESERVADO" || op === "PAGAMENTO_FATURA";
+}
+
 async function getPluggyApiKey(): Promise<string> {
   const clientId = Deno.env.get("PLUGGY_CLIENT_ID");
   const clientSecret = Deno.env.get("PLUGGY_CLIENT_SECRET");
@@ -432,7 +442,7 @@ Deno.serve(async (req: Request) => {
               categoria_sugerida: sugerirCategoria(categoriaTraduzida, descricaoBanco, tipo, categoriasApp ?? []),
               metodo_sugerido: conta.metodo_id ?? null,
               competencia_fatura: mesFatura ? `${mesFatura}-01` : null,
-              status: transacaoJaExistente ? "confirmada" : "pendente",
+              status: transacaoJaExistente ? "confirmada" : ehMovimentoInterno(t.operationType) ? "ignorada" : "pendente",
               transacao_id: transacaoJaExistente ?? null,
               user_id: user.id,
             });
@@ -462,18 +472,28 @@ Deno.serve(async (req: Request) => {
           const { data: inseridas, error: upsertError } = await supabaseClient
             .from("transacoes_importadas")
             .upsert(linhas, { onConflict: "user_id,pluggy_transaction_id", ignoreDuplicates: true })
-            .select("id, tipo, valor, data, descricao_banco, categoria_sugerida, metodo_sugerido");
+            .select("id, status");
           if (upsertError) throw upsertError;
-          novasNoTotal += inseridas?.length ?? 0;
+          // só as "pendente" contam como novas pra revisar (ignoradas = movimentos internos)
+          novasNoTotal += (inseridas ?? []).filter((i) => i.status === "pendente").length;
           // Sem aviso no Telegram aqui de propósito — "Sincronizar agora" é
           // um clique do usuário DENTRO do app (ele já está olhando a tela);
           // o Telegram é só pro caso oposto, quando a Pluggy avisa sozinha
           // via pluggy-webhook enquanto o usuário está fora do app.
         }
 
+        // Saldo atual da conta (dashboard "Saldo em contas"); falhar aqui não
+        // derruba o sync.
+        let saldoAtual: number | null = null;
+        try {
+          const acc = await pluggyGet(`/accounts/${conta.account_id}`, apiKey);
+          if (typeof acc?.balance === "number") saldoAtual = acc.balance;
+        } catch (e) {
+          console.error(`Saldo indisponível (conta ${conta.id}):`, e);
+        }
         await supabaseClient
           .from("pluggy_contas")
-          .update({ ultimo_sync: new Date().toISOString(), status: "ativo" })
+          .update({ ultimo_sync: new Date().toISOString(), status: "ativo", ...(saldoAtual !== null ? { saldo: saldoAtual } : {}) })
           .eq("id", conta.id);
       } catch (e) {
         console.error(`Erro sincronizando conta ${conta.id}:`, e);

@@ -191,6 +191,14 @@ function atualizarResumo() {
         if (card) card.style.cssText = '';
     }
 
+    // Saldo real das contas bancárias conectadas (só aparece com conta conectada)
+    const scEl = document.getElementById('saldoContas');
+    if (scEl) {
+        scEl.hidden = estadoApp.saldoContas == null;
+        const scVal = document.getElementById('saldoContasValor');
+        if (scVal && estadoApp.saldoContas != null) scVal.textContent = mask(formatarMoeda(estadoApp.saldoContas));
+    }
+
     // Gasto diário = balanço / dias restantes do mês vigente
     const gd = document.getElementById('gastoDiario');
     const gdSub = document.getElementById('gastoDiarioSub');

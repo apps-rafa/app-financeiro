@@ -386,3 +386,21 @@
 
 /* Swipe horizontal troca de mês (ver events.js); vertical continua rolando */
 .dashboard { touch-action: pan-y; }
+
+/* Saldo real das contas (Open Finance): faixa de largura total sob os 4 cards */
+.summary-card.saldo-contas {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    padding: .55rem .9rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    cursor: default;
+}
+.summary-card.saldo-contas[hidden] { display: none; }
+.saldo-contas .sc-rot { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
+.saldo-contas .sc-val { font-size: 1rem; font-variant-numeric: tabular-nums; }
