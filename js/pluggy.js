@@ -998,7 +998,8 @@ async function carregarRevisaoPluggy() {
             <span class="ok">${prontasAoVivo.length} pronta${prontasAoVivo.length === 1 ? '' : 's'}</span>
             ${aRevisarAoVivo.length ? ` · <span class="alerta">${aRevisarAoVivo.length} para revisar</span>` : ''}
             ${duplicatas.length ? ` · <span class="alerta">${duplicatas.length} possível${duplicatas.length === 1 ? '' : 'is'} duplicata${duplicatas.length === 1 ? '' : 's'}</span>` : ''}
-        </p>`,
+        </p>
+        <p class="pluggy-legenda">🏦 Gasto confirmado pelo extrato</p>`,
         blocosPorConta(),
         jaIgnoradasHTML,
         tabelaHistorico,

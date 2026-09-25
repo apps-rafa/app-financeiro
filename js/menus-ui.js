@@ -171,7 +171,6 @@ async function carregarAbaMenus() {
             </div>
           </div>
         </div>
-        <p class="pluggy-legenda">🏦 Gasto confirmado pelo extrato</p>
         <h3 class="dados-selecao-titulo pluggy-origem" id="pluggyOrigemTitulo" hidden></h3>
         <div id="pluggyRevisaoLista" class="transacoes-lista"></div>
       </div>
