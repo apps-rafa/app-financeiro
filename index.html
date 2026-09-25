@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="css/forms.css">
     <link rel="stylesheet" href="css/menus.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/anual.css">
     <link rel="stylesheet" href="css/theme.css">
     <script>
         // Aplica o tema antes de renderizar (evita flash)
@@ -43,6 +44,7 @@
                         <span id="modoTesteBadge" class="modo-teste-badge" hidden><span class="header-emoji">🧪</span><span class="modo-teste-full">modo teste</span><span class="modo-teste-curto">TESTE</span></span>
                         <button id="btnApagarTudo" type="button" class="btn-apagar-tudo" hidden title="Apagar todos os dados de teste"><span class="header-emoji">🗑</span><span class="apagar-full">Apagar tudo</span><span class="apagar-curto">Apagar</span></button>
                         <span id="userEmail" class="user-email" hidden></span>
+                        <button id="btnAnual" type="button" class="month-btn month-btn--tema-header" data-tab="anual" title="Visão anual" aria-label="Visão anual">📈</button>
                         <button id="btnTema" type="button" class="month-btn month-btn--tema-header" title="Alternar tema claro/escuro">🌙</button>
                         <button id="btnLogout" class="month-btn" hidden title="Sair"><span class="header-emoji sair-ico">🚪</span><span class="sair-texto">Sair</span></button>
                     </div>
@@ -200,6 +202,28 @@
                 </div>
             </section>
 
+            <!-- Tab: Visão anual (comparar meses por categoria / forma de pagamento) -->
+            <section id="anual" class="tab-content">
+                <div class="anual-container">
+                    <div class="anual-barra-topo">
+                        <div class="anual-ano">
+                            <button type="button" class="seta-lateral" data-anual-ano="-1" title="Ano anterior">◂</button>
+                            <b id="anualAno"></b>
+                            <button type="button" class="seta-lateral" data-anual-ano="1" title="Próximo ano">▸</button>
+                        </div>
+                        <div class="anual-seg" role="group" aria-label="Tipo">
+                            <button type="button" data-anual-tipo="saidas" class="active">Despesas</button>
+                            <button type="button" data-anual-tipo="entradas">Receitas</button>
+                        </div>
+                        <div class="anual-seg" role="group" aria-label="Agrupar por">
+                            <button type="button" data-anual-agrupar="categoria" class="active">🏷️ Categoria</button>
+                            <button type="button" data-anual-agrupar="metodo">💳 Forma de pgto.</button>
+                        </div>
+                    </div>
+                    <div id="anualConteudo"></div>
+                </div>
+            </section>
+
             <!-- Tab: Lixeira (lançamentos excluídos nos últimos 30 dias) -->
             <section id="lixeira" class="tab-content">
                 <div class="proximas-container">
@@ -335,6 +359,7 @@
     <script src="js/lixeira.js"></script>
     <script src="js/dados.js"></script>
     <script src="js/pluggy.js"></script>
+    <script src="js/anual.js"></script>
     <script src="js/events.js"></script>
     <script src="js/main.js"></script>
 </body>

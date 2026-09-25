@@ -149,6 +149,7 @@ function configurarEventListeners() {
     // Engrenagem "Configuração" na barra do mês: abre/fecha (toggle)
     const btnConfig = document.getElementById('btnConfig');
     if (btnConfig) btnConfig.addEventListener('click', () => mudarAba('menus'));
+    document.getElementById('btnAnual')?.addEventListener('click', () => mudarAba('anual'));
 
     // Aba Despesas: alternar "Por recorrência" / "Por método" / "Por categoria"
     // — toggle: sem nenhum ligado, fica em ordem cronológica.
@@ -476,6 +477,8 @@ function mudarAba(novaAba) {
     } else if (novaAba === 'proximas') {
         // Carregar próximas transações
         atualizarProximasTransacoes();
+    } else if (novaAba === 'anual') {
+        if (typeof carregarVisaoAnual === 'function') carregarVisaoAnual(true);
     } else if (novaAba === 'lixeira') {
         if (typeof carregarLixeira === 'function') carregarLixeira();
     } else if (novaAba === 'menus') {

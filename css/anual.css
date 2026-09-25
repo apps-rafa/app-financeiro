@@ -1,0 +1,38 @@
+/* Visão anual (aba #anual) */
+.anual-container { display: flex; flex-direction: column; gap: .8rem; }
+.anual-barra-topo { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.anual-ano { display: inline-flex; align-items: center; gap: .4rem; font-size: 1rem; }
+.anual-seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; background: var(--surface); }
+.anual-seg button { border: 0; background: transparent; color: var(--text-muted); padding: .4rem .7rem; font-size: .78rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.anual-seg button.active { background: var(--primary); color: var(--primary-contrast, #fff); }
+
+.anual-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; }
+.anual-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .5rem .6rem; display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.anual-card span { font-size: .68rem; color: var(--text-muted); }
+.anual-card b { font-size: .9rem; overflow-wrap: anywhere; }
+.anual-card b.bom, .anual-tabela .delta.bom { color: var(--receita-text); }
+.anual-card b.ruim, .anual-tabela .delta.ruim { color: var(--despesa-text); }
+@media (max-width: 600px) { .anual-cards { grid-template-columns: 1fr 1fr; } }
+
+.anual-grafico-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .5rem .6rem 0; }
+.anual-grafico { width: 100%; height: auto; display: block; }
+.anual-base { stroke: var(--border); stroke-width: 1; }
+.anual-eixo { fill: var(--text-muted); font-size: 12px; }
+.anual-eixo.atual { fill: var(--text); font-weight: 700; }
+
+.anual-tabela-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.anual-tabela { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 760px; font-size: .74rem; font-variant-numeric: tabular-nums; }
+.anual-tabela th, .anual-tabela td { padding: .32rem .4rem; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
+.anual-tabela thead th { color: var(--text-muted); font-weight: 600; background: var(--surface-2); position: sticky; top: 0; }
+.anual-tabela .anual-nome { text-align: left; position: sticky; left: 0; background: var(--surface); z-index: 1; min-width: 8.5rem; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.anual-tabela thead .anual-nome { background: var(--surface-2); z-index: 2; }
+.anual-tabela .anual-ponto { display: inline-block; width: .55rem; height: .55rem; border-radius: 50%; margin-right: .4rem; vertical-align: baseline; }
+.anual-tabela td.vazio { color: var(--text-muted); opacity: .5; text-align: center; }
+.anual-tabela td.cel { border-radius: 4px; }
+.anual-tabela .total { font-weight: 700; background: var(--surface-2); }
+.anual-tabela th.mes button { border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; padding: 0; }
+.anual-tabela th.mes.atual button, .anual-tabela td.atual { font-weight: 700; }
+.anual-tabela th.mes.atual { color: var(--text); box-shadow: inset 0 -2px 0 var(--primary); }
+.anual-tabela tfoot .tot th, .anual-tabela tfoot .tot td { font-weight: 700; border-top: 2px solid var(--border-strong, var(--border)); }
+.anual-tabela tfoot .var td, .anual-tabela tfoot .var th { color: var(--text-muted); font-size: .68rem; }
+.anual-nota { margin: 0; }
