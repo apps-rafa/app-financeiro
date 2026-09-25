@@ -65,6 +65,11 @@ const PALAVRAS_CHAVE_CATEGORIA: { padrao: RegExp; categoria: string }[] = [
   { padrao: /escola|faculdade|universidade|udemy|alura|curso/, categoria: "Educação" },
   { padrao: /condom[ií]nio|imobili[aá]ria|aluguel|luz|[aá]gua|g[aá]s\b|internet\b/, categoria: "Casa" },
   { padrao: /sal[aá]rio|sal[aá]rios/, categoria: "Salário" },
+  { padrao: /\bvend(i|eu|emos|eram|er|a|as)\b|revend/, categoria: "Venda" },
+  { padrao: /\bb[oô]nus\b|\bpremia[çc][aã]o\b/, categoria: "Bônus" },
+  { padrao: /\bfreela|\bfreelance\b/, categoria: "Freelance" },
+  { padrao: /\bracha|\brachei|\bracharam|\bdividi|\bdividiram/, categoria: "Racha" },
+  { padrao: /reembols|estorn/, categoria: "Reembolso" },
 ];
 
 function sugerirCategoriaPorPalavraChave(texto: string): string | null {
@@ -473,6 +478,8 @@ async function enviarRascunho(token: string, chatId: number, r: RascunhoLancamen
     r.parcelas && r.parcelas > 1 ? `Parcelas: ${r.parcelas}x de ${formatarMoedaBR(r.valor / r.parcelas)}` : null,
     "",
     "Confirma?",
+    "",
+    "💬 Se responder qualquer outra coisa (sem ser os botões), eu entendo como a descrição do lançamento.",
   ].filter((l) => l !== null).join("\n");
   await tg(token, "sendMessage", {
     chat_id: chatId,
@@ -724,7 +731,9 @@ Deno.serve(async (req: Request) => {
       }
       const parcelasFinal = tipo === "saidas" && parcelas && metodoObj?.metodo_kind === "Crédito" ? parcelas : null;
 
-      const descricao = extrairDescricao(resto, [cat.termo, metodoObj?.nome, metodoObj?.banco]);
+      // O bot nunca inventa descrição: começa em branco; o que o usuário
+      // responder (fora dos botões) vira a descrição.
+      const descricao = "";
 
       const rascunho: RascunhoLancamento = {
         tipo, valor, descricao, categoria,
