@@ -533,3 +533,14 @@ body .despesa-conteudo { column-gap: .3rem; }
 /* Histórico Pluggy: valores alinhados à esquerda, colados na data (a regra
    de largura fixa da tabela de revisão não vale pros cards do histórico) */
 body #pluggyRevisaoLista .rec-grupo .despesa-valor { flex: 0 0 auto; min-width: 0; text-align: left; }
+
+/* Botões do cabeçalho: todos com a mesma altura; os que mostram só o emoji
+   também com a mesma largura (quadrados/redondos iguais). */
+body .header-info > * { height: 1.9rem; }
+body .header-info > #btnTema { width: 1.9rem; padding: 0; border-radius: 999px; }
+@media (max-width: 700px) {
+    body .header-info > #btnLogout { width: 1.9rem; padding: 0; }
+}
+@media (max-width: 560px) {
+    body .header-info > #btnApagarTudo, body .header-info > .modo-teste-badge { width: 1.9rem; padding: 0; }
+}
