@@ -595,3 +595,7 @@ body .fatura-banco, body .grupo-barra { padding-left: .8rem; padding-right: .8re
 @media (max-width: 480px) {
     body .fatura-banco, body .grupo-barra { padding-left: .65rem; padding-right: .65rem; }
 }
+
+/* Botões Sincronizar/Limpar: metade e metade, alinhados com os das contas */
+body .pluggy-toolbar-btns > .pluggy-toolbar-btn { flex: 1 1 calc(50% - .25rem); width: auto; min-width: 0; padding: 0 .5rem; }
+body .pluggy-origem { margin: .2rem 0 .5rem; }
