@@ -409,3 +409,7 @@ body.editando-lancamento #resultadoBusca { display: none !important; }
 .area-conteudo { background: transparent; }
 .area-conteudo:has(#entradas.active) { background: var(--receita-bg); }
 .area-conteudo:has(#saidas.active)   { background: var(--despesa-bg); }
+
+/* Buscando: só o resultado da busca aparece — qualquer aba aberta (formulário,
+   listas, config...) some e volta como estava quando a busca é limpa. */
+body.buscando .area-conteudo > .tab-content { display: none !important; }
