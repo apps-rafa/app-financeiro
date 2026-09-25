@@ -440,3 +440,22 @@ body .despesa-dow { display: inline-block; min-width: 1.9rem; text-align: left; 
 body .despesa-valor { flex: 0 0 auto; min-width: 4.9rem; text-align: left; white-space: nowrap; }
 body .chip { padding: .02rem .42rem; line-height: 1.2; }
 body .despesa-conteudo { column-gap: .35rem; }
+
+/* Celular: melhor uso da largura nas listas — o grupo fica um pouco mais largo
+   (sangra um pouco nas laterais), os lançamentos começam mais à esquerda e vão
+   mais à direita, e lápis/lixeira ficam mais colados. A barra "Criação" mora no
+   mesmo container dos cards, então continua alinhada com eles. */
+@media (max-width: 480px) {
+    body .rec-grupo { margin-left: -.45rem; margin-right: -.45rem; }
+    body .rec-grupo-itens { padding: 0 .25rem .4rem; }
+    body .despesa-item { padding: .3rem .4rem; gap: .25rem; }
+    body .despesa-actions { gap: .05rem; }
+    body .despesa-actions .btn-icon { min-width: 16px; width: 16px; }
+}
+
+/* Chip de categoria abreviado em telas estreitas */
+.chip .cat-curto { display: none; }
+@media (max-width: 480px) {
+    .chip .cat-full { display: none; }
+    .chip .cat-curto { display: inline; }
+}
