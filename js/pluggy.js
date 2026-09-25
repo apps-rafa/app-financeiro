@@ -668,6 +668,7 @@ function _atualizarTotalMesPluggy() {
 
 /** Botão "Sincronizar agora": busca transações novas em todas as contas. */
 async function sincronizarPluggyAgora() {
+    _telaLimpaPluggy = false; // sincronizar mostra tudo de novo, como está no banco
     const btn = document.getElementById('btnSincronizarPluggy');
     const textoOriginal = btn ? btn.textContent : '';
     if (btn) { btn.dataset.ocupado = '1'; btn.disabled = true; btn.textContent = 'Sincronizando...'; }
@@ -731,31 +732,16 @@ function onClickLimparRevisaoPluggy(e) {
     }, 3000);
 }
 
+/** Limpa só a TELA (volta à estaca zero visualmente): nada muda no banco, todo
+ *  lançamento mantém o status. Na próxima sincronização (ou ao reabrir o app)
+ *  tudo reaparece, cada item no grupo que o status dele no banco manda. */
+let _telaLimpaPluggy = false;
 async function limparFilaRevisaoPluggy(btn) {
     delete btn.dataset.armed;
     btn.classList.remove('armed');
-    const original = '🧹 Limpar';
-    btn.disabled = true;
-    try {
-        // Limpa a TELA: as pendentes são apagadas (o sync as traz de novo) e o
-        // histórico (confirmadas) fica oculto — segue no banco. As DESCARTADAS
-        // (X) nunca somem da página: continuam no grupo "Descartadas".
-        const { error } = await sb.from('transacoes_importadas').delete().eq('status', 'pendente');
-        if (error) throw error;
-        const { error: errOculta } = await sb.from('transacoes_importadas')
-            .update({ oculta: true }).eq('status', 'confirmada').eq('oculta', false);
-        if (errOculta) throw errOculta;
-        mostrarNotificacao('Fila de revisão limpa', 'sucesso');
-        // carregarRevisaoPluggy decide se o botão fica habilitado (só
-        // habilita se ainda sobrar algo pra limpar).
-        await carregarRevisaoPluggy();
-    } catch (e) {
-        console.error(e);
-        mostrarNotificacao('Erro ao limpar a fila', 'erro');
-        btn.disabled = false;
-    } finally {
-        btn.textContent = original;
-    }
+    btn.textContent = '🧹 Limpar';
+    _telaLimpaPluggy = true;
+    await carregarRevisaoPluggy();
 }
 
 /** Marca cada item pendente como possível duplicata — mesmo tipo, mesmo
@@ -823,6 +809,15 @@ async function carregarRevisaoPluggy() {
     const container = document.getElementById('pluggyRevisaoLista');
     if (!container) return;
 
+    if (_telaLimpaPluggy) {
+        const btnL = document.getElementById('btnLimparRevisaoPluggy');
+        if (btnL) btnL.disabled = true;
+        container.innerHTML = '<p class="empty-message">Tela limpa — toque em "Sincronizar agora" pra ver tudo de novo</p>';
+        container.onclick = null;
+        container.onchange = null;
+        return;
+    }
+
     const [{ data, error }, { data: historico }, { data: contasRows }, { data: jaIgnoradasBrutas }] = await Promise.all([
         sb.from('transacoes_importadas').select('*').eq('status', 'pendente').order('data', { ascending: false }),
         // Junta com a transação de verdade — categoria/descrição podem ter
@@ -830,7 +825,7 @@ async function carregarRevisaoPluggy() {
         // Pluggy sugeriu originalmente (categoria_sugerida fica "congelada").
         sb.from('transacoes_importadas')
             .select('*, transacao:transacao_id(id, data, valor, tipo, categoria, descricao, metodo, competencia)')
-            .eq('status', 'confirmada').eq('oculta', false).order('criado_em', { ascending: false }).limit(20),
+            .eq('status', 'confirmada').order('criado_em', { ascending: false }).limit(20),
         sb.from('pluggy_contas').select('*'),
         // Marcadas com X numa revisão anterior (status 'ignorada' — ficam
         // fora da fila 'pendente' pra sempre). Sem isso, sincronizar de novo
