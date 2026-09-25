@@ -1239,8 +1239,8 @@ summary [role="button"] { font-family: Arial; text-align: center; }
 .import-csv-tabela--compacta th,
 .import-csv-tabela--compacta td { width: auto; white-space: normal; overflow-wrap: anywhere; }
 .import-csv-tabela--compacta th:nth-child(1), .import-csv-tabela--compacta td:nth-child(1) { width: 2.2rem; }
-.import-csv-tabela--compacta th:nth-child(2), .import-csv-tabela--compacta td:nth-child(2) { width: 2.5rem; }
-.import-csv-tabela--compacta th:nth-child(3), .import-csv-tabela--compacta td:nth-child(3) { width: 4rem; }
+.import-csv-tabela--compacta th:nth-child(2), .import-csv-tabela--compacta td:nth-child(2) { width: 3.6rem; white-space: nowrap; }
+.import-csv-tabela--compacta th:nth-child(3), .import-csv-tabela--compacta td:nth-child(3) { width: 6rem; white-space: nowrap; }
 .import-csv-tabela--compacta th:nth-child(4), .import-csv-tabela--compacta td:nth-child(4) { width: 26%; }
 .import-csv-tabela--compacta select { width: 100%; max-width: none; }
 .import-csv-tabela--compacta .import-desc-input { min-width: 0; }
