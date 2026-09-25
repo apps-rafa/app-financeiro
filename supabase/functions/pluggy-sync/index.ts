@@ -299,17 +299,29 @@ Deno.serve(async (req: Request) => {
       return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
     }
 
-    // Faturas do banco de TODOS os cartões ativos — independe do toggle
-    // "sincronizar" (que só controla a fila de revisão de transações).
+    // Saldo de TODAS as contas ativas e faturas de TODOS os cartões — independe
+    // do toggle "sincronizar" (que só controla a fila de revisão de
+    // transações). Sem isto, uma conta com o toggle desligado ficava pra sempre
+    // com o saldo de quando foi conectada.
     try {
-      const { data: cartoes } = await supabaseClient
-        .from("pluggy_contas").select("id, account_id").eq("tipo_conta", "CREDIT").in("status", ["ativo", "erro"]);
-      if (cartoes?.length) {
+      const { data: todasContas } = await supabaseClient
+        .from("pluggy_contas").select("id, account_id, tipo_conta").in("status", ["ativo", "erro"]);
+      if (todasContas?.length) {
         const chave = await getPluggyApiKey();
-        for (const c of cartoes) await guardarFaturasBanco(supabaseClient, user.id, c.id, c.account_id, chave);
+        for (const c of todasContas) {
+          try {
+            const acc = await pluggyGet(`/accounts/${c.account_id}`, chave);
+            if (typeof acc?.balance === "number") {
+              await supabaseClient.from("pluggy_contas").update({ saldo: acc.balance }).eq("id", c.id);
+            }
+          } catch (e) {
+            console.error(`Saldo indisponível (conta ${c.id}):`, e);
+          }
+          if (c.tipo_conta === "CREDIT") await guardarFaturasBanco(supabaseClient, user.id, c.id, c.account_id, chave);
+        }
       }
     } catch (e) {
-      console.error("Faturas do banco:", e);
+      console.error("Saldos/faturas do banco:", e);
     }
 
     // Inclui contas com erro também — um sync manual deve tentar de novo,

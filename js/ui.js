@@ -1077,8 +1077,10 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
             metaChip = `<span class="chip chip--neutro">${trans.formaPagamento}</span>`;
         }
     }
+    // Nome longo de categoria: no celular mostra a versão abreviada (o nome
+    // completo continua no title) pra o chip não empurrar a linha pra baixo.
     const catChip = (!opts.semCategoriaChip && trans.categoria)
-        ? chip(cor(cores.categoria, trans.categoria), trans.categoria) : '';
+        ? chip(cor(cores.categoria, trans.categoria), _htmlNomeCategoriaChip(trans.categoria)) : '';
     const descTxt = trans.descricao
         ? `<span class="despesa-desc">${trans.descricao}</span>` : '';
 
@@ -1988,4 +1990,29 @@ function recalcularCompetencia() {
     const metodo = typeof metodoSelecionado === 'function' ? metodoSelecionado() : null;
     const fech = metodo && metodo.metodoKind === 'Crédito' ? metodo.diaFechamento : null;
     campo.value = mesDeCompetencia(competenciaDe(iso, fech));
+}
+
+
+// Abreviações de palavras comuns em nomes de categoria; qualquer outra palavra
+// com mais de 8 letras vira as 5 primeiras + ".".
+const _ABREV_CATEGORIA = {
+    transporte: 'Transp.', alimentação: 'Aliment.', serviços: 'Serv.', educação: 'Educ.',
+    manutenção: 'Manut.', assinaturas: 'Assin.', restaurante: 'Rest.', farmácia: 'Farm.',
+    eletrônicos: 'Eletr.', alcoólica: 'alc.', alcoólicas: 'alc.', supermercado: 'Superm.',
+    entretenimento: 'Entret.', vestuário: 'Vest.', investimentos: 'Invest.', combustível: 'Comb.',
+    telecomunicações: 'Telecom.', comunicação: 'Comun.', estacionamento: 'Estac.',
+};
+function abreviarCategoria(nome) {
+    return String(nome).split(' ').map(p => {
+        const ab = _ABREV_CATEGORIA[p.toLowerCase()];
+        if (ab) return p[0] === p[0].toUpperCase() ? ab[0].toUpperCase() + ab.slice(1) : ab;
+        return p.length > 8 ? p.slice(0, 5) + '.' : p;
+    }).join(' ');
+}
+/** Chip de categoria: nome inteiro + versão abreviada (só nomes > 13 letras);
+ *  o CSS mostra a abreviada em telas estreitas (ver .cat-curto em theme.css). */
+function _htmlNomeCategoriaChip(nome) {
+    const curto = abreviarCategoria(nome);
+    if (String(nome).length <= 13 || curto === nome) return nome;
+    return `<span class="cat-full">${nome}</span><span class="cat-curto">${curto}</span>`;
 }
