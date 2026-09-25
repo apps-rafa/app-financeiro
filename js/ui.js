@@ -700,7 +700,7 @@ function atualizarBuscaGlobal() {
     const despesas = _filtrarPorBusca(estadoApp.transacoes.saidas, termo).filter(_transacaoRealizada).sort(_porDataDesc);
     const proximosItens = _itensProximosBusca(termo);
     const pendentesHTML = renderPendentesProximas({}, termo);
-    const faturasHTML = renderFaturasCartao(null, termo, true);
+    const faturasHTML = renderFaturasCartao(box, termo, true);
 
     const grupo = (nome, titulo, cor, qtd, total, corpo) => !qtd ? '' : `
     <details class="rec-grupo" data-nome="${nome}" style="--cor-rec:${cor}" ${abertos[nome] !== false ? 'open' : ''}>
@@ -723,6 +723,7 @@ function atualizarBuscaGlobal() {
 
     const linkAmpla = `<button type="button" class="busca-ampla-btn" data-busca-ampla>🔎 Buscar em todos os meses <small>dica: &gt;100 &lt;50 100-200 2026 jan</small></button>`;
     box.innerHTML = linkAmpla + html;
+    box.querySelectorAll('.subgrupo-organizador').forEach(_ajustarLabelsFiltro);
     // Cliques: busca em todos os meses, itens da lixeira (restaurar/apagar) ou o resto (editar, excluir, faturas...)
     box.onclick = e => {
         if (e.target.closest('[data-busca-ampla]')) return buscarAmpla(termo);
@@ -1528,6 +1529,8 @@ async function atualizarGrafico() {
  *  faturas de cartão (data-submodo/data-submodo-icone) antes de cair no
  *  handler padrão (editar/excluir). */
 function _onCliqueProximas(e) {
+    // Dentro da busca, refaz a busca (e não a aba Próximos)
+    const refazer = () => (e.target.closest('#resultadoBusca') ? atualizarBuscaGlobal() : atualizarProximasTransacoes());
     const subBtn = e.target.closest('[data-submodo]');
     if (subBtn) {
         e.preventDefault();
@@ -1537,7 +1540,7 @@ function _onCliqueProximas(e) {
         _setSubModoGrupo('saida', 'metodo', grupoChave, novo);
         const det = subBtn.closest('details.fatura-item');
         if (det) det.open = true;
-        atualizarProximasTransacoes();
+        refazer();
         return;
     }
     const subIcone = e.target.closest('[data-submodo-icone]');
@@ -1545,7 +1548,7 @@ function _onCliqueProximas(e) {
         e.preventDefault();
         const grupoChave = subIcone.closest('[data-grupo-chave]').dataset.grupoChave;
         _setSubModoGrupo('saida', 'metodo', grupoChave, 'cronologica');
-        atualizarProximasTransacoes();
+        refazer();
         return;
     }
     const ordemBtn = e.target.closest('[data-ordem-criacao-toggle]');
@@ -1555,7 +1558,7 @@ function _onCliqueProximas(e) {
         _ordemCriacaoGrupo[chave] = !_ordemCriacaoGrupo[chave];
         const det = ordemBtn.closest('details.subgrupo, details.fatura-item, details.rec-grupo');
         if (det) det.open = true;
-        atualizarProximasTransacoes();
+        refazer();
         return;
     }
     onListaTransacaoClick(e);
