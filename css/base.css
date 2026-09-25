@@ -123,11 +123,9 @@ html {
    forms.css:#metodoBloco), que abrem mão dessa proteção de propósito —
    são caixas pequenas por natureza, 16px ficava apertado/truncando texto
    ("Crédito Brad...", só "Out" cabendo). */
-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
-select,
-textarea {
-    font-size: max(16px, 1em) !important;
-}
+/* (sem piso de 16px nos campos: o zoom automático do iOS ao focar é evitado
+   por maximum-scale=1 no <meta viewport> do index.html — o piso inflava
+   selects/inputs de tabelas e formulários compactos.) */
 
 /* Scrollbar personalizada */
 ::-webkit-scrollbar {

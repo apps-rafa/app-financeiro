@@ -817,16 +817,16 @@ async function carregarRevisaoPluggy() {
         htmlLinha: gerarHTMLImportadaPluggy,
     });
 
+    // Histórico no mesmo padrão dos outros grupos: subgrupos Despesas/Receitas,
+    // mesma tabela compacta (ações → Data/Valor/Categoria/Descrição).
     const tabelaHistorico = !historicoValido.length ? '' : _grupoColapsavelConciliar({
         id: 'pluggy-historico', abertos: _abertosPluggy, padraoAberto: false,
         titulo: `📜 Já lançados (histórico) (${historicoValido.length})`,
-        corpo: `
-    <div class="import-csv-tabela-wrap import-csv-tabela-wrap--solta">
-        <table class="import-csv-tabela">
-            <thead><tr><th>Data</th><th>Valor</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th></th></tr></thead>
-            <tbody>${historicoValido.map(gerarHTMLHistoricoPluggy).join('')}</tbody>
-        </table>
-    </div>`
+        corpo: htmlSubgruposRevisao({
+            idPai: 'pluggy-historico', abertos: _abertosPluggy, itens: historicoValido,
+            tipoDe: i => i.transacao.tipo, colunas: ['Data', 'Valor', 'Categoria', 'Descrição'],
+            htmlLinha: gerarHTMLHistoricoPluggy,
+        }),
     });
 
     // Com mais de uma conta na fila, cada conta vira um grupo (Nubank: Crédito,
@@ -933,24 +933,13 @@ function gerarHTMLImportadaPluggy(item) {
  *  editar/excluir o lançamento direto daqui. */
 function gerarHTMLHistoricoPluggy(item) {
     const t = item.transacao;
-    if (!t) {
-        // Lançamento apagado depois de importado — a linha da fila continua
-        // só pra registro; sem transação de verdade não tem o que mostrar.
-        return `<tr><td colspan="6">Lançamento apagado — ${item.descricao_banco || 'sem descrição'}</td></tr>`;
-    }
-    const sinal = t.tipo === 'entradas' ? '+' : '-';
-    return `
-    <tr data-historico-id="${item.id}">
-        <td>${dataCurtaRevisao(t.data)}</td>
-        <td>${sinal} ${formatarMoeda(t.valor)}</td>
-        <td><span class="chip-tipo chip-tipo--${t.tipo}">${t.tipo === 'entradas' ? 'Receita' : 'Despesa'}</span></td>
-        <td>${t.categoria || 'Sem categoria'}</td>
-        <td class="import-csv-desc" title="${t.descricao || ''}">${t.descricao || ''}</td>
-        <td>
-            <button class="btn-icon" data-act="editar-historico" data-id="${item.id}" title="Editar">✏️</button>
-            <button class="btn-icon btn-danger" data-act="excluir-historico" data-id="${item.id}" title="Excluir">🗑️</button>
-        </td>
-    </tr>`;
+    return htmlLinhaRevisao({
+        atributos: `data-historico-id="${item.id}"`,
+        celulaAcao: `<button class="btn-icon" data-act="editar-historico" data-id="${item.id}" title="Editar">✏️</button><button class="btn-icon btn-danger" data-act="excluir-historico" data-id="${item.id}" title="Excluir">🗑️</button>`,
+        dataISO: t.data, valor: t.valor,
+        celulasMeio: `<td>${escAttrRevisao(t.categoria || 'Sem categoria')}</td>`,
+        descricao: t.descricao || '',
+    });
 }
 
 /** Leva pro mês da transação e abre o formulário de edição — mesma tela
