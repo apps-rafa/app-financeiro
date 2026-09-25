@@ -121,6 +121,7 @@ async function carregarAbaMenus() {
           <dt>/credito</dt><dd>Gasto do mês em cada cartão de crédito e o total.</dd>
           <dt>/pix</dt><dd>Total gasto no PIX no mês: quanto já foi pago e quanto ainda resta.</dd>
           <dt>/ultimos</dt><dd>Os 5 últimos lançamentos feitos no app.</dd>
+          <dt>/lancamento</dt><dd>Explica como lançar por mensagem.</dd>
         </dl>
         <h3 class="dados-selecao-titulo">Lançar por mensagem</h3>
         <p class="menu-hint">
