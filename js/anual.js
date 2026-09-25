@@ -200,8 +200,8 @@ function _renderVisaoAnual() {
 
     const foco = estadoAnual.foco;
     const dim = i => (foco !== null && i !== foco ? ' dim' : '') + (foco === i ? ' foco' : '');
-    // Com um mês em foco, as linhas passam a vir ordenadas pelo maior valor DAQUELE mês
-    const linhasOrd = foco === null ? linhas : [...linhas].sort((a, b) => (a.nome.startsWith('(−)') ? 1 : 0) - (b.nome.startsWith('(−)') ? 1 : 0) || b.meses[foco] - a.meses[foco]);
+    // A ordem das linhas é sempre a do ano (maior total primeiro), com ou sem mês em foco
+    const linhasOrd = linhas;
 
     const maxCel = Math.max(1, ...linhas.flatMap(l => l.meses.map(x => Math.abs(x))));
     const corHeat = tipo === 'entradas' ? 'var(--receita-text)' : 'var(--despesa-text)';
