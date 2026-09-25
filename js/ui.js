@@ -1223,6 +1223,7 @@ function iniciarEdicaoTransacao(trans, tipoTransacao) {
     estadoApp.editandoId = trans.id;
     const buscaEl = document.getElementById('buscaGlobal');
     if (buscaEl && buscaEl.value) {
+        estadoApp.buscaAntesEdicao = buscaEl.value; // volta quando a edição fechar
         buscaEl.value = '';
         document.getElementById('buscaLimpar')?.setAttribute('hidden', '');
         atualizarBuscaGlobal();
@@ -1269,6 +1270,16 @@ function iniciarEdicaoTransacao(trans, tipoTransacao) {
 /** Esconde a busca enquanto um lançamento está sendo editado (só o form aparece). */
 function sincronizarModoEdicao() {
     document.body.classList.toggle('editando-lancamento', !!estadoApp.editandoId);
+    // Fechou a edição: devolve a busca (e o resultado) de onde ela estava
+    if (!estadoApp.editandoId && estadoApp.buscaAntesEdicao) {
+        const buscaEl = document.getElementById('buscaGlobal');
+        if (buscaEl) {
+            buscaEl.value = estadoApp.buscaAntesEdicao;
+            document.getElementById('buscaLimpar')?.removeAttribute('hidden');
+            atualizarBuscaGlobal();
+        }
+        estadoApp.buscaAntesEdicao = null;
+    }
 }
 
 function cancelarEdicaoTransacao(voltarParaOrigem = true) {
