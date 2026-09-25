@@ -112,6 +112,10 @@ async function carregarAbaMenus() {
         <h3 class="dados-selecao-titulo">Telegram</h3>
         <div id="pluggyTelegramBox" class="pluggy-telegram"></div>
 
+        <h3 class="dados-selecao-titulo">Lançamentos recorrentes</h3>
+        <p class="menu-hint">Todo mês, no dia marcado, o bot te lembra e você confirma com um toque. Crie tocando em 🔁 num lançamento.</p>
+        <div id="recorrentesLista" class="recorrentes-lista"></div>
+
         <h3 class="dados-selecao-titulo">Comandos do bot</h3>
         <p class="menu-hint">Depois de vincular, mande estes comandos no chat do bot:</p>
         <dl class="tg-comandos">
@@ -122,6 +126,7 @@ async function carregarAbaMenus() {
           <dt>/pix</dt><dd>Total gasto no PIX no mês: quanto já foi pago e quanto ainda resta.</dd>
           <dt>/ultimos</dt><dd>Os 5 últimos lançamentos feitos no app.</dd>
           <dt>/lancamento</dt><dd>Explica como lançar por mensagem.</dd>
+          <dt>/backup</dt><dd>Manda agora um arquivo de backup dos seus dados (o automático sai todo domingo).</dd>
         </dl>
         <h3 class="dados-selecao-titulo">Lançar por mensagem</h3>
         <p class="menu-hint">
@@ -203,6 +208,7 @@ async function carregarAbaMenus() {
   }
 
   if (typeof iniciarPluggy === 'function') iniciarPluggy();
+  if (typeof carregarRecorrentes === 'function') carregarRecorrentes();
   if (typeof iniciarDados === 'function') iniciarDados();
 }
 
