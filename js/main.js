@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Carregar dados iniciais
     console.log('📊 Carregando dados...');
     await carregarDados();
+    if (typeof carregarSaldoContas === 'function') carregarSaldoContas();
 
     // Atualizar UI
     atualizarUI();
