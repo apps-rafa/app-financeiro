@@ -36,6 +36,28 @@ function ehMovimentoInterno(operationType: string | null | undefined): boolean {
     || op === "TRANSFERENCIA_SALDO_RESERVADO" || op === "PAGAMENTO_FATURA";
 }
 
+/** Guarda as faturas do banco (pluggy_faturas) de um cartão — usadas no app pra
+ *  conferir o total lançado com o total da fatura. Não derruba o sync. */
+async function guardarFaturasBanco(
+  // deno-lint-ignore no-explicit-any
+  cliente: any, userId: string, contaId: number, accountId: string, apiKey: string,
+): Promise<void> {
+  try {
+    const bills = await pluggyGet(`/bills?accountId=${accountId}`, apiKey);
+    const faturas = (bills.results ?? []).filter((b: { id?: string }) => b?.id).map((b: Record<string, unknown>) => ({
+      user_id: userId, conta_id: contaId, bill_id: b.id,
+      vencimento: b.dueDate ? String(b.dueDate).slice(0, 10) : null,
+      fechamento: b.billClosingDate ? String(b.billClosingDate).slice(0, 10) : null,
+      total: typeof b.totalAmount === "number" ? b.totalAmount : null,
+      minimo: typeof b.minimumPaymentAmount === "number" ? b.minimumPaymentAmount : null,
+      atualizado_em: new Date().toISOString(),
+    }));
+    if (faturas.length) await cliente.from("pluggy_faturas").upsert(faturas, { onConflict: "user_id,bill_id" });
+  } catch (e) {
+    console.error(`Faturas indisponíveis (conta ${contaId}):`, e);
+  }
+}
+
 async function getPluggyApiKey(): Promise<string> {
   const clientId = Deno.env.get("PLUGGY_CLIENT_ID");
   const clientSecret = Deno.env.get("PLUGGY_CLIENT_SECRET");
@@ -275,6 +297,19 @@ Deno.serve(async (req: Request) => {
       const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(semente));
       const hex = Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
       return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+    }
+
+    // Faturas do banco de TODOS os cartões ativos — independe do toggle
+    // "sincronizar" (que só controla a fila de revisão de transações).
+    try {
+      const { data: cartoes } = await supabaseClient
+        .from("pluggy_contas").select("id, account_id").eq("tipo_conta", "CREDIT").in("status", ["ativo", "erro"]);
+      if (cartoes?.length) {
+        const chave = await getPluggyApiKey();
+        for (const c of cartoes) await guardarFaturasBanco(supabaseClient, user.id, c.id, c.account_id, chave);
+      }
+    } catch (e) {
+      console.error("Faturas do banco:", e);
     }
 
     // Inclui contas com erro também — um sync manual deve tentar de novo,

@@ -773,3 +773,12 @@
     .chip .met-tier-media { display: none; }
     .chip .met-tier-curto { display: inline; }
 }
+
+/* Conferência da fatura do cartão com a do banco (Open Finance) */
+.fatura-confere { font-size: .7rem; font-weight: 700; flex: none; }
+.fatura-confere.ok { color: var(--receita-text); }
+.fatura-confere.dif { color: #f59e0b; }
+.fatura-banco { font-size: .72rem; padding: .1rem 0 .3rem; color: var(--text-muted); }
+.fatura-banco b { color: var(--text); }
+.fatura-banco.ok { color: var(--receita-text); }
+.fatura-banco.dif { color: #f59e0b; }

@@ -1575,15 +1575,35 @@ function renderFaturasCartao(container, termo = '', soNaoRealizadas = false) {
         }
         const organizadorHTML = _renderOrganizadorInline(TIPO_UI_FATURA, 'metodo', rot, true);
 
+        // Conferência com a fatura do banco (Open Finance): só fora da busca (lá o
+        // total é parcial) e quando a Pluggy já trouxe a fatura desse mês.
+        let confereBadge = '', confereLinha = '';
+        if (!termo) {
+            const mesISO = `${mes.getFullYear()}-${String(mes.getMonth() + 1).padStart(2, '0')}`;
+            const banco = (estadoApp.faturasBanco || []).find(f => f.metodoId === m.id && String(f.vencimento).slice(0, 7) === mesISO);
+            if (banco) {
+                const dif = Math.round((total - banco.total) * 100) / 100;
+                const vB = String(banco.vencimento).slice(0, 10).split('-').reverse().slice(0, 2).join('/');
+                const bate = Math.abs(dif) < 0.005;
+                confereBadge = bate
+                    ? '<span class="fatura-confere ok" title="Confere com a fatura do banco">✓</span>'
+                    : `<span class="fatura-confere dif" title="Diferença de ${formatarMoeda(Math.abs(dif))} em relação à fatura do banco">⚠</span>`;
+                confereLinha = `<div class="fatura-banco ${bate ? 'ok' : 'dif'}">🏦 Fatura do banco: <b>${formatarMoeda(banco.total)}</b> (vcto. ${vB}) — ${bate
+                    ? '✓ confere com o lançado'
+                    : `⚠ ${dif > 0 ? 'lançado a mais' : 'falta lançar'}: <b>${formatarMoeda(Math.abs(dif))}</b>`}</div>`;
+            }
+        }
+
         return `
         <details class="fatura-item" data-nome="${rot.replace(/"/g, '&quot;')}" style="--cor-cartao:${cor}" ${abertos[rot] ? 'open' : ''}>
           <summary>
             <span class="fatura-nome">${rot}</span>
             <span class="fatura-espaco"></span>
             <span class="fatura-venc">vcto. ${venc}</span>
+            ${confereBadge}
             <span class="fatura-total">${formatarMoeda(total)}</span>
           </summary>
-          <div class="fatura-itens">${_barraGrupo(_renderOrdemCriacaoToggle(chaveFatura) + organizadorHTML)}${itensHTML}</div>
+          <div class="fatura-itens">${confereLinha}${_barraGrupo(_renderOrdemCriacaoToggle(chaveFatura) + organizadorHTML)}${itensHTML}</div>
         </details>`;
     }).filter(Boolean).join('');
 
