@@ -195,7 +195,7 @@ function metodoSelecionado() {
  * Calcula resumo do mês
  */
 function calcularResumoMes() {
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeISO(); // data local; <= hoje já é realizado
     const r2 = n => parseFloat(n.toFixed(2));
 
     // Métodos de crédito: o gasto só "realiza" (sai da fatura em aberto) depois
@@ -216,11 +216,11 @@ function calcularResumoMes() {
             if (cartao) {
                 const venc = (cartao.diaVencimento && t.competencia)
                     ? dataVencimento(t.competencia, cartao.diaVencimento) : null;
-                realizado = (venc && venc < hoje) ? tot : 0;
+                realizado = (venc && venc <= hoje) ? tot : 0;
             } else if (t.tipoRecorrencia === 'Semanal' && t.valorMes != null) {
                 realizado = t.valor || 0;                 // X (sessões já ocorridas)
             } else {
-                realizado = (!t.pendente && String(t.data).slice(0, 10) < hoje) ? tot : 0;
+                realizado = (!t.pendente && String(t.data).slice(0, 10) <= hoje) ? tot : 0;
             }
             total += tot;
             atual += realizado;

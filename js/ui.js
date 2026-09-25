@@ -769,13 +769,15 @@ function _transacaoRealizada(t) {
     const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
     const cartao = metodos.find(m => m.metodoKind === 'Crédito'
         && (typeof rotuloMetodo === 'function' ? rotuloMetodo(m) : m.nome) === t.metodo);
-    const hoje = new Date().toISOString().slice(0, 10);
+    // Hoje (data local) já conta como realizado: o que tem data <= hoje sai de
+    // "Próximos" e fica só em Despesas/Receitas.
+    const hoje = hojeISO();
     if (cartao) {
         const venc = (cartao.diaVencimento && t.competencia)
             ? dataVencimento(t.competencia, cartao.diaVencimento) : null;
-        return !!(venc && venc < hoje);
+        return !!(venc && venc <= hoje);
     }
-    return !t.pendente && String(t.data).slice(0, 10) < hoje;
+    return !t.pendente && String(t.data).slice(0, 10) <= hoje;
 }
 
 /** "Cronológica": divide em 2 grupos (Atual / A receber ou A pagar), com
