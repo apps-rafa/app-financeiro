@@ -59,6 +59,77 @@ async function guardarFaturasBanco(
   }
 }
 
+/** Mesmo rótulo do formulário do app (js/menus-api.js:rotuloMetodo). */
+function rotuloMetodo(m: { nome: string; metodo_kind: string | null; banco: string | null }): string {
+  if (!m.metodo_kind || m.metodo_kind === "Dinheiro") return m.nome;
+  return m.banco ? `${m.metodo_kind} ${m.banco}` : m.metodo_kind;
+}
+
+/** Concilia, ANTES de avisar no Telegram, as transações novas do banco com
+ *  lançamentos que o usuário já fez (à mão ou pelo bot): mesmo tipo e valor,
+ *  data a até 2 dias e, quando os dois lados têm forma de pgto., a mesma. Um
+ *  pra um (o mesmo lançamento nunca concilia 2 transações do banco). A linha
+ *  do banco vira 'confirmada' ligada a ele — mesma conciliação que o app faz na
+ *  revisão (js/pluggy.js:_marcarDuplicatasPluggy). Devolve os ids conciliados
+ *  (não devem gerar aviso). Falhar aqui só significa avisar como antes. */
+async function conciliarComExistentes(
+  // deno-lint-ignore no-explicit-any
+  cliente: any,
+  userId: string,
+  itens: { id: number; tipo: string; valor: number; data: string; metodo_sugerido: number | null }[],
+): Promise<Set<number>> {
+  const conciliados = new Set<number>();
+  if (!itens.length) return conciliados;
+  try {
+    const dia = (iso: string) => Date.parse(`${String(iso).slice(0, 10)}T00:00:00Z`);
+    const diffDias = (a: string, b: string) => Math.abs(dia(a) - dia(b)) / 86400000;
+    const somaDias = (iso: string, d: number) => new Date(dia(iso) + d * 86400000).toISOString().slice(0, 10);
+    const datas = itens.map((i) => String(i.data).slice(0, 10)).sort();
+
+    const { data: existentes } = await cliente.from("transacoes")
+      .select("id, tipo, valor, data, metodo, origem")
+      .eq("user_id", userId)
+      .gte("data", somaDias(datas[0], -2)).lte("data", somaDias(datas[datas.length - 1], 2));
+    const candidatos = (existentes ?? []).filter((t: { origem: string | null }) => t.origem !== "pluggy");
+    if (!candidatos.length) return conciliados;
+
+    const { data: ligados } = await cliente.from("transacoes_importadas")
+      .select("transacao_id").eq("user_id", userId)
+      .in("transacao_id", candidatos.map((c: { id: number }) => c.id));
+    const jaLigados = new Set((ligados ?? []).map((l: { transacao_id: number }) => l.transacao_id));
+
+    const metodoIds = [...new Set(itens.map((i) => i.metodo_sugerido).filter((x): x is number => x != null))];
+    const rotulos = new Map<number, string>();
+    if (metodoIds.length) {
+      const { data: ms } = await cliente.from("menu_itens").select("id, nome, metodo_kind, banco").in("id", metodoIds);
+      for (const m of ms ?? []) rotulos.set(m.id, rotuloMetodo(m));
+    }
+
+    const usados = new Set<number>();
+    const ordenados = [...itens].sort((a, b) => String(a.data).localeCompare(String(b.data)) || a.id - b.id);
+    for (const item of ordenados) {
+      const rot = item.metodo_sugerido != null ? rotulos.get(item.metodo_sugerido) ?? null : null;
+      const cands = candidatos
+        .filter((t: { id: number; tipo: string; valor: string | number; data: string; metodo: string | null }) =>
+          !usados.has(t.id) && !jaLigados.has(t.id) && t.tipo === item.tipo &&
+          Math.abs(Math.abs(Number(t.valor)) - Math.abs(Number(item.valor))) < 0.005 &&
+          diffDias(t.data, item.data) <= 2 && (!rot || !t.metodo || t.metodo === rot))
+        .sort((a: { data: string; metodo: string | null }, b: { data: string; metodo: string | null }) =>
+          ((rot && b.metodo === rot) ? 1 : 0) - ((rot && a.metodo === rot) ? 1 : 0) ||
+          diffDias(a.data, item.data) - diffDias(b.data, item.data));
+      if (!cands.length) continue;
+      const { error } = await cliente.from("transacoes_importadas")
+        .update({ status: "confirmada", transacao_id: cands[0].id }).eq("id", item.id);
+      if (error) { console.error("Conciliação:", error); continue; }
+      usados.add(cands[0].id);
+      conciliados.add(item.id);
+    }
+  } catch (e) {
+    console.error("Conciliação automática indisponível:", e);
+  }
+  return conciliados;
+}
+
 async function getPluggyApiKey(): Promise<string> {
   const clientId = Deno.env.get("PLUGGY_CLIENT_ID");
   const clientSecret = Deno.env.get("PLUGGY_CLIENT_SECRET");
@@ -332,8 +403,12 @@ Deno.serve(async (req: Request) => {
             .upsert(linhas, { onConflict: "user_id,pluggy_transaction_id", ignoreDuplicates: true })
             .select("id, tipo, valor, data, descricao_banco, categoria_sugerida, metodo_sugerido, status");
           if (upsertError) throw upsertError;
-          novasNoTotal += inseridas?.length ?? 0;
-          await notificarTelegramNovas(supabaseAdmin, conta.user_id, (inseridas ?? []).filter((i) => i.status === "pendente"));
+          const pendentes = (inseridas ?? []).filter((i) => i.status === "pendente");
+          // Já existe lançamento igual (manual/bot)? Concilia e não avisa.
+          const conciliados = await conciliarComExistentes(supabaseAdmin, conta.user_id, pendentes);
+          const paraAvisar = pendentes.filter((i) => !conciliados.has(i.id));
+          novasNoTotal += paraAvisar.length;
+          await notificarTelegramNovas(supabaseAdmin, conta.user_id, paraAvisar);
         }
 
         if (conta.tipo_conta === "CREDIT") await guardarFaturasBanco(supabaseAdmin, conta.user_id, conta.id, conta.account_id, apiKey);
