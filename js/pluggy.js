@@ -181,6 +181,33 @@ async function carregarSaldoContas() {
     if (typeof atualizarResumo === 'function') atualizarResumo();
 }
 
+/** UUID determinístico do parcelamento: a mesma compra parcelada (mesma conta,
+ *  descrição sem o "k/n", nº de parcelas e valor) cai sempre no MESMO grupo,
+ *  então as parcelas dos meses seguintes se juntam a ele sozinhas. */
+async function _grupoIdParcelamentoPluggy(item) {
+    const base = String(item.descricao_banco || '').toLowerCase()
+        .replace(/\d{1,2}\s*\/\s*\d{1,2}/g, '').replace(/\s+/g, ' ').trim();
+    const semente = `parcelamento|${item.conta_id}|${base}|${item.parcelas_total}|${Number(item.valor).toFixed(2)}`;
+    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(semente));
+    const hex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
+
+/** Importa UMA parcela (k de n) que o banco trouxe, já dentro do parcelamento
+ *  da compra — só essa linha (as outras chegam nos meses seguintes, cada uma
+ *  na sua fatura) — com o chip "k/n" e o total da compra. */
+async function _adicionarParcelaPluggyAPI(dados, item) {
+    const n = item.parcelas_total, k = item.parcela_num;
+    const registro = montarRegistro({ ...dados, tipoRecorrencia: 'Parcelada' });
+    registro.grupo_id = await _grupoIdParcelamentoPluggy(item);
+    registro.parcelas_total = n;
+    registro.parcela_num = k;
+    registro.valor_total = Math.round(Number(item.valor) * n * 100) / 100;
+    const { data, error } = await sb.from('transacoes').insert(registro).select().single();
+    if (error) throw error;
+    return mapearTransacao(data);
+}
+
 /** Ids dos lançamentos (manuais ou do bot) já conciliados com uma transação do
  *  banco — ganham o selo 🏦 nas listas. Os que vieram do próprio Pluggy não
  *  precisam (são do banco por definição). */
@@ -974,7 +1001,7 @@ function gerarHTMLImportadaPluggy(item) {
     ).join('');
 
     return htmlLinhaRevisao({
-        atributos: `data-importada-id="${item.id}"`,
+        atributos: `data-importada-id="${item.id}"${item.parcelas_total > 1 ? ` title="Parcela ${item.parcela_num}/${item.parcelas_total} — entra como parcelamento`+'"' : ''}`,
         ignorada, revisar: !categoriaAoVivo,
         chaveX: item.id, dataISO: item.data, valor: item.valor,
         celulasMeio: `<td>
@@ -1126,7 +1153,7 @@ async function importarProntasPluggy() {
     if (barra) { barra.hidden = false; }
 
     const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
-    let ok = 0, falhas = 0;
+    let ok = 0, falhas = 0, parcelasN = 0;
     for (let i = 0; i < prontas.length; i++) {
         const item = prontas[i];
         if (barra) barra.textContent = `Importando ${i + 1} de ${prontas.length}...`;
@@ -1139,7 +1166,10 @@ async function importarProntasPluggy() {
             const competencia = item.competencia_fatura
                 ? String(item.competencia_fatura).slice(0, 10)
                 : competenciaDe(item.data, metodoObj && metodoObj.metodoKind === 'Crédito' ? metodoObj.diaFechamento : null);
-            const nova = await adicionarTransacaoAPI({
+            const ehParcela = item.parcelas_total > 1 && item.parcela_num >= 1 && item.tipo === 'saidas';
+            if (ehParcela) parcelasN++;
+            const adicionar = ehParcela ? dados => _adicionarParcelaPluggyAPI(dados, item) : adicionarTransacaoAPI;
+            const nova = await adicionar({
                 tipo: item.tipo,
                 data: item.data,
                 valor: item.valor,
@@ -1199,7 +1229,7 @@ async function importarProntasPluggy() {
         ? (conciliadasN ? ` · ${conciliadasN} conciliado${conciliadasN === 1 ? '' : 's'} 🏦` : '') + (descartadasN > 0 ? ` · ${descartadasN} descartado${descartadasN === 1 ? '' : 's'}` : '')
         : '';
     mostrarNotificacao(
-        falhas ? `${ok} importado(s), ${falhas} com erro` : `${ok} lançamento${ok === 1 ? '' : 's'} importado${ok === 1 ? '' : 's'}${descartadas}`,
+        falhas ? `${ok} importado(s), ${falhas} com erro` : `${ok} lançamento${ok === 1 ? '' : 's'} importado${ok === 1 ? '' : 's'}${parcelasN ? ` (${parcelasN} como parcela${parcelasN === 1 ? '' : 's'} de parcelamento)` : ''}${descartadas}`,
         falhas ? 'erro' : 'sucesso'
     );
     await carregarConciliadas();

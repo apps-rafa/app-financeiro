@@ -390,6 +390,10 @@ Deno.serve(async (req: Request) => {
               categoria_pluggy: categoriaTraduzida,
               categoria_sugerida: sugerirCategoria(categoriaTraduzida, descricaoBanco, tipo, categoriasApp ?? []),
               metodo_sugerido: conta.metodo_id ?? null,
+              parcela_num: Number(t.creditCardMetadata?.totalInstallments) > 1 && Number(t.creditCardMetadata?.installmentNumber) >= 1
+                ? Number(t.creditCardMetadata.installmentNumber) : null,
+              parcelas_total: Number(t.creditCardMetadata?.totalInstallments) > 1 && Number(t.creditCardMetadata?.installmentNumber) >= 1
+                ? Number(t.creditCardMetadata.totalInstallments) : null,
               status: ehMovimentoInterno(t.operationType) ? "ignorada" : "pendente",
               user_id: conta.user_id,
             });
