@@ -747,9 +747,7 @@
 }
 .grupo-barra .subgrupo-organizador { flex: 0 1 auto; }
 
-/* alinha a barra com o TÍTULO do grupo (depois da setinha) */
-.rec-grupo-itens > .grupo-barra { padding-left: 1.75rem; }
-@media (max-width: 480px) { .rec-grupo-itens > .grupo-barra { padding-left: 1.45rem; } }
+/* barra (Criação + filtro) alinhada à esquerda, na mesma borda dos lançamentos abaixo */
 
 /* Cabeçalho do grupo: título, chip com a contagem logo ao lado, depois o espaço
    e o total à direita (só a ordem visual — vale pra todo grupo/subgrupo). */
