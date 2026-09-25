@@ -589,11 +589,9 @@ body .pluggy-toolbar .pluggy-toolbar-btn { font-size: .78rem; font-weight: 600; 
     body .pluggy-toolbar .pluggy-total { flex: 1 1 100%; min-width: 0; }
 }
 
-/* Linha da fatura do banco e barra "Criação" alinhadas com o nome do cartão
-   (depois da setinha), não coladas na borda */
-body .fatura-itens > .fatura-banco,
-body .fatura-itens > .grupo-barra { padding-left: 2.2rem; }
+/* Linha da fatura do banco e barra "Criação"/filtro alinhadas com o texto dos
+   lançamentos (mesmo recuo do .despesa-item), em qualquer lugar onde apareçam */
+body .fatura-banco, body .grupo-barra { padding-left: .8rem; padding-right: .8rem; }
 @media (max-width: 480px) {
-    body .fatura-itens > .fatura-banco,
-    body .fatura-itens > .grupo-barra { padding-left: 1.8rem; }
+    body .fatura-banco, body .grupo-barra { padding-left: .65rem; padding-right: .65rem; }
 }
