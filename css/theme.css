@@ -604,3 +604,15 @@ body .pluggy-origem { margin: .2rem 0 .5rem; }
 .user-email { position: relative; top: 3px; }
 /* Botão da visão anual: mesma medida do botão de tema */
 body .header-info > #btnAnual { width: 1.9rem; padding: 0; border-radius: 999px; }
+
+/* Visão anual = página única: some tudo (calendário, saldo, dashboard, abas, busca) */
+body.modo-anual .month-bar,
+body.modo-anual .saldo-contas,
+body.modo-anual .saldo-contas-lista,
+body.modo-anual .mini-resumo,
+body.modo-anual .dashboard,
+body.modo-anual .tabs,
+body.modo-anual .busca-global,
+body.modo-anual #resultadoBusca { display: none !important; }
+/* ícone aceso quando a página está ativa */
+#btnAnual.active, body.modo-anual #btnAnual { background: var(--primary); color: var(--primary-contrast, #fff); border-color: var(--primary); box-shadow: 0 0 0 2px rgba(129,140,248,.45), 0 0 12px rgba(129,140,248,.55); }

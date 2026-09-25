@@ -36,3 +36,26 @@
 .anual-tabela tfoot .tot th, .anual-tabela tfoot .tot td { font-weight: 700; border-top: 2px solid var(--border-strong, var(--border)); }
 .anual-tabela tfoot .var td, .anual-tabela tfoot .var th { color: var(--text-muted); font-size: .68rem; }
 .anual-nota { margin: 0; }
+
+/* Respiro entre os blocos (nesta página os grupos não ficam colados) */
+.anual-container { gap: 1.2rem; padding-top: .4rem; }
+.anual-cards { gap: .7rem; }
+.anual-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+.anual-filtros select { min-width: 11rem; max-width: 100%; height: 2rem; }
+.anual-toggle { border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); border-radius: var(--radius-sm); padding: .35rem .7rem; font-size: .78rem; font-weight: 600; cursor: pointer; }
+.anual-toggle.active { background: var(--primary); border-color: var(--primary); color: var(--primary-contrast, #fff); }
+.anual-cards { grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); }
+.anual-card small { font-size: .65rem; color: var(--text-muted); }
+.anual-grafico-wrap { padding-bottom: .6rem; }
+.anual-legenda { margin: .3rem 0 0; font-size: .72rem; color: var(--text-muted); display: flex; align-items: center; gap: .3rem; }
+.anual-barra-ant { fill: var(--text-muted); opacity: .35; }
+.anual-barra-ant-lg, .anual-barra-atual-lg { display: inline-block; width: .7rem; height: .7rem; border-radius: 2px; background: var(--text-muted); opacity: .45; }
+.anual-barra-atual-lg { opacity: .9; background: var(--despesa-text); }
+.anual-barra-atual-lg.entradas { background: var(--receita-text); }
+.anual-tabela .ant { color: var(--text-muted); }
+.anual-tabela td.orc button { border: 1px dashed var(--border-strong, var(--border)); background: transparent; color: var(--text-muted); border-radius: 6px; font: inherit; padding: .05rem .4rem; cursor: pointer; }
+.anual-tabela td.orc button:hover { color: var(--text); border-color: var(--primary); }
+.anual-tabela td.cel.estourou { box-shadow: inset 0 0 0 2px var(--despesa-text); font-weight: 700; }
+.anual-tabela .anual-nome.clicavel { cursor: pointer; }
+.anual-tabela .anual-nome.clicavel:hover span { text-decoration: underline; }
+.anual-filtros select { background: var(--surface-2); color: var(--text); border: 1px solid var(--border-strong, var(--border)); border-radius: var(--radius-sm); padding: 0 .6rem; font-size: .8rem; font-weight: 600; }
