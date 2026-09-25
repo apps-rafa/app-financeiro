@@ -1221,6 +1221,13 @@ function irParaMes(competencia) {
 /** Carrega a transação no formulário da aba Adicionar em modo edição */
 function iniciarEdicaoTransacao(trans, tipoTransacao) {
     estadoApp.editandoId = trans.id;
+    const buscaEl = document.getElementById('buscaGlobal');
+    if (buscaEl && buscaEl.value) {
+        buscaEl.value = '';
+        document.getElementById('buscaLimpar')?.setAttribute('hidden', '');
+        atualizarBuscaGlobal();
+    }
+    sincronizarModoEdicao();
     // Guarda a tela de origem para voltar depois de salvar/cancelar
     estadoApp.abaOrigemEdicao = document.querySelector('.tab-btn.active')?.dataset.tab || null;
 
@@ -1259,9 +1266,15 @@ function iniciarEdicaoTransacao(trans, tipoTransacao) {
 }
 
 /** Sai do modo edição e limpa o formulário (chamado pelo "×" do formulário) */
+/** Esconde a busca enquanto um lançamento está sendo editado (só o form aparece). */
+function sincronizarModoEdicao() {
+    document.body.classList.toggle('editando-lancamento', !!estadoApp.editandoId);
+}
+
 function cancelarEdicaoTransacao(voltarParaOrigem = true) {
     const origem = estadoApp.abaOrigemEdicao;
     estadoApp.editandoId = null;
+    sincronizarModoEdicao();
     estadoApp.abaOrigemEdicao = null;
     limparFormulario();
     const btn = document.querySelector('.btn-submit');
@@ -1293,6 +1306,7 @@ async function excluirEdicaoTransacao() {
 
     estadoApp.editandoId = null;
     estadoApp.abaOrigemEdicao = null;
+    sincronizarModoEdicao();
     limparFormulario();
     const submitBtn = document.querySelector('.btn-submit');
     if (submitBtn) submitBtn.textContent = 'Adicionar';

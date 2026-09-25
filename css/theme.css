@@ -375,3 +375,32 @@ input.campo-travado,
 .form-transacao,
 .transacoes-container,
 .proximas-container { border-radius: var(--radius); }
+
+/* Busca com "✕" à direita (aparece só com texto) */
+.busca-campo { position: relative; }
+.busca-campo .busca-lista { padding-right: 2rem; }
+.busca-campo .busca-lista::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
+.busca-limpar {
+    position: absolute; right: .35rem; top: 50%; transform: translateY(-50%);
+    width: 1.5rem; height: 1.5rem; padding: 0; border: none; border-radius: 50%;
+    background: transparent; color: var(--text-muted); font-size: .8rem; line-height: 1; cursor: pointer;
+}
+.busca-limpar:hover { background: var(--surface-3); color: var(--text); }
+.busca-limpar[hidden] { display: none; }
+
+/* Editando um lançamento: só o formulário aparece, sem a busca */
+body.editando-lancamento .busca-global,
+body.editando-lancamento #resultadoBusca { display: none !important; }
+
+/* "✕" do formulário de lançamento */
+.form-fechar {
+    flex: none; width: 2rem; height: 2rem; padding: 0; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text-muted);
+    font-size: .85rem; line-height: 1; cursor: pointer;
+}
+.form-fechar:hover { background: var(--surface-3); color: var(--text); }
+
+/* Formulário na mesma largura da busca e do dashboard: o padding próprio dele
+   somava com o da faixa (.area-conteudo) e o estreitava. Distância busca →
+   formulário = margin da busca (igual à do dashboard → busca). */
+.area-conteudo .form-transacao { padding: 0; }
