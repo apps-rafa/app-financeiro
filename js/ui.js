@@ -637,7 +637,7 @@ async function buscarAmpla(termo) {
         return;
     }
     if ((document.getElementById('buscaGlobal')?.value || '').trim() !== termo) return;
-    const itens = linhas.map(mapearTransacao).filter(tr => _bateConsulta(tr, q, t));
+    const itens = linhas.map(r => ({ ...mapearTransacao(r), tipo: r.tipo })).filter(tr => _bateConsulta(tr, q, t));
     const brl = v => formatarMoeda(v);
     const soma = tipo => itens.filter(i => i.tipo === tipo).reduce((a, i) => a + (Number(i.valor) || 0), 0);
     const porMes = new Map();
