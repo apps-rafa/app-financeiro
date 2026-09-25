@@ -133,7 +133,7 @@ function _linhaGrafico(linhasR, linhasD, meses, mesAtual, dim = () => '') {
         return `<div class="barra ${classe}" style="height:${h.toFixed(0)}px" title="${rotulo} de ${MESES_ANUAL_LONGO[i]}: ${_fmtMoeda(total)}">${segs}</div>`;
     };
     const cels = meses.map(i => `<td class="grafico-cel${i === mesAtual ? ' atual' : ''}${dim(i)}"><div class="par">${barra(linhasR, i, 'rec', 'Receita')}${barra(linhasD, i, 'desp', 'Despesa')}</div></td>`).join('');
-    return `<tr class="grafico-linha"><th class="anual-nome grafico-rot"><span class="leg"><span class="leg-item"><i class="rec"></i>Receita</span> <span class="leg-item"><i class="desp"></i>Despesa</span></span></th>${cels}<td class="grafico-cel"></td></tr>`;
+    return `<tr class="grafico-linha"><th class="anual-nome grafico-rot"></th>${cels}<td class="grafico-cel"></td></tr>`;
 }
 
 /** Nome de categoria/forma: inteiro no desktop, abreviado no celular (nunca termina em "…"). */
