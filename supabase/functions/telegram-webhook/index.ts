@@ -457,7 +457,7 @@ async function confirmarRascunhoNoBanco(
     tipo: d.tipo,
     data: d.data,
     valor: d.valor,
-    metodo: d.tipo === "saidas" ? d.metodo : null,
+    metodo: d.metodo, // receita também guarda a forma (opcional)
     categoria: d.categoria,
     descricao: d.descricao,
     forma_pagamento: "À vista",
@@ -711,7 +711,7 @@ Deno.serve(async (req: Request) => {
         await tg(token, "sendMessage", { chat_id: chatId, text: "Não consegui ler os dados do formulário — tenta de novo.", reply_markup: remover });
         return json({ ok: true });
       }
-      const metodoF = tipoF === "saidas" ? listas.metodos.find((m) => rotuloMetodo(m) === p.metodo) ?? null : null;
+      const metodoF = p.metodo ? listas.metodos.find((m) => rotuloMetodo(m) === p.metodo) ?? null : null;
       const nParc = Math.min(48, Math.max(1, parseInt(String(p.parcelas ?? 1), 10) || 1));
       const dadosF: RascunhoLancamento = {
         tipo: tipoF, valor: valorF, data: dataF, categoria: categoriaF,

@@ -4,66 +4,89 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Lançamento</title>
-<!-- Mini app do Telegram: formulário de lançamento pré-preenchido pelo bot.
-     Sem login: ao tocar em "Lançar" os dados voltam ao bot (Telegram.WebApp.sendData)
-     e ele grava no nome de quem já está vinculado ao chat. -->
+<!-- Mini app do Telegram: mesmo formulário de lançamento do app, pré-preenchido
+     pelo bot. Sem login: ao tocar em "Adicionar" os dados voltam ao bot
+     (Telegram.WebApp.sendData) e ele grava no nome de quem já está vinculado
+     ao chat. -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
+  /* Mesma paleta do tema escuro do app (css/variables.css) */
   :root {
-    --bg: var(--tg-theme-bg-color, #0f172a);
-    --card: var(--tg-theme-secondary-bg-color, #1e293b);
-    --text: var(--tg-theme-text-color, #e5e7eb);
-    --muted: var(--tg-theme-hint-color, #94a3b8);
-    --accent: var(--tg-theme-button-color, #6366f1);
-    --accent-text: var(--tg-theme-button-text-color, #fff);
-    --border: rgba(148, 163, 184, .3);
+    --bg: #0F1420; --surface: #1A2130; --surface-2: #232C3D;
+    --text: #E8EDF5; --muted: #9AA6B8; --border: #2E3A4E;
+    --primary: #818CF8; --receita: #86EFAC; --despesa: #FCA5A5;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; padding: 14px 14px 90px; background: var(--bg); color: var(--text); font: 15px/1.35 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-  h1 { font-size: 1.05rem; margin: 0 0 12px; }
-  label { display: block; font-size: .75rem; color: var(--muted); margin: 12px 0 4px; font-weight: 600; }
-  input, select { width: 100%; padding: 11px 12px; font-size: 1rem; color: var(--text); background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
-  .tipo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .tipo button { padding: 11px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: .95rem; font-weight: 600; }
-  .tipo button.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-  .linha { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body { padding: 12px 12px 24px; font: 15px/1.35 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  .form-header { margin-bottom: 12px; }
+  .tipo-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tipo-btn { display: flex; align-items: center; justify-content: center; gap: .4rem; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: .95rem; font-weight: 700; }
+  .tipo-btn.active { background: var(--surface-2); color: var(--text); border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset; }
+  .form-row { display: grid; gap: 10px; margin-bottom: 10px; }
+  .par { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-group { min-width: 0; }
+  label { display: block; font-size: .72rem; color: var(--muted); margin: 0 0 4px; font-weight: 600; }
+  input, select { width: 100%; height: 44px; padding: 0 12px; font-size: 1rem; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
+  select option:disabled { color: #64748b; }
+  .stepper { display: grid; grid-template-columns: 1fr 34px; gap: 6px; }
+  .stepper .setas { display: grid; grid-template-rows: 1fr 1fr; gap: 3px; }
+  .stepper button { border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); border-radius: 8px; font-size: .7rem; padding: 0; }
   [hidden] { display: none !important; }
-  #erro { color: #f87171; font-size: .85rem; margin-top: 10px; min-height: 1em; }
-  #enviar { display: none; position: fixed; left: 14px; right: 14px; bottom: 14px; padding: 14px; font-size: 1rem; font-weight: 700; border: 0; border-radius: 12px; background: var(--accent); color: var(--accent-text); }
-  body.sem-tg #enviar { display: block; }
+  #erro { color: #f87171; font-size: .85rem; margin: 4px 0 8px; min-height: 1em; }
+  .btn-submit { width: 100%; height: 48px; margin-top: 4px; border: 0; border-radius: 12px; font-size: 1rem; font-weight: 700; color: #fff; background: linear-gradient(135deg, #818CF8, #6366F1); }
+  .nota { font-size: .72rem; color: var(--muted); margin: -4px 0 8px; }
 </style>
 </head>
 <body>
-<h1>✏️ Lançamento</h1>
+<form id="form" autocomplete="off" novalidate>
+  <div class="form-header">
+    <div class="tipo-selector" id="tipo">
+      <button type="button" class="tipo-btn active" data-tipo="saidas">
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--despesa)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg><span>Despesa</span>
+      </button>
+      <button type="button" class="tipo-btn" data-tipo="entradas">
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita)" d="M12 20l-8-8h5V4h6v8h5z"/></svg><span>Receita</span>
+      </button>
+    </div>
+  </div>
 
-<div class="tipo" id="tipo">
-  <button type="button" data-tipo="saidas">Despesa</button>
-  <button type="button" data-tipo="entradas">Receita</button>
-</div>
+  <div class="form-row par">
+    <div class="form-group"><label for="data">Data</label><input id="data" type="text" inputmode="numeric" placeholder="dd/mm" maxlength="5"></div>
+    <div class="form-group"><label for="valor">Valor</label><input id="valor" type="text" inputmode="decimal" placeholder="0,00"></div>
+  </div>
 
-<div class="linha">
-  <div><label for="valor">Valor (R$)</label><input id="valor" type="number" inputmode="decimal" step="0.01" min="0"></div>
-  <div><label for="data">Data</label><input id="data" type="date"></div>
-</div>
+  <div class="form-row">
+    <div class="form-group">
+      <label for="metodo">Forma de pagamento</label>
+      <select id="metodo"></select>
+    </div>
+    <div class="form-group" id="blocoParcelas" hidden>
+      <label for="parcelas">Parcelas (o valor é o total da compra)</label>
+      <div class="stepper">
+        <input id="parcelas" type="text" inputmode="numeric" maxlength="2" value="1">
+        <div class="setas">
+          <button type="button" data-dir="1" tabindex="-1" aria-label="Aumentar">▲</button>
+          <button type="button" data-dir="-1" tabindex="-1" aria-label="Diminuir">▼</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-<label for="categoria">Categoria</label>
-<select id="categoria"></select>
+  <div class="form-row">
+    <div class="form-group">
+      <label for="categoria">Categoria</label>
+      <select id="categoria"></select>
+    </div>
+    <div class="form-group">
+      <label for="descricao">Descrição (opcional)</label>
+      <input id="descricao" type="text" placeholder="Ex: Mercado, Aluguel">
+    </div>
+  </div>
 
-<div id="blocoMetodo">
-  <label for="metodo">Forma de pagamento</label>
-  <select id="metodo"></select>
-</div>
-
-<div id="blocoParcelas" hidden>
-  <label for="parcelas">Parcelas (valor é o total da compra)</label>
-  <input id="parcelas" type="number" inputmode="numeric" min="1" max="48" step="1" value="1">
-</div>
-
-<label for="descricao">Descrição</label>
-<input id="descricao" type="text" placeholder="opcional" autocomplete="off">
-
-<div id="erro"></div>
-<button id="enviar" type="button">Lançar</button>
+  <div id="erro"></div>
+  <button id="enviar" type="submit" class="btn-submit">Adicionar</button>
+</form>
 
 <script>
 (function () {
@@ -72,69 +95,105 @@
   const tg = tgObj && tgObj.platform && tgObj.platform !== 'unknown' ? tgObj : null;
   const q = new URLSearchParams(location.search);
   const $ = id => document.getElementById(id);
-
-  // Listas vindas do bot: categorias de receita/despesa e formas de pagamento.
-  const lista = (k) => { try { return JSON.parse(q.get(k) || '[]'); } catch (_) { return []; } };
+  const lista = k => { try { return JSON.parse(q.get(k) || '[]'); } catch (_) { return []; } };
   const catsR = lista('cr'), catsD = lista('cd');
   const metodos = lista('mt'); // [[rótulo, tipo]]
+  const CAT_ESTORNO = 'Estorno';
 
   let tipo = q.get('tipo') === 'entradas' ? 'entradas' : 'saidas';
+  const anoBase = (q.get('d') || '').slice(0, 4) || String(new Date().getFullYear());
 
-  function preencherCategorias() {
+  const ehCredito = rot => { const m = metodos.find(x => x[0] === rot); return !!m && m[1] === 'Crédito'; };
+
+  /** Categorias do tipo atual, mantendo a escolha se ela ainda existir. */
+  function preencherCategorias(preferida) {
     const cats = tipo === 'entradas' ? catsR : catsD;
-    const atual = $('categoria').value || q.get('c') || '';
+    const atual = preferida || $('categoria').value;
     $('categoria').innerHTML = cats.map(c => `<option>${c}</option>`).join('');
     if (cats.includes(atual)) $('categoria').value = atual;
   }
+
+  /** Mesma regra do app: Despesa aceita qualquer forma (obrigatória). Receita:
+   *  forma opcional; só "Estorno" aceita crédito, as demais não. */
+  function preencherMetodos(preferido) {
+    const sel = $('metodo');
+    const atual = preferido !== undefined ? preferido : sel.value;
+    const receita = tipo === 'entradas';
+    const estorno = $('categoria').value === CAT_ESTORNO;
+    sel.innerHTML = (receita ? '<option value="">Selecione...</option>' : '') +
+      metodos.map(m => {
+        const bloqueado = receita && (estorno ? m[1] !== 'Crédito' : m[1] === 'Crédito');
+        return `<option value="${m[0]}"${bloqueado ? ' disabled' : ''}>${m[0]}</option>`;
+      }).join('');
+    const op = [...sel.options].find(o => o.value === atual);
+    sel.value = op && !op.disabled ? atual : (receita ? '' : (sel.options[0] ? sel.options[0].value : ''));
+  }
+
+  function atualizarParcelas() {
+    $('blocoParcelas').hidden = !(tipo === 'saidas' && ehCredito($('metodo').value));
+  }
+
   function atualizarTipo() {
-    document.querySelectorAll('#tipo button').forEach(b => b.classList.toggle('on', b.dataset.tipo === tipo));
-    $('blocoMetodo').hidden = tipo === 'entradas';
+    document.querySelectorAll('#tipo .tipo-btn').forEach(b => b.classList.toggle('active', b.dataset.tipo === tipo));
     preencherCategorias();
+    preencherMetodos();
     atualizarParcelas();
   }
-  function ehCredito() {
-    const m = metodos.find(x => x[0] === $('metodo').value);
-    return !!m && m[1] === 'Crédito';
-  }
-  function atualizarParcelas() {
-    $('blocoParcelas').hidden = !(tipo === 'saidas' && ehCredito());
-  }
 
-  $('metodo').innerHTML = metodos.map(m => `<option>${m[0]}</option>`).join('');
-  if (q.get('m')) $('metodo').value = q.get('m');
-  $('valor').value = q.get('v') || '';
-  $('data').value = q.get('d') || new Date().toISOString().slice(0, 10);
+  // ---- valores iniciais vindos do bot
+  const d0 = q.get('d') || '';
+  $('data').value = /^\d{4}-\d{2}-\d{2}$/.test(d0) ? `${d0.slice(8, 10)}/${d0.slice(5, 7)}` : '';
+  $('valor').value = q.get('v') ? String(q.get('v')).replace('.', ',') : '';
   $('descricao').value = q.get('desc') || '';
   if (Number(q.get('p')) > 1) $('parcelas').value = q.get('p');
-  $('categoria').value = q.get('c') || '';
-  atualizarTipo();
-  if (q.get('c')) $('categoria').value = q.get('c');
+  preencherCategorias(q.get('c') || '');
+  preencherMetodos(q.get('m') || '');
+  document.querySelectorAll('#tipo .tipo-btn').forEach(b => b.classList.toggle('active', b.dataset.tipo === tipo));
+  atualizarParcelas();
 
-  document.querySelectorAll('#tipo button').forEach(b => b.addEventListener('click', () => { tipo = b.dataset.tipo; atualizarTipo(); }));
+  // ---- interações
+  document.querySelectorAll('#tipo .tipo-btn').forEach(b => b.addEventListener('click', () => { tipo = b.dataset.tipo; atualizarTipo(); }));
+  $('categoria').addEventListener('change', () => preencherMetodos());
   $('metodo').addEventListener('change', atualizarParcelas);
+  $('data').addEventListener('input', e => {
+    let v = e.target.value.replace(/\D/g, '').slice(0, 4);
+    if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2);
+    e.target.value = v;
+  });
+  document.querySelectorAll('.stepper button').forEach(b => b.addEventListener('click', () => {
+    const n = Math.min(48, Math.max(1, (parseInt($('parcelas').value, 10) || 1) + Number(b.dataset.dir)));
+    $('parcelas').value = n;
+  }));
 
-  function enviar() {
-    const valor = parseFloat($('valor').value);
+  function paraISO(ddmm) {
+    const m = /^(\d{2})\/(\d{2})$/.exec(ddmm);
+    if (!m) return null;
+    const dia = +m[1], mes = +m[2];
+    if (mes < 1 || mes > 12 || dia < 1 || dia > new Date(+anoBase, mes, 0).getDate()) return null;
+    return `${anoBase}-${m[2]}-${m[1]}`;
+  }
+
+  function enviar(e) {
+    e.preventDefault();
+    const valor = parseFloat(String($('valor').value).replace(/\./g, '').replace(',', '.'));
+    const data = paraISO($('data').value);
+    if (!data) { $('erro').textContent = 'Informe a data (dd/mm).'; return; }
     if (!(valor > 0)) { $('erro').textContent = 'Informe um valor maior que zero.'; return; }
-    if (!$('data').value) { $('erro').textContent = 'Informe a data.'; return; }
     if (!$('categoria').value) { $('erro').textContent = 'Escolha a categoria.'; return; }
+    if (tipo === 'saidas' && !$('metodo').value) { $('erro').textContent = 'Escolha a forma de pagamento.'; return; }
+    $('erro').textContent = '';
     const dados = {
-      tipo, valor, data: $('data').value, categoria: $('categoria').value,
-      metodo: tipo === 'saidas' ? $('metodo').value : null,
+      tipo, valor, data, categoria: $('categoria').value,
+      metodo: $('metodo').value || null,
       descricao: $('descricao').value.trim(),
-      parcelas: tipo === 'saidas' && ehCredito() ? Math.max(1, parseInt($('parcelas').value, 10) || 1) : 1,
+      parcelas: tipo === 'saidas' && ehCredito($('metodo').value) ? Math.max(1, parseInt($('parcelas').value, 10) || 1) : 1,
     };
     if (tg) tg.sendData(JSON.stringify(dados));   // o bot grava e fecha o app
     else $('erro').textContent = 'Abra esta tela pelo botão do bot no Telegram.';
   }
+  $('form').addEventListener('submit', enviar);
 
-  if (tg) {
-    tg.ready(); tg.expand();
-    tg.MainButton.setText('Lançar').show().onClick(enviar);
-  } else {
-    document.body.classList.add('sem-tg');
-    $('enviar').addEventListener('click', enviar);
-  }
+  if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor && tg.setHeaderColor('#0F1420'); tg.setBackgroundColor && tg.setBackgroundColor('#0F1420'); }
 })();
 </script>
 </body>
