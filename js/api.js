@@ -129,12 +129,13 @@ async function carregarMenusAPI() {
         const { data, error } = await sb
             .from('menu_itens')
             .select('*')
-            .eq('status', 'Ativo')
             .order('ordem', { ascending: true, nullsFirst: false })
             .order('nome', { ascending: true });
 
         if (error) throw error;
-        const itens = (data || []).map(mapearItemMenu);
+        // Cores vêm de TODOS os itens (inclusive inativos: lançamentos antigos ainda usam o chip deles)
+        const todos = (data || []).map(mapearItemMenu);
+        const itens = todos.filter(i => i.status === 'Ativo');
 
         const cats = itens.filter(i => i.tipo === 'Categoria');
         const mapaCor = arr => Object.fromEntries(arr.map(i => [i.nome, corDoItemMenu(i)]));
@@ -151,8 +152,8 @@ async function carregarMenusAPI() {
             // métodos como objetos (o formulário precisa do tipo/fechamento p/ competência)
             metodos,
             cores: {
-                categoria: mapaCor(cats),
-                metodo: mapaCorMetodo(metodos)
+                categoria: mapaCor(todos.filter(i => i.tipo === 'Categoria')),
+                metodo: mapaCorMetodo(todos.filter(i => i.tipo === 'Método'))
             }
         };
     } catch (error) {
