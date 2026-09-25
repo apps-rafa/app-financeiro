@@ -854,6 +854,8 @@ async function carregarRevisaoPluggy() {
         container.innerHTML = '<p class="empty-message">Tela limpa — toque em "Sincronizar agora" pra ver tudo de novo</p>';
         container.onclick = null;
         container.onchange = null;
+        _revisaoPluggyCache = {};
+        _atualizarTotalMesPluggy();
         return;
     }
 
