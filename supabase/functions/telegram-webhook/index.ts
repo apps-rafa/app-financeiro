@@ -138,6 +138,8 @@ interface RascunhoLancamento {
   data: string;
   /** Compra parcelada no crédito: nº de parcelas (valor = total da compra). */
   parcelas?: number | null;
+  /** Mês da fatura ('YYYY-MM-01') escolhido no mini app; sem ele vale data + fechamento. */
+  competencia?: string | null;
 }
 
 /** 'YYYY-MM-DD' de hoje em horário de Brasília (sem lib de timezone —
@@ -422,7 +424,7 @@ async function confirmarRascunhoNoBanco(
   d: RascunhoLancamento,
 ): Promise<{ erro: unknown }> {
   const ehCredito = d.metodoKind === "Crédito";
-  const competencia = competenciaDe(d.data, ehCredito ? d.diaFechamento : null);
+  const competencia = d.competencia || competenciaDe(d.data, ehCredito ? d.diaFechamento : null);
 
   // Compra parcelada: uma linha por parcela, igual ao adicionarParceladoAPI do
   // app (grupo_id comum, centavos distribuídos, 1 mês entre parcelas).
@@ -469,6 +471,70 @@ async function confirmarRascunhoNoBanco(
   return { erro: error };
 }
 
+const PALETA_CHIPS = [
+  "#EF4444", "#F97316", "#F59E0B", "#EAB308", "#84CC16", "#22C55E",
+  "#10B981", "#14B8A6", "#06B6D4", "#0EA5E9", "#3B82F6", "#6366F1",
+  "#8B5CF6", "#A855F7", "#D946EF", "#EC4899", "#F43F5E", "#64748B",
+];
+/** Mesma cor padrão do app (js/config.js:corPadraoChip). */
+function corPadraoChip(nome: string): string {
+  let h = 0;
+  for (let i = 0; i < nome.length; i++) h = (h * 31 + nome.charCodeAt(i)) >>> 0;
+  return PALETA_CHIPS[h % PALETA_CHIPS.length];
+}
+
+/** Cria a categoria na posição alfabética da lista (mesma regra do app:
+ *  js/ui.js:_inserirCategoriaAlfabetica). Ignora se já existir. */
+async function criarCategoria(
+  admin: ReturnType<typeof createClient>, userId: string,
+  tipo: "entradas" | "saidas", nome: string, descricao: string,
+): Promise<boolean> {
+  const { data } = await admin.from("menu_itens").select("id, nome, ordem")
+    .eq("tipo", "Categoria").eq("categoria_tipo", tipo).eq("user_id", userId);
+  const itens = ((data ?? []) as { id: number; nome: string; ordem: number | null }[])
+    .sort((a, b) => (a.ordem ?? Infinity) - (b.ordem ?? Infinity) || a.nome.localeCompare(b.nome, "pt-BR"))
+    .map((it, i) => ({ ...it, ef: it.ordem ?? i + 1 }));
+  if (itens.some((it) => it.nome.toLowerCase() === nome.toLowerCase())) return true;
+  const depois = itens.findIndex((it) => it.nome.localeCompare(nome, "pt-BR") > 0);
+  const ordem = depois === -1 ? (itens.length ? itens[itens.length - 1].ef + 1 : 1) : itens[depois].ef;
+  const { error } = await admin.from("menu_itens").insert({
+    tipo: "Categoria", nome, ordem, descricao, categoria_tipo: tipo, cor: corPadraoChip(nome), user_id: userId,
+  });
+  if (error) { console.error(error); return false; }
+  if (depois !== -1) {
+    for (const it of itens.slice(depois)) await admin.from("menu_itens").update({ ordem: it.ef + 1 }).eq("id", it.id);
+  }
+  return true;
+}
+
+/** Cria a forma de pagamento (PIX ou Crédito) como o "+" do formulário do app. */
+async function criarMetodo(
+  admin: ReturnType<typeof createClient>, userId: string,
+  n: { kind: string; banco: string; venc: number | null; fech: number | null; melhor: number | null },
+): Promise<boolean> {
+  const kind = n.kind === "Crédito" ? "Crédito" : n.kind === "PIX" ? "PIX" : null;
+  if (!kind) return false;
+  const banco = String(n.banco ?? "").trim();
+  if (kind === "Crédito" && (!banco || !(n.venc && n.venc >= 1 && n.venc <= 31))) return false;
+  const nome = banco ? `${kind} — ${banco}` : kind;
+  const rotulo = banco ? `${kind} ${banco}` : kind;
+  const { data } = await admin.from("menu_itens").select("nome, banco, metodo_kind, ordem").eq("tipo", "Método").eq("user_id", userId);
+  const existentes = (data ?? []) as { nome: string; banco: string | null; metodo_kind: string | null; ordem: number | null }[];
+  if (existentes.some((m) => rotuloMetodo(m) === rotulo)) return true;
+  const ordem = existentes.reduce((mx, m) => Math.max(mx, m.ordem ?? 0), 0) + 1;
+  const fech = n.fech && n.fech >= 1 && n.fech <= 31 ? n.fech : null;
+  const extra: Record<string, unknown> = { metodo_kind: kind, banco, cor: corPadraoChip(nome) };
+  if (kind === "Crédito") {
+    extra.dia_vencimento = n.venc;
+    if (fech) extra.dia_fechamento = fech;
+    const melhor = n.melhor && n.melhor >= 1 && n.melhor <= 31 ? n.melhor : (fech ? Math.min(31, fech + 1) : null);
+    if (melhor) extra.melhor_dia_compra = melhor;
+  }
+  const { error } = await admin.from("menu_itens").insert({ tipo: "Método", nome, ordem, user_id: userId, ...extra });
+  if (error) { console.error(error); return false; }
+  return true;
+}
+
 const MINIAPP_URL = "https://apps-rafa.github.io/ctrl-fin/lancamento-tg.html";
 
 interface ListasUsuario {
@@ -502,7 +568,8 @@ function urlMiniApp(r: RascunhoLancamento, l: ListasUsuario): string {
   if (r.parcelas && r.parcelas > 1) q.set("p", String(r.parcelas));
   q.set("cr", JSON.stringify(l.catsR));
   q.set("cd", JSON.stringify(l.catsD));
-  q.set("mt", JSON.stringify(l.metodos.map((m) => [rotuloMetodo(m), m.metodo_kind])));
+  q.set("mt", JSON.stringify(l.metodos.map((m) => [rotuloMetodo(m), m.metodo_kind, m.dia_fechamento])));
+  if (r.metodoKind === "Crédito") q.set("comp", (r.competencia || competenciaDe(r.data, r.diaFechamento)).slice(5, 7));
   return `${MINIAPP_URL}?${q.toString()}`;
 }
 
@@ -515,6 +582,8 @@ async function enviarRascunho(
 ) {
   const sinal = r.tipo === "entradas" ? "💰 Receita" : "💸 Despesa";
   const dataFmt = new Date(`${r.data}T00:00:00`).toLocaleDateString("pt-BR");
+  const ehCreditoSaida = r.tipo === "saidas" && r.metodoKind === "Crédito";
+  const compFatura = r.competencia || competenciaDe(r.data, r.diaFechamento);
   const linhas = [
     sinal,
     `Valor: ${formatarMoedaBR(r.valor)}${r.parcelas && r.parcelas > 1 ? " (total)" : ""}`,
@@ -522,7 +591,8 @@ async function enviarRascunho(
     `Categoria: ${r.categoria}`,
     `Descrição: ${r.descricao || "(em branco — digite pra adicionar)"}`,
     r.tipo === "saidas" ? `Forma de pgto.: ${r.metodo || "nenhuma cadastrada — ajuste no app"}` : null,
-    r.parcelas && r.parcelas > 1 ? `Parcelas: ${r.parcelas}x de ${formatarMoedaBR(r.valor / r.parcelas)}` : null,
+    ehCreditoSaida ? `Mês da fatura: ${mesAbrevAno(compFatura)}` : null,
+    ehCreditoSaida ? (r.parcelas && r.parcelas > 1 ? `Parcelas: ${r.parcelas}x de ${formatarMoedaBR(r.valor / r.parcelas)}` : "Parcelas: à vista") : null,
     "",
     "Confirma?",
     "",
@@ -541,7 +611,9 @@ async function enviarRascunho(
         { text: "❌ Cancelar" },
       ]],
       resize_keyboard: true,
-      one_time_keyboard: true,
+      // Teclado FIXO: no celular, tocar fora/na caixa de texto não o esconde.
+      is_persistent: true,
+      one_time_keyboard: false,
     },
   });
 }
@@ -558,6 +630,13 @@ const TEXTO_AJUDA_LANCAMENTO = [
   "",
   "Eu monto um rascunho com valor, categoria e forma de pagamento e só grava depois que você tocar em ✅ Confirmar no teclado. Se responder qualquer outra coisa (sem ser os botões), eu entendo como a descrição do lançamento.",
 ].join("\n");
+
+const MESES_ABREV = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+/** '2026-10-01' -> 'Out/2026' */
+function mesAbrevAno(iso: string): string {
+  const [a, m] = iso.split("-").map(Number);
+  return `${MESES_ABREV[m - 1]}/${a}`;
+}
 
 const MESES_PT = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
@@ -704,6 +783,17 @@ Deno.serve(async (req: Request) => {
       const tipoF: "entradas" | "saidas" = p?.tipo === "entradas" ? "entradas" : "saidas";
       const valorF = Number(p?.valor);
       const dataF = String(p?.data ?? "");
+      // "+" do formulário: cria antes o que foi cadastrado na hora (categoria / forma de pgto.)
+      if (p?.novaCategoria?.nome) {
+        await criarCategoria(supabaseAdmin, tgUser.user_id, tipoF, String(p.novaCategoria.nome).trim().slice(0, 60), String(p.novaCategoria.descricao ?? "").trim().slice(0, 200));
+      }
+      if (p?.novoMetodo?.kind) {
+        const nm = p.novoMetodo;
+        await criarMetodo(supabaseAdmin, tgUser.user_id, {
+          kind: String(nm.kind), banco: String(nm.banco ?? ""), venc: Number(nm.venc) || null,
+          fech: Number(nm.fech) || null, melhor: Number(nm.melhor) || null,
+        });
+      }
       const listas = await carregarListasUsuario(supabaseAdmin, tgUser.user_id);
       const categoriaF = String(p?.categoria ?? "");
       const categoriaOk = (tipoF === "entradas" ? listas.catsR : listas.catsD).includes(categoriaF);
@@ -720,7 +810,17 @@ Deno.serve(async (req: Request) => {
         metodoKind: metodoF?.metodo_kind ?? null,
         diaFechamento: metodoF?.dia_fechamento ?? null,
         parcelas: tipoF === "saidas" && metodoF?.metodo_kind === "Crédito" && nParc > 1 ? nParc : null,
+        competencia: null,
       };
+      // Mês da fatura escolhido no formulário (só crédito): o ano acompanha o
+      // mês sugerido pela data + fechamento, ajustando a virada de ano.
+      if (tipoF === "saidas" && metodoF?.metodo_kind === "Crédito" && /^(0[1-9]|1[0-2])$/.test(String(p.comp ?? ""))) {
+        const padrao = competenciaDe(dataF, metodoF.dia_fechamento);
+        const [ap, mp] = padrao.split("-").map(Number);
+        const mEsc = Number(p.comp);
+        const ano = mEsc - mp > 6 ? ap - 1 : mp - mEsc > 6 ? ap + 1 : ap;
+        dadosF.competencia = `${ano}-${String(mEsc).padStart(2, "0")}-01`;
+      }
       await supabaseAdmin.from("telegram_rascunhos").delete().eq("chat_id", chatId);
       const { erro: erroF } = await confirmarRascunhoNoBanco(supabaseAdmin, tgUser.user_id, dadosF);
       if (erroF) {
@@ -827,7 +927,7 @@ Deno.serve(async (req: Request) => {
         await tg(token, "sendMessage", {
           chat_id: chatId,
           text: "Qual conta você quer atualizar?",
-          reply_markup: { keyboard: botoes, resize_keyboard: true, one_time_keyboard: true },
+          reply_markup: { keyboard: botoes, resize_keyboard: true, is_persistent: true, one_time_keyboard: false },
         });
         return json({ ok: true });
       }
