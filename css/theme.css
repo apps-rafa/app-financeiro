@@ -619,3 +619,6 @@ body.modo-anual #resultadoBusca { display: none !important; }
 
 /* Regra geral: texto longo nunca termina em "…" — o e-mail quebra em vez de truncar */
 .user-email { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.15; text-align: right; }
+
+/* Respiro entre o grupo de duplicatas e os filtros (Receitas/Despesas) */
+#duplicatasEntradas:not(:empty), #duplicatasSaidas:not(:empty) { margin-bottom: .8rem; }
