@@ -431,7 +431,9 @@ function mudarTipoTransacao(tipo) {
  * Muda aba ativa
  */
 /** Desativa todas as abas (nenhum conteúdo aberto) */
+let _abaAnterior = null; // memória de 1 nível: a aba que estava aberta antes da atual
 function fecharAbas() {
+    _abaAnterior = null;
     document.body.classList.remove('modo-anual');
     if (typeof _sairDoModoEdicaoSeAtivo === 'function') _sairDoModoEdicaoSeAtivo();
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -452,9 +454,12 @@ function mudarAba(novaAba) {
 
     // Clicar na aba já aberta apenas fecha tudo (sem reabrir nada).
     if (novaAba === ativa) {
+        const volta = _abaAnterior; // fechar a de cima devolve a que estava por baixo
         fecharAbas();
+        if (volta && volta !== novaAba) mudarAba(volta);
         return;
     }
+    if (ativa) _abaAnterior = ativa;
     console.log(`📑 Mudando para aba: ${novaAba}`);
     // Visão anual é página única: esconde o resto do app; qualquer outra aba a fecha
     document.body.classList.toggle('modo-anual', novaAba === 'anual');

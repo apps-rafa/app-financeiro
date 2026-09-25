@@ -25,7 +25,9 @@ function atualizarUI() {
     atualizarEntradasLista();
     atualizarSaidasLista();
     // Busca em todos os meses aberta: não refaz (voltar pra janela recarrega os dados e apagaria o resultado)
-    if (document.getElementById('resultadoBusca')?.dataset.modo !== 'ampla') atualizarBuscaGlobal();
+    const boxUI = document.getElementById('resultadoBusca');
+    if (boxUI?.dataset.recentes === '1') mostrarRecemLancados(Number(boxUI.dataset.recentesQtd) || 5);
+    else if (boxUI?.dataset.modo !== 'ampla') atualizarBuscaGlobal();
 
     // "Próximas" acompanha o mês em exibição
     if (document.getElementById('proximas')?.classList.contains('active')) {
@@ -615,12 +617,14 @@ function _filtrarPorBusca(transacoes, termo) {
 
 /** "Recém-lançados": os últimos lançamentos CRIADOS (de qualquer mês), 5 por vez com
  *  "Carregar mais". Usa a mesma área dos resultados da busca. */
+let _transacoesExtra = []; // itens mostrados fora do mês em tela (Recém-lançados) — editar/excluir precisam achá-los
 async function mostrarRecemLancados(qtd = 5) {
     const box = document.getElementById('resultadoBusca');
     if (!box) return;
     box.hidden = false;
     box.dataset.modo = 'ampla'; // não deixa a atualização da tela/lixeira sobrescrever
     box.dataset.recentes = '1';
+    box.dataset.recentesQtd = String(qtd);
     document.getElementById('btnRecentes')?.classList.add('active');
     document.body.classList.add('buscando');
     if (!box.querySelector('.rec-grupo-itens')) box.innerHTML = '<p class="loading">Carregando...</p>';
@@ -639,6 +643,7 @@ async function mostrarRecemLancados(qtd = 5) {
         else unicos.push(i);
     });
     const itens = unicos.slice(0, qtd);
+    _transacoesExtra = itens;
     const temMais = unicos.length > qtd || (data || []).length === qtd * 12;
     box.innerHTML = `
         <div class="busca-ampla-resumo">
@@ -646,12 +651,13 @@ async function mostrarRecemLancados(qtd = 5) {
             <span>${itens.length} últimos</span>
             <button type="button" class="mini-btn" data-recentes-fechar aria-label="Fechar" title="Fechar">✕</button>
         </div>
-        <div class="rec-grupo-itens recentes-lista">${itens.map(i => gerarHTMLTransacao(i, i.tipo === 'entradas' ? 'entrada' : 'saida', { semAcoes: true })).join('') || '<p class="empty-message">Nenhum lançamento ainda</p>'}</div>
+        <div class="rec-grupo-itens recentes-lista">${itens.map(i => gerarHTMLTransacao(i, i.tipo === 'entradas' ? 'entrada' : 'saida')).join('') || '<p class="empty-message">Nenhum lançamento ainda</p>'}</div>
         ${temMais ? `<button type="button" class="busca-ampla-btn" data-recentes-mais="${qtd + 5}">Carregar mais 5</button>` : ''}`;
     box.onclick = e => {
         const mais = e.target.closest('[data-recentes-mais]');
         if (mais) return mostrarRecemLancados(Number(mais.dataset.recentesMais));
-        if (e.target.closest('[data-recentes-fechar]')) atualizarBuscaGlobal();
+        if (e.target.closest('[data-recentes-fechar]')) { atualizarBuscaGlobal(); return; }
+        onListaTransacaoClick(e);
     };
 }
 
@@ -1239,9 +1245,6 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
         if (opts.comAprovarDuplicata) {
             acoes += `<button class="btn-icon btn-success" data-act="aprovar-duplicata" data-id="${trans.id}" title="Não é duplicata — não avisar de novo sobre este lançamento">✓</button>`;
         }
-        if (!ehParcela) {
-            acoes += `<button class="btn-icon" data-act="repetir-trans" data-id="${trans.id}" title="Repetir todo mês (lembrete no Telegram)">🔁</button>`;
-        }
         if (!ehParcela || ehOriginal) {
             acoes += `<button class="btn-icon" data-act="editar-trans" data-id="${trans.id}" title="Editar">✏️</button>`;
         }
@@ -1314,7 +1317,7 @@ function onListaTransacaoClick(e) {
     // estadoApp.transacoes. Sem isso, confirmar/editar/excluir a partir de
     // "Próximos" não achava a transação e o clique não fazia nada.
     const ctxProximas = (typeof _proximasCtx !== 'undefined' && _proximasCtx) ? _proximasCtx : [];
-    const trans = [...estadoApp.transacoes.entradas, ...estadoApp.transacoes.saidas, ...ctxProximas.map(c => c.trans)]
+    const trans = [...estadoApp.transacoes.entradas, ...estadoApp.transacoes.saidas, ...ctxProximas.map(c => c.trans), ..._transacoesExtra]
         .find(t => t.id === id);
     if (!trans) return;
 
@@ -1324,15 +1327,10 @@ function onListaTransacaoClick(e) {
             break;
         case 'editar-trans': {
             const viaProximasEntrada = ctxProximas.some(c => c.trans.id === id && c.tipoUI === 'entrada');
-            const tipo = estadoApp.transacoes.entradas.some(t => t.id === id) || viaProximasEntrada
-                ? 'entradas' : 'saidas';
+            const extraTrans = _transacoesExtra.find(t => t.id === id);
+            const tipo = extraTrans ? extraTrans.tipo : (estadoApp.transacoes.entradas.some(t => t.id === id) || viaProximasEntrada
+                ? 'entradas' : 'saidas');
             iniciarEdicaoTransacao(trans, tipo);
-            break;
-        }
-        case 'repetir-trans': {
-            const viaProx = ctxProximas.some(c => c.trans.id === id && c.tipoUI === 'entrada');
-            const tipoRep = estadoApp.transacoes.entradas.some(t => t.id === id) || viaProx ? 'entradas' : 'saidas';
-            abrirRepetirMensal(trans, tipoRep);
             break;
         }
         case 'excluir-trans':
