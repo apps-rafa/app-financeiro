@@ -39,26 +39,74 @@ function configurarEventListeners() {
         estadoApp.mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
         recarregarDados();
     });
-    // Swipe no dashboard: arrastar pra esquerda vai pro mês seguinte, pra
-    // direita volta um mês (só se o gesto for claramente horizontal).
+    // Swipe no dashboard troca o mês, com animação: o painel acompanha o dedo,
+    // ao soltar (além de ~25% da largura ou gesto rápido) o mês atual sai pro
+    // lado e o novo entra vindo do lado oposto — como se cada mês fosse um
+    // painel próprio. Abaixo disso, volta pro lugar. Esquerda = mês seguinte.
     const dashboardEl = document.querySelector('.dashboard');
     if (dashboardEl) {
-        let inicio = null;
+        const reduzMovimento = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let g = null; // { x, y, t, horizontal, dx }
+        let animando = false;
+        const T_SAIDA = 'transform .18s ease-in, opacity .18s ease-in';
+        const T_ENTRADA = 'transform .22s ease-out, opacity .22s ease-out';
+
+        const mover = (dx, opacidade) => {
+            dashboardEl.style.transform = `translateX(${dx}px)`;
+            dashboardEl.style.opacity = String(opacidade);
+        };
+        const limpar = () => { dashboardEl.style.transition = ''; dashboardEl.style.transform = ''; dashboardEl.style.opacity = ''; };
+
         dashboardEl.addEventListener('touchstart', e => {
+            if (animando || e.touches.length !== 1) { g = null; return; }
             const t = e.touches[0];
-            inicio = e.touches.length === 1 ? { x: t.clientX, y: t.clientY } : null;
+            g = { x: t.clientX, y: t.clientY, t: Date.now(), horizontal: false, dx: 0 };
+            dashboardEl.style.transition = 'none';
         }, { passive: true });
-        dashboardEl.addEventListener('touchend', e => {
-            if (!inicio) return;
-            const t = e.changedTouches[0];
-            const dx = t.clientX - inicio.x, dy = t.clientY - inicio.y;
-            inicio = null;
-            if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+
+        dashboardEl.addEventListener('touchmove', e => {
+            if (!g) return;
+            const t = e.touches[0];
+            const dx = t.clientX - g.x, dy = t.clientY - g.y;
+            if (!g.horizontal) {
+                if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) g.horizontal = true;
+                else if (Math.abs(dy) > 10) { g = null; limpar(); return; } // é rolagem vertical
+                else return;
+            }
+            g.dx = dx;
+            const larg = dashboardEl.offsetWidth || 1;
+            mover(dx * 0.9, Math.max(0.35, 1 - Math.abs(dx) / (larg * 1.2)));
+        }, { passive: true });
+
+        const soltar = async cancelar => {
+            const gesto = g; g = null;
+            if (!gesto || !gesto.horizontal) { limpar(); return; }
+            const larg = dashboardEl.offsetWidth || 1;
+            const rapido = Math.abs(gesto.dx) > 40 && (Date.now() - gesto.t) < 250;
+            if (cancelar || (Math.abs(gesto.dx) < larg * 0.25 && !rapido)) {
+                dashboardEl.style.transition = T_ENTRADA; mover(0, 1);
+                setTimeout(limpar, 240);
+                return;
+            }
+            const sentido = gesto.dx < 0 ? 1 : -1; // esquerda = +1 mês
             const d = estadoApp.mesAtual;
-            estadoApp.mesAtual = new Date(d.getFullYear(), d.getMonth() + (dx < 0 ? 1 : -1), 1);
-            recarregarDados();
-        }, { passive: true });
-        dashboardEl.addEventListener('touchcancel', () => { inicio = null; }, { passive: true });
+            estadoApp.mesAtual = new Date(d.getFullYear(), d.getMonth() + sentido, 1);
+            animando = true;
+            if (reduzMovimento()) { await recarregarDados(); limpar(); animando = false; return; }
+            // sai pro lado do gesto enquanto os dados do novo mês carregam
+            dashboardEl.style.transition = T_SAIDA;
+            mover(-sentido * larg, 0);
+            await Promise.all([recarregarDados(), new Promise(r => setTimeout(r, 190))]);
+            // entra vindo do lado oposto
+            dashboardEl.style.transition = 'none';
+            mover(sentido * larg, 0);
+            void dashboardEl.offsetWidth; // força o reflow antes de animar
+            dashboardEl.style.transition = T_ENTRADA;
+            mover(0, 1);
+            setTimeout(() => { limpar(); animando = false; }, 240);
+        };
+        dashboardEl.addEventListener('touchend', () => soltar(false), { passive: true });
+        dashboardEl.addEventListener('touchcancel', () => soltar(true), { passive: true });
     }
     window.addEventListener('resize', debounce(() => {
         if (typeof atualizarCalendarioNav === 'function') atualizarCalendarioNav();
