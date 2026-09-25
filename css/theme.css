@@ -648,3 +648,6 @@ body.modo-anual main.main { padding-top: 0; }
 .busca-recentes.active { background: var(--primary); border-color: var(--primary); color: var(--primary-contrast, #fff); }
 .busca-ampla-resumo span { flex: 1 1 4rem; min-width: 0; }
 .busca-ampla-resumo .mini-btn { flex: none; margin-left: auto; white-space: nowrap; }
+
+/* Busca/Recém-lançados: fundo neutro mesmo em Despesas/Receitas (não tinge de vermelho/verde) */
+body.buscando .area-conteudo, body.buscando .area-conteudo:has(#saidas.active), body.buscando .area-conteudo:has(#entradas.active) { background: var(--surface); }
