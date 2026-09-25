@@ -605,8 +605,8 @@ async function responderComandoConsulta(
   } else {
     const doPix = saidas.filter((t) => t.metodo && rotulosPix.has(t.metodo));
     const total = soma(doPix);
-    // Mesma regra do dashboard: pago = data anterior a hoje.
-    const pago = soma(doPix.filter((t) => String(t.data).slice(0, 10) < hoje));
+    // Mesma regra do dashboard: pago = data até hoje (inclusive).
+    const pago = soma(doPix.filter((t) => String(t.data).slice(0, 10) <= hoje));
     texto = [
       `⚡️ PIX ${String(mes).padStart(2, "0")}/${ano}`,
       `Do total de ${formatarMoedaBR(total)}, já foram pagos ${formatarMoedaBR(pago)} e ainda restam ${formatarMoedaBR(total - pago)} a pagar.`,
