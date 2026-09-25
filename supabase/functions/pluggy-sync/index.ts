@@ -477,6 +477,10 @@ Deno.serve(async (req: Request) => {
               categoria_sugerida: sugerirCategoria(categoriaTraduzida, descricaoBanco, tipo, categoriasApp ?? []),
               metodo_sugerido: conta.metodo_id ?? null,
               competencia_fatura: mesFatura ? `${mesFatura}-01` : null,
+              parcela_num: Number(t.creditCardMetadata?.totalInstallments) > 1 && Number(t.creditCardMetadata?.installmentNumber) >= 1
+                ? Number(t.creditCardMetadata.installmentNumber) : null,
+              parcelas_total: Number(t.creditCardMetadata?.totalInstallments) > 1 && Number(t.creditCardMetadata?.installmentNumber) >= 1
+                ? Number(t.creditCardMetadata.totalInstallments) : null,
               status: transacaoJaExistente ? "confirmada" : ehMovimentoInterno(t.operationType) ? "ignorada" : "pendente",
               transacao_id: transacaoJaExistente ?? null,
               user_id: user.id,
