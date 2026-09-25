@@ -86,3 +86,27 @@
 .anual-tabela th.mes.foco button { color: var(--text); text-decoration: underline; }
 .anual-tabela th.mes button { cursor: pointer; }
 .anual-card.foco { border-color: var(--primary); }
+
+/* ---- Celular ---- */
+@media (max-width: 600px) {
+  /* 1ª coluna congelada mais estreita; legenda do gráfico uma por linha */
+  .anual-tabela .anual-nome { min-width: 5.6rem; max-width: 6.6rem; font-size: .7rem; }
+  .anual-tabela .anual-ponto { margin-right: .3rem; }
+  .anual-tabela .grafico-rot .leg { flex-direction: column; align-items: flex-start; gap: .2rem; }
+  .anual-tabela .leg i { margin-left: 0; margin-right: .25rem; }
+  .anual-tabela .leg .leg-item { display: inline-flex; align-items: center; }
+  .anual-tabela { min-width: 0; }
+
+  /* Controles: todos 100% da largura, mesma altura, fonte e espaçamento */
+  .anual-barra-topo { flex-direction: column; align-items: stretch; gap: .5rem; }
+  .anual-ano { justify-content: center; }
+  .anual-seg { display: flex; width: 100%; }
+  .anual-seg button { flex: 1 1 0; }
+  .anual-filtros { flex-direction: column; align-items: stretch; gap: .5rem; }
+  .anual-filtros select, .anual-toggle, .anual-seg button { width: 100%; height: 2.4rem; box-sizing: border-box; font-size: .8rem; font-weight: 600; }
+  .anual-toggle { display: flex; align-items: center; justify-content: center; }
+  .anual-cmp-topo { flex-direction: column; align-items: stretch; }
+  .anual-cmp-topo select { width: 100%; height: 2.4rem; }
+  .anual-cmp-topo b, .anual-cmp-topo > span { text-align: center; }
+  .anual-cmp-topo .anual-toggle { width: 100%; }
+}
