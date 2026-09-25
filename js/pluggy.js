@@ -169,6 +169,23 @@ async function finalizarConexaoPluggy(itemId) {
     }
 }
 
+let _ultimaAtualizacaoSaldos = 0;
+/** Pede pro servidor buscar na Pluggy o saldo atual das contas e as faturas dos
+ *  cartões (sem mexer na fila de revisão) e recarrega o dashboard. Roda ao abrir
+ *  o app e ao voltar pra ele (no máximo 1x a cada 3 min fora do primeiro
+ *  carregamento). Falha silenciosa — mostra o último valor guardado. */
+async function atualizarSaldosPluggy(forcar = false) {
+    if (!forcar && Date.now() - _ultimaAtualizacaoSaldos < 3 * 60 * 1000) return;
+    _ultimaAtualizacaoSaldos = Date.now();
+    try {
+        await sb.functions.invoke('pluggy-sync', { body: { soSaldos: true } });
+    } catch (e) {
+        console.warn('Atualização de saldos indisponível:', e);
+    }
+    await carregarSaldoContas();
+    await carregarFaturasBanco();
+}
+
 /** Soma o saldo das contas BANCÁRIAS conectadas (Open Finance) pro cartão
  *  "Saldo em contas" do dashboard; sem nenhuma conta com saldo, esconde. */
 async function carregarSaldoContas() {
@@ -720,7 +737,9 @@ async function limparFilaRevisaoPluggy(btn) {
     const original = '🧹 Limpar';
     btn.disabled = true;
     try {
-        const { error } = await sb.from('transacoes_importadas').delete().in('status', ['pendente', 'ignorada', 'confirmada']);
+        // Só a fila PENDENTE: as já ignoradas (X) e as confirmadas ficam guardadas —
+        // senão, na próxima sincronização, tudo que você ignorou voltava pra revisão.
+        const { error } = await sb.from('transacoes_importadas').delete().eq('status', 'pendente');
         if (error) throw error;
         mostrarNotificacao('Fila de revisão limpa', 'sucesso');
         // carregarRevisaoPluggy decide se o botão fica habilitado (só
@@ -872,7 +891,7 @@ async function carregarRevisaoPluggy() {
 
     // "Limpar" só habilita se há algo visível pra limpar (pendentes, histórico ou já ignoradas).
     const btnLimparRevisao = document.getElementById('btnLimparRevisaoPluggy');
-    if (btnLimparRevisao) btnLimparRevisao.disabled = !pendentesBrutos.length && !historicoValido.length && !jaIgnoradas.length;
+    if (btnLimparRevisao) btnLimparRevisao.disabled = !pendentesBrutos.length;
 
     if (!pendentesBrutos.length && !historicoValido.length && !jaIgnoradas.length) {
         container.innerHTML = '<p class="empty-message">Nada pendente — toque em "Sincronizar agora" pra buscar transações novas</p>';

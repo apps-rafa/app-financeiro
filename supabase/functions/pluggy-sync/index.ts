@@ -271,8 +271,12 @@ Deno.serve(async (req: Request) => {
     // lançamento por conta com a soma do período; "ignorar" nem traz essas
     // transações pra fila.
     let modoRendimentos: "agrupar" | "ignorar" = "agrupar";
+    // Só atualiza saldos das contas e faturas dos cartões e volta (o app chama
+    // isso toda vez que abre, pra o "Saldo em contas" estar sempre certo).
+    let soSaldos = false;
     try {
       const body = await req.json();
+      if (body?.soSaldos === true) soSaldos = true;
       if (typeof body?.dateFrom === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.dateFrom)) {
         dateFromOverride = body.dateFrom;
       }
@@ -323,6 +327,7 @@ Deno.serve(async (req: Request) => {
     } catch (e) {
       console.error("Saldos/faturas do banco:", e);
     }
+    if (soSaldos) return json({ ok: true, soSaldos: true });
 
     // Inclui contas com erro também — um sync manual deve tentar de novo,
     // não travar pra sempre por causa de uma falha anterior. "sincronizar"
