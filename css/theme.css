@@ -521,6 +521,15 @@ body .rec-grupo--vazio { padding-left: .8rem; padding-right: .8rem; }
     body .rec-grupo > summary, body .subgrupo-cab, body .rec-grupo--vazio { padding-left: .65rem; padding-right: .65rem; }
 }
 
-/* Ícones Radix no lugar dos emojis (js/icons.js) */
-.rx-ico { display: inline-flex; vertical-align: -0.16em; line-height: 1; }
-.rx-ico svg { display: block; }
+
+/* Grupos colados (como em Próximos) em Despesas/Receitas também */
+body .rec-grupo { margin-bottom: 0; }
+body .rec-grupo + .rec-grupo { margin-top: -1px; }
+
+/* Valor mais perto da data (dia da semana ocupa só o que precisa) */
+body .despesa-dow { min-width: 1.55rem; }
+body .despesa-conteudo { column-gap: .3rem; }
+
+/* Histórico Pluggy: valores alinhados à esquerda, colados na data (a regra
+   de largura fixa da tabela de revisão não vale pros cards do histórico) */
+body #pluggyRevisaoLista .rec-grupo .despesa-valor { flex: 0 0 auto; min-width: 0; text-align: left; }
