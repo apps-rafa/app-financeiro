@@ -613,6 +613,35 @@ function _filtrarPorBusca(transacoes, termo) {
     return (transacoes || []).filter(tr => _bateConsulta(tr, q, t));
 }
 
+/** "Recém-lançados": os últimos lançamentos CRIADOS (de qualquer mês), 5 por vez com
+ *  "Carregar mais". Usa a mesma área dos resultados da busca. */
+async function mostrarRecemLancados(qtd = 5) {
+    const box = document.getElementById('resultadoBusca');
+    if (!box) return;
+    box.hidden = false;
+    box.dataset.modo = 'ampla'; // não deixa a atualização da tela/lixeira sobrescrever
+    document.body.classList.add('buscando');
+    if (!box.querySelector('.rec-grupo-itens')) box.innerHTML = '<p class="loading">Carregando...</p>';
+    const { data, error } = await sb.from('transacoes').select('*')
+        .order('criado_em', { ascending: false }).order('id', { ascending: false }).range(0, qtd - 1);
+    if (box.dataset.modo !== 'ampla') return; // o usuário já mudou de tela/busca
+    if (error) { console.error(error); box.innerHTML = '<p class="empty-message">Erro ao carregar</p>'; return; }
+    const itens = (data || []).map(r => ({ ...mapearTransacao(r), tipo: r.tipo }));
+    box.innerHTML = `
+        <div class="busca-ampla-resumo">
+            <b>🕓 Recém-lançados</b>
+            <span>Os ${itens.length} últimos lançamentos criados</span>
+            <button type="button" class="mini-btn" data-recentes-fechar>✕ fechar</button>
+        </div>
+        <div class="rec-grupo-itens recentes-lista">${itens.map(i => gerarHTMLTransacao(i, i.tipo === 'entradas' ? 'entrada' : 'saida', { semAcoes: true })).join('') || '<p class="empty-message">Nenhum lançamento ainda</p>'}</div>
+        ${data && data.length === qtd ? `<button type="button" class="busca-ampla-btn" data-recentes-mais="${qtd + 5}">Carregar mais 5</button>` : ''}`;
+    box.onclick = e => {
+        const mais = e.target.closest('[data-recentes-mais]');
+        if (mais) return mostrarRecemLancados(Number(mais.dataset.recentesMais));
+        if (e.target.closest('[data-recentes-fechar]')) atualizarBuscaGlobal();
+    };
+}
+
 /** Busca em TODOS os meses (não só o que está em tela), com os mesmos filtros de
  *  texto/valor/ano/mês, e mostra os achados agrupados por mês com os totais. */
 async function buscarAmpla(termo) {

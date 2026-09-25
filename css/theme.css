@@ -626,3 +626,21 @@ body.modo-anual #resultadoBusca { display: none !important; }
 /* Visão anual: sem a faixa vazia entre o cabeçalho e o conteúdo */
 body.modo-anual main.main { padding-top: 0; }
 body.modo-anual .area-conteudo { border-top: 0; }
+
+/* Menos espaço no topo no desktop (o padding do main é grande) */
+main.main { padding-top: var(--spacing-md); }
+body.modo-anual main.main { padding-top: 0; }
+
+/* Barra de busca alinhada com as colunas do "Lançamento | Próximos" + botão Recém-lançados */
+.busca-global { display: grid; grid-template-columns: 2fr 2fr 150px; gap: var(--spacing-md); align-items: stretch; }
+.busca-global .busca-campo { grid-column: 1 / span 2; min-width: 0; }
+.busca-recentes { grid-column: 3; min-width: 0; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: .78rem; font-weight: 600; cursor: pointer; padding: 0 .3rem; }
+.busca-recentes:hover { border-color: var(--primary); }
+@media (max-width: 480px) {
+  .busca-global { grid-template-columns: 1fr 1fr; }
+  .busca-global .busca-campo { grid-column: 1; }
+  .busca-recentes { grid-column: 2; }
+}
+/* A dica acoplada acompanha a largura do campo de busca */
+#resultadoBusca > .busca-ampla-btn:first-child { width: calc(100% - 150px - var(--spacing-md)); }
+@media (max-width: 480px) { #resultadoBusca > .busca-ampla-btn:first-child { width: calc((100% - var(--spacing-md)) / 2); } }
