@@ -500,3 +500,23 @@ body .tabs-dir .tab-btn-icone { flex: 1 1 0; min-width: 0; padding-left: 0; padd
 @media (max-width: 480px) {
     body .rec-grupo--vazio { padding: .4rem .5rem; gap: .3rem; font-size: .74rem; }
 }
+
+/* Cards Balanço / Gasto diário mais baixos: subtítulo pequeno colado no valor */
+.summary-card.balanco h3, .summary-card.gasto-diario h3 { margin-bottom: 0; line-height: 1.2; }
+.summary-card.balanco .amount, .summary-card.gasto-diario .amount { line-height: 1.15; }
+.summary-card.gasto-diario .sub { font-size: .62rem; margin: 0; line-height: 1.1; }
+.summary-card.balanco, .summary-card.gasto-diario { padding-top: .35rem; padding-bottom: .35rem; }
+
+/* Revisão Pluggy: espaçamento uniforme entre os grupos */
+#pluggyRevisaoLista { display: flex; flex-direction: column; gap: .5rem; }
+#pluggyRevisaoLista > * { margin: 0; }
+#pluggyRevisaoLista > .import-csv-grupo, #pluggyRevisaoLista > .rec-grupo { margin: 0; }
+#pluggyRevisaoLista .import-csv-acoes { margin-top: 0; }
+
+/* Cabeçalhos de grupo/subgrupo com o mesmo recuo horizontal dos lançamentos:
+   setinhas e valores (total à direita) ficam alinhados em toda a lista. */
+body .rec-grupo > summary, body .subgrupo-cab { padding-left: .8rem; padding-right: .8rem; }
+body .rec-grupo--vazio { padding-left: .8rem; padding-right: .8rem; }
+@media (max-width: 480px) {
+    body .rec-grupo > summary, body .subgrupo-cab, body .rec-grupo--vazio { padding-left: .65rem; padding-right: .65rem; }
+}

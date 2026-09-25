@@ -158,6 +158,12 @@ function ajustarFonteParaCaber(el, minPx = 10) {
 function ajustarFontesDashboard() {
     ['totalEntradas', 'totalSaidas', 'balanco', 'gastoDiario']
         .forEach(id => ajustarFonteParaCaber(document.getElementById(id)));
+    // Balanço e Gasto diário lado a lado: mesmo tamanho (o menor dos dois)
+    const par = ['balanco', 'gastoDiario'].map(id => document.getElementById(id)).filter(Boolean);
+    if (par.length === 2) {
+        const menor = Math.min(...par.map(el => parseFloat(getComputedStyle(el).fontSize)));
+        par.forEach(el => { el.style.fontSize = menor + 'px'; });
+    }
 }
 
 /**
