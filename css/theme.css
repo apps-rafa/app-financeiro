@@ -616,3 +616,6 @@ body.modo-anual .busca-global,
 body.modo-anual #resultadoBusca { display: none !important; }
 /* ícone aceso quando a página está ativa */
 #btnAnual.active, body.modo-anual #btnAnual { background: var(--primary); color: var(--primary-contrast, #fff); border-color: var(--primary); box-shadow: 0 0 0 2px rgba(129,140,248,.45), 0 0 12px rgba(129,140,248,.55); }
+
+/* Regra geral: texto longo nunca termina em "…" — o e-mail quebra em vez de truncar */
+.user-email { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.15; text-align: right; }
