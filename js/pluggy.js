@@ -737,13 +737,13 @@ async function limparFilaRevisaoPluggy(btn) {
     const original = '🧹 Limpar';
     btn.disabled = true;
     try {
-        // Limpa a TELA: as pendentes são apagadas (o sync as traz de novo); as já
-        // ignoradas (X) e as confirmadas só ficam OCULTAS — continuam no banco pra
-        // o próximo sync não trazer de volta o que já foi visto.
+        // Limpa a TELA: as pendentes são apagadas (o sync as traz de novo) e o
+        // histórico (confirmadas) fica oculto — segue no banco. As DESCARTADAS
+        // (X) nunca somem da página: continuam no grupo "Descartadas".
         const { error } = await sb.from('transacoes_importadas').delete().eq('status', 'pendente');
         if (error) throw error;
         const { error: errOculta } = await sb.from('transacoes_importadas')
-            .update({ oculta: true }).in('status', ['ignorada', 'confirmada']).eq('oculta', false);
+            .update({ oculta: true }).eq('status', 'confirmada').eq('oculta', false);
         if (errOculta) throw errOculta;
         mostrarNotificacao('Fila de revisão limpa', 'sucesso');
         // carregarRevisaoPluggy decide se o botão fica habilitado (só
@@ -837,7 +837,7 @@ async function carregarRevisaoPluggy() {
         // um período já revisado achava "0 novas" e a tela ficava vazia,
         // sem rastro do que já tinha sido visto — agora aparecem aqui,
         // riscadas, em vez de simplesmente sumir.
-        sb.from('transacoes_importadas').select('*').eq('status', 'ignorada').eq('oculta', false).order('data', { ascending: false }).limit(100),
+        sb.from('transacoes_importadas').select('*').eq('status', 'ignorada').order('data', { ascending: false }).limit(100),
     ]);
     const contasPorId = Object.fromEntries((contasRows || []).map(c => [c.id, c]));
     const jaIgnoradas = jaIgnoradasBrutas || [];
@@ -923,21 +923,34 @@ async function carregarRevisaoPluggy() {
         htmlLinha: gerarHTMLImportadaPluggy,
     });
 
-    // Histórico no mesmo padrão dos outros grupos: subgrupos Despesas/Receitas,
-    // mesma tabela compacta (ações → Data/Valor/Categoria/Descrição).
-    const tabelaHistorico = !historicoValido.length ? '' : _grupoColapsavelConciliar({
-        id: 'pluggy-historico', abertos: _abertosPluggy, padraoAberto: false,
-        titulo: `📜 Já lançados (histórico) (${historicoValido.length})`,
-        corpo: ['saidas', 'entradas'].map(tipo => {
+    // Histórico no MESMO visual dos grupos das páginas de Receitas/Despesas
+    // (rec-grupo + subgrupos com contagem e total, cards zebrados).
+    const _abertoHist = (id, padrao) => (_abertosPluggy[id] !== undefined ? _abertosPluggy[id] : padrao);
+    const _somaHist = l => l.reduce((acc, i) => acc + (parseFloat(i.transacao.valor) || 0), 0);
+    const tabelaHistorico = !historicoValido.length ? '' : `
+        <details class="rec-grupo" data-grupo-id="pluggy-historico" style="--cor-rec: var(--primary)" ${_abertoHist('pluggy-historico', false) ? 'open' : ''}>
+          <summary>
+            <span class="rec-grupo-nome">📜 Já lançados (histórico)</span>
+            <span class="rec-grupo-espaco"></span>
+            <span class="rec-grupo-contagem">${historicoValido.length}</span>
+          </summary>
+          <div class="rec-grupo-itens">${['saidas', 'entradas'].map(tipo => {
             const lista = historicoValido.filter(i => (i.transacao.tipo === 'entradas') === (tipo === 'entradas'))
-                .sort((a, b) => String(b.transacao.data).localeCompare(String(a.transacao.data)));
-            return !lista.length ? '' : _grupoColapsavelConciliar({
-                id: `pluggy-historico-${tipo}`, abertos: _abertosPluggy, padraoAberto: true,
-                titulo: `${tipo === 'entradas' ? 'Receitas' : 'Despesas'} (${lista.length})`,
-                corpo: `<div class="historico-lista">${lista.map(gerarHTMLHistoricoPluggy).join('')}</div>`,
-            });
-        }).join(''),
-    });
+                .sort((x, y) => String(y.transacao.data).localeCompare(String(x.transacao.data)));
+            if (!lista.length) return '';
+            const id = `pluggy-historico-${tipo}`;
+            return `
+            <details class="subgrupo" data-grupo-id="${id}" ${_abertoHist(id, true) ? 'open' : ''}>
+              <summary class="subgrupo-cab">
+                <span class="subgrupo-nome">${tipo === 'entradas' ? 'Receitas' : 'Despesas'}</span>
+                <span class="subgrupo-espaco"></span>
+                <span class="subgrupo-contagem">${lista.length}</span>
+                <span class="subgrupo-total"><span class="tot-valor">${formatarMoeda(_somaHist(lista))}</span></span>
+              </summary>
+              ${lista.map(gerarHTMLHistoricoPluggy).join('')}
+            </details>`;
+          }).join('')}</div>
+        </details>`;
 
     // Com mais de uma conta na fila, cada conta vira um grupo (Nubank: Crédito,
     // Mercado Pago: Conta...) com os 3 grupos de sempre dentro; com uma só, fica
@@ -971,10 +984,10 @@ async function carregarRevisaoPluggy() {
     // sumir sem deixar rastro (ver query em cima). O ↺ manda de volta pra
     // "Para revisar" (bate no banco na hora, não é local como o X normal).
     const jaIgnoradasHTML = !jaIgnoradas.length ? '' : htmlGrupoRevisao({
-        id: 'pluggy-ja-ignoradas', titulo: '✕ Já ignoradas (não entraram)', abertos: _abertosPluggy, padraoAberto: false,
+        id: 'pluggy-ja-ignoradas', titulo: '🗑️ Descartadas (não entraram)', abertos: _abertosPluggy, padraoAberto: false,
         itens: jaIgnoradas, tipoDe: i => i.tipo, colunas: ['Data', 'Valor', 'Categoria', 'Descrição'],
         htmlLinha: gerarHTMLIgnoradaDbPluggy,
-        nota: `<p class="import-csv-nota">Ficam aqui riscadas — não somem mais. Clique no ↺ pra mandar de volta pra "Para revisar".</p>`,
+        nota: `<p class="import-csv-nota">Ficam aqui riscadas — nunca somem da página, nem depois de "Limpar". Clique no ↺ pra mandar de volta pra "Para revisar".</p>`,
     });
 
     container.innerHTML = [
@@ -1000,7 +1013,7 @@ async function carregarRevisaoPluggy() {
         tabelaHistorico,
     ].join('');
 
-    container.querySelectorAll('details.import-csv-grupo').forEach(det => {
+    container.querySelectorAll('details[data-grupo-id]').forEach(det => {
         det.addEventListener('toggle', () => { _abertosPluggy[det.dataset.grupoId] = det.open; });
     });
 

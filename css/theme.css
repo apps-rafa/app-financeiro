@@ -494,3 +494,9 @@ body .tabs-dir .tab-btn-icone { flex: 1 1 0; min-width: 0; padding-left: 0; padd
 .mini-box { gap: .15rem; padding: .35rem .12rem; }
 .mini-box i { font-size: .66rem; }
 .mini-box b { font-size: .6rem; }
+
+/* Grupo vazio ("A receber 0") alinhado com os grupos vizinhos no celular: o
+   summary deles usa padding/gap menores nesse breakpoint. */
+@media (max-width: 480px) {
+    body .rec-grupo--vazio { padding: .4rem .5rem; gap: .3rem; font-size: .74rem; }
+}
