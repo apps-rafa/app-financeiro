@@ -469,10 +469,50 @@ async function confirmarRascunhoNoBanco(
   return { erro: error };
 }
 
+const MINIAPP_URL = "https://apps-rafa.github.io/ctrl-fin/lancamento-tg.html";
+
+interface ListasUsuario {
+  catsR: string[];
+  catsD: string[];
+  metodos: { nome: string; metodo_kind: string | null; banco: string | null; dia_fechamento: number | null }[];
+}
+
+async function carregarListasUsuario(admin: ReturnType<typeof createClient>, userId: string): Promise<ListasUsuario> {
+  const [{ data: cats }, { data: mets }] = await Promise.all([
+    admin.from("menu_itens").select("nome, categoria_tipo").eq("tipo", "Categoria").eq("status", "Ativo").eq("user_id", userId).order("ordem"),
+    admin.from("menu_itens").select("nome, metodo_kind, banco, dia_fechamento").eq("tipo", "Método").eq("status", "Ativo").eq("user_id", userId).order("ordem"),
+  ]);
+  const lista = (cats ?? []) as { nome: string; categoria_tipo: string | null }[];
+  return {
+    catsR: lista.filter((c) => c.categoria_tipo === "entradas").map((c) => c.nome),
+    catsD: lista.filter((c) => c.categoria_tipo === "saidas").map((c) => c.nome),
+    metodos: (mets ?? []) as ListasUsuario["metodos"],
+  };
+}
+
+/** Endereço do mini app (formulário de lançamento) já preenchido com o rascunho. */
+function urlMiniApp(r: RascunhoLancamento, l: ListasUsuario): string {
+  const q = new URLSearchParams();
+  q.set("tipo", r.tipo);
+  q.set("v", String(r.valor));
+  q.set("d", r.data);
+  q.set("c", r.categoria);
+  if (r.metodo) q.set("m", r.metodo);
+  if (r.descricao) q.set("desc", r.descricao);
+  if (r.parcelas && r.parcelas > 1) q.set("p", String(r.parcelas));
+  q.set("cr", JSON.stringify(l.catsR));
+  q.set("cd", JSON.stringify(l.catsD));
+  q.set("mt", JSON.stringify(l.metodos.map((m) => [rotuloMetodo(m), m.metodo_kind])));
+  return `${MINIAPP_URL}?${q.toString()}`;
+}
+
 /** Mensagem do rascunho + teclado Confirmar/Cancelar (embaixo, onde se digita,
  *  em vez de botão dentro da mensagem). "one_time_keyboard" some sozinho depois
  *  de usado. Reenviada também quando o usuário digita uma descrição. */
-async function enviarRascunho(token: string, chatId: number, r: RascunhoLancamento) {
+async function enviarRascunho(
+  token: string, chatId: number, r: RascunhoLancamento,
+  admin?: ReturnType<typeof createClient>, userId?: string,
+) {
   const sinal = r.tipo === "entradas" ? "💰 Receita" : "💸 Despesa";
   const dataFmt = new Date(`${r.data}T00:00:00`).toLocaleDateString("pt-BR");
   const linhas = [
@@ -488,11 +528,18 @@ async function enviarRascunho(token: string, chatId: number, r: RascunhoLancamen
     "",
     "💬 Se responder qualquer outra coisa (sem ser os botões), eu entendo como a descrição do lançamento.",
   ].filter((l) => l !== null).join("\n");
+  // Botão "✏️ Editar": abre o formulário (mini app) já preenchido. Só aparece
+  // quando dá pra carregar as listas do usuário.
+  const listas = admin && userId ? await carregarListasUsuario(admin, userId).catch(() => null) : null;
   await tg(token, "sendMessage", {
     chat_id: chatId,
     text: linhas,
     reply_markup: {
-      keyboard: [[{ text: "✅ Confirmar" }, { text: "❌ Cancelar" }]],
+      keyboard: [[
+        { text: "✅ Confirmar" },
+        ...(listas ? [{ text: "✏️ Editar", web_app: { url: urlMiniApp(r, listas) } }] : []),
+        { text: "❌ Cancelar" },
+      ]],
       resize_keyboard: true,
       one_time_keyboard: true,
     },
@@ -639,6 +686,51 @@ Deno.serve(async (req: Request) => {
   let update: any;
   try {
     update = await req.json();
+
+    // ---------- Formulário (mini app) enviado: grava o lançamento ----------
+    // O Telegram entrega isto dentro do chat do próprio usuário, então o dono é
+    // quem está vinculado a este chat (sem login no mini app).
+    if (update.message?.web_app_data) {
+      const chatId = update.message.chat.id;
+      const remover = { remove_keyboard: true };
+      const { data: tgUser } = await supabaseAdmin.from("telegram_users").select("user_id").eq("chat_id", chatId).maybeSingle();
+      if (!tgUser) {
+        await tg(token, "sendMessage", { chat_id: chatId, text: "Conta não vinculada — mande /start com o código do app primeiro.", reply_markup: remover });
+        return json({ ok: true });
+      }
+      // deno-lint-ignore no-explicit-any
+      let p: any = null;
+      try { p = JSON.parse(String(update.message.web_app_data.data)); } catch (_) { /* inválido */ }
+      const tipoF: "entradas" | "saidas" = p?.tipo === "entradas" ? "entradas" : "saidas";
+      const valorF = Number(p?.valor);
+      const dataF = String(p?.data ?? "");
+      const listas = await carregarListasUsuario(supabaseAdmin, tgUser.user_id);
+      const categoriaF = String(p?.categoria ?? "");
+      const categoriaOk = (tipoF === "entradas" ? listas.catsR : listas.catsD).includes(categoriaF);
+      if (!p || !(valorF > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(dataF) || !categoriaOk) {
+        await tg(token, "sendMessage", { chat_id: chatId, text: "Não consegui ler os dados do formulário — tenta de novo.", reply_markup: remover });
+        return json({ ok: true });
+      }
+      const metodoF = tipoF === "saidas" ? listas.metodos.find((m) => rotuloMetodo(m) === p.metodo) ?? null : null;
+      const nParc = Math.min(48, Math.max(1, parseInt(String(p.parcelas ?? 1), 10) || 1));
+      const dadosF: RascunhoLancamento = {
+        tipo: tipoF, valor: valorF, data: dataF, categoria: categoriaF,
+        descricao: String(p.descricao ?? "").trim().slice(0, 200),
+        metodo: metodoF ? rotuloMetodo(metodoF) : null,
+        metodoKind: metodoF?.metodo_kind ?? null,
+        diaFechamento: metodoF?.dia_fechamento ?? null,
+        parcelas: tipoF === "saidas" && metodoF?.metodo_kind === "Crédito" && nParc > 1 ? nParc : null,
+      };
+      await supabaseAdmin.from("telegram_rascunhos").delete().eq("chat_id", chatId);
+      const { erro: erroF } = await confirmarRascunhoNoBanco(supabaseAdmin, tgUser.user_id, dadosF);
+      if (erroF) {
+        console.error(erroF);
+        await tg(token, "sendMessage", { chat_id: chatId, text: "Erro ao lançar — tenta de novo.", reply_markup: remover });
+        return json({ ok: true });
+      }
+      await tg(token, "sendMessage", { chat_id: chatId, text: "✅ Lançado!", reply_markup: remover });
+      return json({ ok: true });
+    }
 
     // ---------- Mensagem de texto (só tratamos "/start CODIGO" por ora) ----------
     if (update.message?.text) {
@@ -824,7 +916,7 @@ Deno.serve(async (req: Request) => {
         if (pend) {
           const nova: RascunhoLancamento = { ...(pend.dados as RascunhoLancamento), descricao: texto.charAt(0).toUpperCase() + texto.slice(1) };
           await supabaseAdmin.from("telegram_rascunhos").update({ dados: nova }).eq("id", pend.id);
-          await enviarRascunho(token, chatId, nova);
+          await enviarRascunho(token, chatId, nova, supabaseAdmin, tgU!.user_id);
           return json({ ok: true });
         }
         await tg(token, "sendMessage", {
@@ -901,7 +993,7 @@ Deno.serve(async (req: Request) => {
         return json({ ok: true });
       }
 
-      await enviarRascunho(token, chatId, rascunho);
+      await enviarRascunho(token, chatId, rascunho, supabaseAdmin, tgUser.user_id);
       return json({ ok: true });
     }
 

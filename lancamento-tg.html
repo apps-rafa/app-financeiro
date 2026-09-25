@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Lançamento</title>
+<!-- Mini app do Telegram: formulário de lançamento pré-preenchido pelo bot.
+     Sem login: ao tocar em "Lançar" os dados voltam ao bot (Telegram.WebApp.sendData)
+     e ele grava no nome de quem já está vinculado ao chat. -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #0f172a);
+    --card: var(--tg-theme-secondary-bg-color, #1e293b);
+    --text: var(--tg-theme-text-color, #e5e7eb);
+    --muted: var(--tg-theme-hint-color, #94a3b8);
+    --accent: var(--tg-theme-button-color, #6366f1);
+    --accent-text: var(--tg-theme-button-text-color, #fff);
+    --border: rgba(148, 163, 184, .3);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 14px 14px 90px; background: var(--bg); color: var(--text); font: 15px/1.35 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  h1 { font-size: 1.05rem; margin: 0 0 12px; }
+  label { display: block; font-size: .75rem; color: var(--muted); margin: 12px 0 4px; font-weight: 600; }
+  input, select { width: 100%; padding: 11px 12px; font-size: 1rem; color: var(--text); background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
+  .tipo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tipo button { padding: 11px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: .95rem; font-weight: 600; }
+  .tipo button.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .linha { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  [hidden] { display: none !important; }
+  #erro { color: #f87171; font-size: .85rem; margin-top: 10px; min-height: 1em; }
+  #enviar { display: none; position: fixed; left: 14px; right: 14px; bottom: 14px; padding: 14px; font-size: 1rem; font-weight: 700; border: 0; border-radius: 12px; background: var(--accent); color: var(--accent-text); }
+  body.sem-tg #enviar { display: block; }
+</style>
+</head>
+<body>
+<h1>✏️ Lançamento</h1>
+
+<div class="tipo" id="tipo">
+  <button type="button" data-tipo="saidas">Despesa</button>
+  <button type="button" data-tipo="entradas">Receita</button>
+</div>
+
+<div class="linha">
+  <div><label for="valor">Valor (R$)</label><input id="valor" type="number" inputmode="decimal" step="0.01" min="0"></div>
+  <div><label for="data">Data</label><input id="data" type="date"></div>
+</div>
+
+<label for="categoria">Categoria</label>
+<select id="categoria"></select>
+
+<div id="blocoMetodo">
+  <label for="metodo">Forma de pagamento</label>
+  <select id="metodo"></select>
+</div>
+
+<div id="blocoParcelas" hidden>
+  <label for="parcelas">Parcelas (valor é o total da compra)</label>
+  <input id="parcelas" type="number" inputmode="numeric" min="1" max="48" step="1" value="1">
+</div>
+
+<label for="descricao">Descrição</label>
+<input id="descricao" type="text" placeholder="opcional" autocomplete="off">
+
+<div id="erro"></div>
+<button id="enviar" type="button">Lançar</button>
+
+<script>
+(function () {
+  // Fora do Telegram o objeto existe, mas com platform 'unknown'.
+  const tgObj = window.Telegram && window.Telegram.WebApp;
+  const tg = tgObj && tgObj.platform && tgObj.platform !== 'unknown' ? tgObj : null;
+  const q = new URLSearchParams(location.search);
+  const $ = id => document.getElementById(id);
+
+  // Listas vindas do bot: categorias de receita/despesa e formas de pagamento.
+  const lista = (k) => { try { return JSON.parse(q.get(k) || '[]'); } catch (_) { return []; } };
+  const catsR = lista('cr'), catsD = lista('cd');
+  const metodos = lista('mt'); // [[rótulo, tipo]]
+
+  let tipo = q.get('tipo') === 'entradas' ? 'entradas' : 'saidas';
+
+  function preencherCategorias() {
+    const cats = tipo === 'entradas' ? catsR : catsD;
+    const atual = $('categoria').value || q.get('c') || '';
+    $('categoria').innerHTML = cats.map(c => `<option>${c}</option>`).join('');
+    if (cats.includes(atual)) $('categoria').value = atual;
+  }
+  function atualizarTipo() {
+    document.querySelectorAll('#tipo button').forEach(b => b.classList.toggle('on', b.dataset.tipo === tipo));
+    $('blocoMetodo').hidden = tipo === 'entradas';
+    preencherCategorias();
+    atualizarParcelas();
+  }
+  function ehCredito() {
+    const m = metodos.find(x => x[0] === $('metodo').value);
+    return !!m && m[1] === 'Crédito';
+  }
+  function atualizarParcelas() {
+    $('blocoParcelas').hidden = !(tipo === 'saidas' && ehCredito());
+  }
+
+  $('metodo').innerHTML = metodos.map(m => `<option>${m[0]}</option>`).join('');
+  if (q.get('m')) $('metodo').value = q.get('m');
+  $('valor').value = q.get('v') || '';
+  $('data').value = q.get('d') || new Date().toISOString().slice(0, 10);
+  $('descricao').value = q.get('desc') || '';
+  if (Number(q.get('p')) > 1) $('parcelas').value = q.get('p');
+  $('categoria').value = q.get('c') || '';
+  atualizarTipo();
+  if (q.get('c')) $('categoria').value = q.get('c');
+
+  document.querySelectorAll('#tipo button').forEach(b => b.addEventListener('click', () => { tipo = b.dataset.tipo; atualizarTipo(); }));
+  $('metodo').addEventListener('change', atualizarParcelas);
+
+  function enviar() {
+    const valor = parseFloat($('valor').value);
+    if (!(valor > 0)) { $('erro').textContent = 'Informe um valor maior que zero.'; return; }
+    if (!$('data').value) { $('erro').textContent = 'Informe a data.'; return; }
+    if (!$('categoria').value) { $('erro').textContent = 'Escolha a categoria.'; return; }
+    const dados = {
+      tipo, valor, data: $('data').value, categoria: $('categoria').value,
+      metodo: tipo === 'saidas' ? $('metodo').value : null,
+      descricao: $('descricao').value.trim(),
+      parcelas: tipo === 'saidas' && ehCredito() ? Math.max(1, parseInt($('parcelas').value, 10) || 1) : 1,
+    };
+    if (tg) tg.sendData(JSON.stringify(dados));   // o bot grava e fecha o app
+    else $('erro').textContent = 'Abra esta tela pelo botão do bot no Telegram.';
+  }
+
+  if (tg) {
+    tg.ready(); tg.expand();
+    tg.MainButton.setText('Lançar').show().onClick(enviar);
+  } else {
+    document.body.classList.add('sem-tg');
+    $('enviar').addEventListener('click', enviar);
+  }
+})();
+</script>
+</body>
+</html>
