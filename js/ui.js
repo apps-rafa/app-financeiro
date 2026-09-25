@@ -1098,6 +1098,9 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
         if (opts.comAprovarDuplicata) {
             acoes += `<button class="btn-icon btn-success" data-act="aprovar-duplicata" data-id="${trans.id}" title="Não é duplicata — não avisar de novo sobre este lançamento">✓</button>`;
         }
+        if (!ehParcela) {
+            acoes += `<button class="btn-icon" data-act="repetir-trans" data-id="${trans.id}" title="Repetir todo mês (lembrete no Telegram)">🔁</button>`;
+        }
         if (!ehParcela || ehOriginal) {
             acoes += `<button class="btn-icon" data-act="editar-trans" data-id="${trans.id}" title="Editar">✏️</button>`;
         }
@@ -1183,6 +1186,12 @@ function onListaTransacaoClick(e) {
             const tipo = estadoApp.transacoes.entradas.some(t => t.id === id) || viaProximasEntrada
                 ? 'entradas' : 'saidas';
             iniciarEdicaoTransacao(trans, tipo);
+            break;
+        }
+        case 'repetir-trans': {
+            const viaProx = ctxProximas.some(c => c.trans.id === id && c.tipoUI === 'entrada');
+            const tipoRep = estadoApp.transacoes.entradas.some(t => t.id === id) || viaProx ? 'entradas' : 'saidas';
+            abrirRepetirMensal(trans, tipoRep);
             break;
         }
         case 'excluir-trans':
