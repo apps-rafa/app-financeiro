@@ -1288,3 +1288,9 @@ summary [role="button"] { font-family: Arial; text-align: center; }
   .import-csv-tabela--compacta .import-desc-input { font-size: .62rem; padding: .1rem .2rem; }
   .import-csv-tabela--compacta .import-x { width: 1rem; height: 1rem; font-size: .5rem; }
 }
+
+/* Histórico usa o card normal de lançamento: anula as larguras fixas do layout
+   antigo da fila (#pluggyRevisaoLista .despesa-*), que afastavam valor da data. */
+#pluggyRevisaoLista .historico-lista .despesa-item { flex-wrap: nowrap; }
+#pluggyRevisaoLista .historico-lista .despesa-data { flex: 0 0 auto; }
+#pluggyRevisaoLista .historico-lista .despesa-valor { flex: 0 0 auto; text-align: left; }
