@@ -404,3 +404,7 @@
 .summary-card.saldo-contas[hidden] { display: none; }
 .saldo-contas .sc-rot { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
 .saldo-contas .sc-val { font-size: 1rem; font-variant-numeric: tabular-nums; }
+
+.saldo-contas .sc-hoje { font-style: italic; font-weight: 400; text-transform: none; opacity: .6; margin-left: .25rem; }
+/* Animação do swipe de mês (ver events.js): o painel não pode estourar a tela */
+.dashboard { will-change: transform, opacity; }
