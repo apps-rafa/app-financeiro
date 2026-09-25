@@ -383,3 +383,6 @@
 .mini-box.saidas   { background: var(--despesa-bg); color: var(--despesa-text); border-color: var(--despesa-border); }
 .mini-box.balanco  { background: var(--balanco-bg); color: var(--balanco-text); border-color: var(--balanco-border); }
 .mini-box.gasto-diario { background: var(--surface); color: var(--text); border-color: var(--border); }
+
+/* Swipe horizontal troca de mês (ver events.js); vertical continua rolando */
+.dashboard { touch-action: pan-y; }

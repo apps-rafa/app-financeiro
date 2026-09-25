@@ -39,6 +39,27 @@ function configurarEventListeners() {
         estadoApp.mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
         recarregarDados();
     });
+    // Swipe no dashboard: arrastar pra esquerda vai pro mês seguinte, pra
+    // direita volta um mês (só se o gesto for claramente horizontal).
+    const dashboardEl = document.querySelector('.dashboard');
+    if (dashboardEl) {
+        let inicio = null;
+        dashboardEl.addEventListener('touchstart', e => {
+            const t = e.touches[0];
+            inicio = e.touches.length === 1 ? { x: t.clientX, y: t.clientY } : null;
+        }, { passive: true });
+        dashboardEl.addEventListener('touchend', e => {
+            if (!inicio) return;
+            const t = e.changedTouches[0];
+            const dx = t.clientX - inicio.x, dy = t.clientY - inicio.y;
+            inicio = null;
+            if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+            const d = estadoApp.mesAtual;
+            estadoApp.mesAtual = new Date(d.getFullYear(), d.getMonth() + (dx < 0 ? 1 : -1), 1);
+            recarregarDados();
+        }, { passive: true });
+        dashboardEl.addEventListener('touchcancel', () => { inicio = null; }, { passive: true });
+    }
     window.addEventListener('resize', debounce(() => {
         if (typeof atualizarCalendarioNav === 'function') atualizarCalendarioNav();
     }, 150));
