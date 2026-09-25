@@ -275,6 +275,7 @@ function _renderVisaoAnual() {
             <select id="anualFiltro" aria-label="Filtrar"><option value="">${rotuloTodas}</option>${opcoes}</select>
             <button type="button" class="anual-toggle${estadoAnual.cmp.ativo ? ' active' : ''}" data-anual-cmp title="Comparar dois meses">⇄ Comparar meses</button>
             ${foco !== null ? `<button type="button" class="anual-toggle active" data-foco-limpar title="Voltar a ver o ano todo">${MESES_ANUAL_LONGO[foco]} ✕</button>` : ''}
+            <button type="button" class="anual-toggle anual-olho" data-anual-olho title="${_anualOculto() ? 'Mostrar valores' : 'Esconder valores'}">${_anualOculto() ? OLHO_FECHADO_SVG : OLHO_ABERTO_SVG}</button>
         </div>
         <div class="anual-cards">${cartoes}</div>
         ${_renderComparacaoMeses(vD, vR, ref)}
@@ -321,6 +322,7 @@ function iniciarVisaoAnual() {
     const aba = document.getElementById('anual');
     if (!aba) return;
     aba.addEventListener('click', async e => {
+        if (e.target.closest('[data-anual-olho]')) { alternarValoresOcultos(); return; }
         const btnAgr = e.target.closest('[data-anual-agrupar]');
         const btnAno = e.target.closest('[data-anual-ano]');
         const btnMes = e.target.closest('[data-foco-mes]');

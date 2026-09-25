@@ -215,20 +215,28 @@ function configurarTema() {
  *  mês (ver btnTema, que se mudou pro cabeçalho). */
 const OLHO_FECHADO_SVG = `<svg viewBox="0 0 15 15" width="1.25em" height="1.25em" fill="none" aria-hidden="true" style="display:block"><path fill-rule="evenodd" clip-rule="evenodd" d="M14.765 6.076a.5.5 0 0 1 .159.689 9.5 9.5 0 0 1-1.554 1.898l1.201 1.201a.5.5 0 0 1-.707.707l-1.263-1.263a8.5 8.5 0 0 1-2.667 1.343l.449 1.677a.5.5 0 0 1-.966.258l-.458-1.709Q8.25 11 7.5 11t-1.46-.123l-.457 1.71a.5.5 0 1 1-.966-.26l.45-1.676a8.5 8.5 0 0 1-2.668-1.343l-1.263 1.263a.5.5 0 1 1-.707-.707l1.2-1.201A9.5 9.5 0 0 1 .077 6.765a.5.5 0 0 1 .848-.53 8.4 8.4 0 0 0 1.77 2.034A7.46 7.46 0 0 0 7.5 9.999c2.808 0 5.156-1.493 6.576-3.764a.5.5 0 0 1 .689-.16" fill="currentColor"/></svg>`;
 const OLHO_ABERTO_SVG = `<svg viewBox="0 0 15 15" width="1.25em" height="1.25em" fill="none" aria-hidden="true" style="display:block"><path fill-rule="evenodd" clip-rule="evenodd" d="M7.5 11c-2.697 0-4.97-1.378-6.404-3.5C2.53 5.378 4.803 4 7.5 4s4.97 1.378 6.404 3.5C12.47 9.622 10.197 11 7.5 11m0-8C4.308 3 1.656 4.706.076 7.235a.5.5 0 0 0 0 .53C1.656 10.294 4.308 12 7.5 12s5.844-1.706 7.424-4.235a.5.5 0 0 0 0-.53C13.344 4.706 10.692 3 7.5 3m0 6.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4" fill="currentColor"/></svg>`;
+/** Ícone/título de todos os botões "olho" (barra do mês e visão anual). */
+function atualizarIconesOlho() {
+    document.querySelectorAll('#btnOlhoValores, [data-anual-olho]').forEach(btn => {
+        btn.innerHTML = valoresOcultos ? OLHO_FECHADO_SVG : OLHO_ABERTO_SVG;
+        btn.title = valoresOcultos ? 'Mostrar valores' : 'Esconder valores';
+    });
+}
+
+/** Liga/desliga a exibição dos valores (vale pro dashboard e pra visão anual). */
+function alternarValoresOcultos() {
+    valoresOcultos = !valoresOcultos;
+    try { localStorage.setItem('valoresOcultos', valoresOcultos ? '1' : '0'); } catch (_) {}
+    atualizarIconesOlho();
+    if (typeof atualizarResumo === 'function') atualizarResumo();
+    if (typeof _renderVisaoAnual === 'function' && document.getElementById('anualConteudo')?.children.length) _renderVisaoAnual();
+}
+
 function configurarOlhoValores() {
     const btn = document.getElementById('btnOlhoValores');
     if (!btn) return;
-    const atualizarIcone = () => {
-        btn.innerHTML = valoresOcultos ? OLHO_FECHADO_SVG : OLHO_ABERTO_SVG;
-        btn.title = valoresOcultos ? 'Mostrar valores do dashboard' : 'Esconder valores do dashboard';
-    };
-    atualizarIcone();
-    btn.addEventListener('click', () => {
-        valoresOcultos = !valoresOcultos;
-        try { localStorage.setItem('valoresOcultos', valoresOcultos ? '1' : '0'); } catch (_) {}
-        atualizarIcone();
-        if (typeof atualizarResumo === 'function') atualizarResumo();
-    });
+    atualizarIconesOlho();
+    btn.addEventListener('click', alternarValoresOcultos);
 }
 
 function adicionarEstilosDinamicos() {

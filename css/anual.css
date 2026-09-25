@@ -126,3 +126,7 @@
 .anual-tabela tfoot tr.saldo th, .anual-tabela tfoot tr.saldo td { font-weight: 700; border-top: 2px solid var(--border-strong, var(--border)); background: var(--surface-2); }
 .anual-tabela .bom { color: var(--receita-text); }
 .anual-tabela .ruim { color: var(--despesa-text); }
+
+/* Olho (mostrar/esconder valores) na visão anual */
+.anual-olho { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; height: 2rem; padding: 0 .7rem; }
+@media (max-width: 600px) { .anual-olho { margin-left: 0; } }
