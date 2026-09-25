@@ -1486,7 +1486,7 @@ function renderPendentesProximas(abertos = {}, termo = '') {
         if (!lista.length) return '';
         const total = lista.reduce((acc, t) => acc + valorDe(t), 0);
         return `
-        <details class="fatura-item" data-pend="${chave}" ${abertos[chave] !== false ? 'open' : ''}>
+        <details class="fatura-item" data-pend="${chave}" ${(abertos[chave] !== undefined ? abertos[chave] : !!termo) ? 'open' : ''}>
           <summary>
             <span class="fatura-nome">${nome}</span>
             <span class="fatura-espaco"></span>
