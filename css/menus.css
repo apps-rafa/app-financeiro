@@ -1294,3 +1294,6 @@ summary [role="button"] { font-family: Arial; text-align: center; }
 #pluggyRevisaoLista .historico-lista .despesa-item { flex-wrap: nowrap; }
 #pluggyRevisaoLista .historico-lista .despesa-data { flex: 0 0 auto; }
 #pluggyRevisaoLista .historico-lista .despesa-valor { flex: 0 0 auto; text-align: left; }
+
+/* Bolinha de cor menor, na proporção dos ícones ao lado (ordem: ✏️ 🗑️ ⊘ cor) */
+.item-actions button.cor-swatch { width: .9rem; height: .9rem; margin: 0 .2rem; }
