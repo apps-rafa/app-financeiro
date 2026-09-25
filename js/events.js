@@ -182,6 +182,7 @@ function configurarEventListeners() {
     // Busca em tempo real (Receitas/Despesas) — filtra a cada tecla, funciona
     // igual em qualquer modo de visualização (ver _filtrarPorBusca em js/ui.js).
     const buscaGlobalEl = document.getElementById('buscaGlobal');
+    document.getElementById('btnRecentes')?.addEventListener('click', () => mostrarRecemLancados(5));
     const buscaLimparEl = document.getElementById('buscaLimpar');
     const sincronizarBuscaLimpar = () => { if (buscaLimparEl) buscaLimparEl.hidden = !buscaGlobalEl.value; };
     if (buscaGlobalEl) buscaGlobalEl.addEventListener('input', () => {
