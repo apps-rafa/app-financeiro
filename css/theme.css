@@ -580,3 +580,6 @@ body .pluggy-toolbar .pluggy-toolbar-btn { font-size: .78rem; font-weight: 600; 
 .tg-comandos { display: grid; grid-template-columns: auto 1fr; gap: .45rem .8rem; margin: 0 0 1rem; align-items: baseline; }
 .tg-comandos dt { font-weight: 700; color: var(--primary); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8rem; }
 .tg-comandos dd { margin: 0; font-size: .8rem; color: var(--text-muted); }
+
+/* Legenda do selo 🏦 acima dos grupos da revisão */
+.pluggy-legenda { margin: 0 0 .5rem; font-size: .75rem; color: var(--text-muted); }
