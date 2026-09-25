@@ -248,6 +248,13 @@ function linhasContaPluggy(c: ContaPluggy): string[] {
   return [banco ? `${banco}: ${tipo}` : tipo];
 }
 
+const BOTAO_TODAS_CONTAS = "🔄 Todas as contas";
+
+/** Texto do botão de uma conta no teclado do /atualizar. */
+function rotuloBotaoConta(c: ContaPluggy, i: number): string {
+  return `${i + 1}. ${tituloContaPluggyDetalhado(c)}`;
+}
+
 /** Mesmo nome numa linha só (log das transações, aviso de "Atualizando..."). */
 function tituloContaPluggyDetalhado(c: ContaPluggy): string {
   return linhasContaPluggy(c).join(" ");
@@ -510,12 +517,32 @@ async function responderComandoConsulta(
     await tg(token, "sendMessage", { chat_id: chatId, text: "Conta não vinculada — mande /start com o código do app primeiro." });
     return;
   }
+  if (comando === "ultimos") {
+    const { data: ult, error: erroUlt } = await admin.from("transacoes")
+      .select("tipo, valor, data, categoria, descricao, metodo")
+      .eq("user_id", tgUser.user_id).order("criado_em", { ascending: false }).limit(5);
+    if (erroUlt) {
+      console.error(erroUlt);
+      await tg(token, "sendMessage", { chat_id: chatId, text: "Deu erro ao consultar seus lançamentos — tenta de novo." });
+      return;
+    }
+    const linhasUlt = (ult ?? []).map((t: { tipo: string; valor: number; data: string; categoria: string | null; descricao: string | null; metodo: string | null }, i: number) => {
+      const dataFmt = String(t.data).slice(0, 10).split("-").reverse().slice(0, 2).join("/");
+      const sinal = t.tipo === "entradas" ? "+" : "-";
+      return `${i + 1}. ${dataFmt} ${sinal}${formatarMoedaBR(Number(t.valor) || 0)} — ${[t.categoria, t.descricao, t.metodo].filter(Boolean).join(" · ")}`;
+    });
+    await tg(token, "sendMessage", {
+      chat_id: chatId,
+      text: linhasUlt.length ? `🕓 Últimos 5 lançamentos\n\n${linhasUlt.join("\n")}` : "Nenhum lançamento ainda.",
+    });
+    return;
+  }
   const hoje = hojeBrasiliaISO();
   const [ano, mes, dia] = hoje.split("-").map(Number);
   const ini = `${ano}-${String(mes).padStart(2, "0")}-01`;
   const fim = addMeses(ini, 1);
   const [{ data: trans, error }, { data: metodos }] = await Promise.all([
-    admin.from("transacoes").select("tipo, valor, metodo").eq("user_id", tgUser.user_id).gte("competencia", ini).lt("competencia", fim),
+    admin.from("transacoes").select("tipo, valor, metodo, data").eq("user_id", tgUser.user_id).gte("competencia", ini).lt("competencia", fim),
     admin.from("menu_itens").select("nome, metodo_kind, banco").eq("tipo", "Método").eq("user_id", tgUser.user_id),
   ]);
   if (error) {
@@ -523,12 +550,13 @@ async function responderComandoConsulta(
     await tg(token, "sendMessage", { chat_id: chatId, text: "Deu erro ao consultar seus lançamentos — tenta de novo." });
     return;
   }
-  const lista = (trans ?? []) as { tipo: string; valor: number; metodo: string | null }[];
+  const lista = (trans ?? []) as { tipo: string; valor: number; metodo: string | null; data: string }[];
   const rotulosCredito = new Map<string, string>();
   const rotulosPix = new Set<string>();
   for (const m of (metodos ?? []) as { nome: string; metodo_kind: string | null; banco: string | null }[]) {
     if (m.metodo_kind === "Crédito") rotulosCredito.set(rotuloMetodo(m), rotuloMetodo(m));
-    if (m.metodo_kind === "PIX") rotulosPix.add(rotuloMetodo(m));
+    // Lançamentos de PIX guardam só "PIX" no método (não "PIX <banco>").
+    if (m.metodo_kind === "PIX") { rotulosPix.add(rotuloMetodo(m)); rotulosPix.add("PIX"); }
   }
   const soma = (l: { valor: number }[]) => l.reduce((a, t) => a + (Number(t.valor) || 0), 0);
   const saidas = lista.filter((t) => t.tipo === "saidas");
@@ -567,8 +595,14 @@ async function responderComandoConsulta(
       ? [`💳 Gasto no crédito em ${mesTxt}`, ...linhas, "", `Total: ${formatarMoedaBR(total)}`].join("\n")
       : "Nenhum cartão de crédito cadastrado.";
   } else {
-    const total = soma(saidas.filter((t) => t.metodo && rotulosPix.has(t.metodo)));
-    texto = `⚡ Gasto no PIX em ${mesTxt}: ${formatarMoedaBR(total)}`;
+    const doPix = saidas.filter((t) => t.metodo && rotulosPix.has(t.metodo));
+    const total = soma(doPix);
+    // Mesma regra do dashboard: pago = data anterior a hoje.
+    const pago = soma(doPix.filter((t) => String(t.data).slice(0, 10) < hoje));
+    texto = [
+      `⚡️ PIX ${String(mes).padStart(2, "0")}/${ano}`,
+      `Do total de ${formatarMoedaBR(total)}, já foram pagos ${formatarMoedaBR(pago)} e ainda restam ${formatarMoedaBR(total - pago)} a pagar.`,
+    ].join("\n");
   }
   await tg(token, "sendMessage", { chat_id: chatId, text: texto });
 }
@@ -683,34 +717,41 @@ Deno.serve(async (req: Request) => {
           return json({ ok: true });
         }
 
-        // Todo menu do bot termina com "Cancelar" (callback "cancelar",
-        // tratado mais abaixo — vale pra qualquer teclado novo também).
-        // O texto de um botão inline é sempre centralizado e numa linha só
-        // (o Telegram não deixa mudar) — por isso as contas vão listadas no
-        // TEXTO da mensagem (alinhado à esquerda, com quebra de linha) e os
-        // botões são só os números.
-        const lista = contas
-          .map((c, i) => {
-            const [linha1, ...resto] = linhasContaPluggy(c).map(escaparHtml);
-            return [`<b>${i + 1}.</b> ${linha1}`, ...resto].join("\n");
-          })
-          .join("\n\n");
-        const numeros = contas.map((c, i) => ({ text: String(i + 1), callback_data: `atualizarconta:${c.id}` }));
-        const botoes: { text: string; callback_data: string }[][] = [];
-        for (let i = 0; i < numeros.length; i += 5) botoes.push(numeros.slice(i, i + 5));
-        botoes.push([{ text: "🔄 Todas as contas", callback_data: "atualizarconta:todas" }]);
-        botoes.push([{ text: "❌ Cancelar", callback_data: "cancelar" }]);
+        // Regra: todo botão do bot fica no TECLADO (embaixo, onde se digita),
+        // e todo menu termina com "Cancelar". Cada conta é um botão com o
+        // nome completo ("1. Bradesco: Cartão de crédito VISA ..."); o toque
+        // volta como texto e é reconhecido logo abaixo (sem guardar estado).
+        const botoes: { text: string }[][] = contas.map((c, i) => [{ text: rotuloBotaoConta(c, i) }]);
+        botoes.push([{ text: BOTAO_TODAS_CONTAS }]);
+        botoes.push([{ text: "❌ Cancelar" }]);
         await tg(token, "sendMessage", {
           chat_id: chatId,
-          parse_mode: "HTML",
-          text: `Qual conta você quer atualizar?\n\n${lista}`,
-          reply_markup: { inline_keyboard: botoes },
+          text: "Qual conta você quer atualizar?",
+          reply_markup: { keyboard: botoes, resize_keyboard: true, one_time_keyboard: true },
         });
         return json({ ok: true });
       }
 
+      // Toque num botão do menu do /atualizar (chega como texto exato).
+      if (texto === BOTAO_TODAS_CONTAS || /^\d+\.\s/.test(texto)) {
+        const { data: tgUserA } = await supabaseAdmin.from("telegram_users").select("user_id").eq("chat_id", chatId).maybeSingle();
+        if (tgUserA) {
+          const { contas } = await carregarContasPluggy(supabaseAdmin, tgUserA.user_id);
+          const alvo = texto === BOTAO_TODAS_CONTAS ? contas : contas.filter((c, i) => rotuloBotaoConta(c, i) === texto);
+          if (alvo.length) {
+            await tg(token, "sendMessage", {
+              chat_id: chatId,
+              text: `🔄 Atualizando ${texto === BOTAO_TODAS_CONTAS ? `${alvo.length} conta(s)` : tituloContaPluggyDetalhado(alvo[0])}...`,
+              reply_markup: { remove_keyboard: true },
+            });
+            await executarAtualizacaoPluggy(token, chatId, alvo);
+            return json({ ok: true });
+          }
+        }
+      }
+
       // Consultas rápidas do mês.
-      const cmd = texto.match(/^\/(resumo|diario|credito|pix)(?:@\w+)?(?:\s|$)/i);
+      const cmd = texto.match(/^\/(resumo|diario|credito|pix|ultimos)(?:@\w+)?(?:\s|$)/i);
       if (cmd) {
         await responderComandoConsulta(supabaseAdmin, token, chatId, cmd[1].toLowerCase());
         return json({ ok: true });
@@ -731,7 +772,8 @@ Deno.serve(async (req: Request) => {
           : { data: null };
         if (!rascunho) {
           await tg(token, "sendMessage", {
-            chat_id: chatId, text: "Não tem nenhum rascunho esperando confirmação.",
+            chat_id: chatId,
+            text: texto === "❌ Cancelar" ? "❌ Cancelado." : "Não tem nenhum rascunho esperando confirmação.",
             reply_markup: { remove_keyboard: true },
           });
           return json({ ok: true });
