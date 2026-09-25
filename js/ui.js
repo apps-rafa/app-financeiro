@@ -197,10 +197,10 @@ function atualizarResumo() {
         scEl.hidden = estadoApp.saldoContas == null;
         const scVal = document.getElementById('saldoContasValor');
         if (scVal && estadoApp.saldoContas != null) scVal.textContent = mask(formatarMoeda(estadoApp.saldoContas));
-        // Mais de uma conta: a faixa vira um toggle que descortina o saldo de cada
-        // uma (empurrando o resto pra baixo); com uma só, é só o total.
+        // A faixa é um toggle que descortina o saldo de cada conta (empurrando o
+        // resto pra baixo) — mesmo com uma conta só.
         const lista = estadoApp.saldoContasLista || [];
-        const varias = lista.length > 1;
+        const varias = lista.length > 0;
         scEl.classList.toggle('saldo-contas--toggle', varias);
         scEl.setAttribute('role', varias ? 'button' : 'note');
         scEl.tabIndex = varias ? 0 : -1;
@@ -1107,6 +1107,7 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
             <div class="despesa-conteudo">
                 ${lado}
                 <span class="despesa-valor">${sinal} ${valorFormatado}</span>
+                ${(estadoApp.conciliadas && estadoApp.conciliadas.has(trans.id) && trans.origem !== 'pluggy') ? '<span class="conc-selo" title="Conciliado com uma transação do banco (Open Finance)">🏦</span>' : ''}
                 ${parcelaTag}
                 ${quitarCheckbox}
                 ${metaChip}

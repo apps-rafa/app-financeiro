@@ -48,6 +48,7 @@ function mapearTransacao(row) {
         competencia: row.competencia || '',
         diaRecorrencia: row.dia_recorrencia || '',
         diaSemana: row.dia_semana ?? null,
+        origem: row.origem || null,
         pagarNoVencimento: !!row.pagar_no_vencimento
     };
 }

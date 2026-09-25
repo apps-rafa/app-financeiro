@@ -54,6 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await carregarDados();
     if (typeof carregarSaldoContas === 'function') carregarSaldoContas();
     if (typeof carregarFaturasBanco === 'function') carregarFaturasBanco();
+    if (typeof carregarConciliadas === 'function') carregarConciliadas().then(() => atualizarUI());
 
     // Atualizar UI
     atualizarUI();
