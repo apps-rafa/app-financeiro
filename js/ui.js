@@ -560,20 +560,111 @@ function _normalizarBusca(s) {
     return String(s || '').normalize('NFD').replace(_REGEX_DIACRITICOS, '').toLowerCase();
 }
 
+const _MESES_BUSCA = {
+    jan: 0, janeiro: 0, fev: 1, fevereiro: 1, mar: 2, marco: 2, março: 2, abr: 3, abril: 3, mai: 4, maio: 4,
+    jun: 5, junho: 5, jul: 6, julho: 6, ago: 7, agosto: 7, set: 8, setembro: 8, out: 9, outubro: 9,
+    nov: 10, novembro: 10, dez: 11, dezembro: 11,
+};
+
+/** Separa o texto da busca em filtros: ">100", "<50", "100-200" (valor), "2026" (ano),
+ *  "jan"/"janeiro" (mês) e o resto, que continua sendo texto livre. */
+function _parseConsulta(termo) {
+    const num = x => parseFloat(String(x).replace(/\./g, '').replace(',', '.'));
+    const q = { texto: '', min: null, max: null, ano: null, mes: null };
+    const texto = [];
+    for (const p of String(termo || '').trim().split(/\s+/).filter(Boolean)) {
+        let m;
+        if ((m = p.match(/^>=?(\d[\d.,]*)$/))) q.min = num(m[1]);
+        else if ((m = p.match(/^<=?(\d[\d.,]*)$/))) q.max = num(m[1]);
+        else if ((m = p.match(/^(\d[\d.,]*)-(\d[\d.,]*)$/))) { q.min = num(m[1]); q.max = num(m[2]); }
+        else if (/^20\d\d$/.test(p)) q.ano = Number(p);
+        else if (Object.prototype.hasOwnProperty.call(_MESES_BUSCA, p.toLowerCase())) q.mes = _MESES_BUSCA[p.toLowerCase()];
+        else texto.push(p);
+    }
+    q.texto = texto.join(' ');
+    return q;
+}
+const _consultaVazia = q => !q.texto && q.min == null && q.max == null && q.ano == null && q.mes == null;
+
+/** O lançamento bate com a consulta (texto + valor + ano + mês)? */
+function _bateConsulta(tr, q, t) {
+    const valor = (tr.valorMes != null ? tr.valorMes : tr.valor) || 0;
+    if (q.min != null && valor < q.min) return false;
+    if (q.max != null && valor > q.max) return false;
+    const data = String(tr.data || '');
+    if (q.ano != null && Number(data.slice(0, 4)) !== q.ano) return false;
+    if (q.mes != null && Number(data.slice(5, 7)) - 1 !== q.mes) return false;
+    if (!t) return true;
+    const bateTexto = [tr.descricao, tr.categoria, tr.metodo, tr.formaPagamento]
+        .some(campo => _normalizarBusca(campo).includes(t));
+    if (bateTexto) return true;
+    // Valor: aceita tanto formatado ("r$ 50,00") quanto número solto
+    // ("50" ou "50,5") — sem isso, buscar por valor não achava nada.
+    const valorFormatado = _normalizarBusca(formatarMoeda(valor));
+    const valorSolto = String(valor).replace('.', ',');
+    return valorFormatado.includes(t) || valorSolto.includes(t);
+}
+
 function _filtrarPorBusca(transacoes, termo) {
-    const t = _normalizarBusca(termo).trim();
-    if (!t) return transacoes;
-    return (transacoes || []).filter(tr => {
-        const bateTexto = [tr.descricao, tr.categoria, tr.metodo, tr.formaPagamento]
-            .some(campo => _normalizarBusca(campo).includes(t));
-        if (bateTexto) return true;
-        // Valor: aceita tanto formatado ("r$ 50,00") quanto número solto
-        // ("50" ou "50,5") — sem isso, buscar por valor não achava nada.
-        const valor = (tr.valorMes != null ? tr.valorMes : tr.valor) || 0;
-        const valorFormatado = _normalizarBusca(formatarMoeda(valor));
-        const valorSolto = String(valor).replace('.', ',');
-        return valorFormatado.includes(t) || valorSolto.includes(t);
-    });
+    const q = _parseConsulta(termo);
+    if (_consultaVazia(q)) return transacoes;
+    const t = _normalizarBusca(q.texto).trim();
+    return (transacoes || []).filter(tr => _bateConsulta(tr, q, t));
+}
+
+/** Busca em TODOS os meses (não só o que está em tela), com os mesmos filtros de
+ *  texto/valor/ano/mês, e mostra os achados agrupados por mês com os totais. */
+async function buscarAmpla(termo) {
+    const box = document.getElementById('resultadoBusca');
+    if (!box) return;
+    box.dataset.modo = 'ampla'; // impede que a busca da lixeira (assíncrona) sobrescreva o resultado
+    box.innerHTML = '<p class="loading">Buscando em todos os meses...</p>';
+    const q = _parseConsulta(termo);
+    const t = _normalizarBusca(q.texto).trim();
+    const linhas = [];
+    try {
+        for (let ini = 0; ; ini += 1000) {
+            let consulta = sb.from('transacoes').select('*');
+            if (q.ano != null) consulta = consulta.gte('data', `${q.ano}-01-01`).lt('data', `${q.ano + 1}-01-01`);
+            const { data, error } = await consulta.order('data', { ascending: false }).order('id').range(ini, ini + 999);
+            if (error) throw error;
+            linhas.push(...(data || []));
+            if (!data || data.length < 1000) break;
+        }
+    } catch (e) {
+        console.error(e);
+        box.innerHTML = '<p class="empty-message">Erro na busca</p>';
+        return;
+    }
+    if ((document.getElementById('buscaGlobal')?.value || '').trim() !== termo) return;
+    const itens = linhas.map(mapearTransacao).filter(tr => _bateConsulta(tr, q, t));
+    const brl = v => formatarMoeda(v);
+    const soma = tipo => itens.filter(i => i.tipo === tipo).reduce((a, i) => a + (Number(i.valor) || 0), 0);
+    const porMes = new Map();
+    itens.forEach(i => { const k = String(i.data).slice(0, 7); porMes.set(k, [...(porMes.get(k) || []), i]); });
+    const nomesMes = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    const grupos = [...porMes.entries()].map(([k, lista]) => {
+        const [a, m] = k.split('-').map(Number);
+        const d = lista.filter(i => i.tipo === 'saidas').reduce((x, i) => x + (Number(i.valor) || 0), 0);
+        const r = lista.filter(i => i.tipo === 'entradas').reduce((x, i) => x + (Number(i.valor) || 0), 0);
+        return `
+        <details class="rec-grupo" style="--cor-rec:var(--primary)">
+          <summary>
+            <span class="rec-grupo-nome">${nomesMes[m - 1]}/${a}</span>
+            <span class="rec-grupo-contagem">${lista.length}</span>
+            <span class="rec-grupo-total">${d ? `-${brl(d)}` : ''}${d && r ? ' · ' : ''}${r ? `+${brl(r)}` : ''}</span>
+          </summary>
+          <div class="rec-grupo-itens">${lista.map(i => gerarHTMLTransacao(i, i.tipo === 'entradas' ? 'entrada' : 'saida', { semAcoes: true })).join('')}</div>
+        </details>`;
+    }).join('');
+    box.innerHTML = `
+        <div class="busca-ampla-resumo">
+            <b>Todos os meses</b>
+            <span>${itens.length} lançamento${itens.length === 1 ? '' : 's'}${itens.length ? ` · Despesas ${brl(soma('saidas'))} · Receitas ${brl(soma('entradas'))}` : ''}</span>
+            <button type="button" class="mini-btn" data-busca-mes>← só este mês</button>
+        </div>
+        ${grupos || `<div class="rec-grupo rec-grupo--vazio"><span class="rec-grupo-nome">🔎 Nada encontrado pra "${termo}"</span></div>`}`;
+    box.onclick = e => { if (e.target.closest('[data-busca-mes]')) atualizarBuscaGlobal(); };
 }
 
 /** Itens que a aba Próximos mostraria (A receber / A pagar sem cartão + tudo
@@ -597,6 +688,7 @@ function atualizarBuscaGlobal() {
     document.body.classList.toggle('buscando', !!termo);
     if (!box) return;
     box.hidden = !termo;
+    box.dataset.modo = '';
     if (!termo) { box.innerHTML = ''; box.onclick = null; return; }
 
     const abertos = _lerAbertosRecGrupo(box);
@@ -628,20 +720,23 @@ function atualizarBuscaGlobal() {
             proximosItens.reduce((s, t) => s + (t.tipo === 'entradas' ? -valorDe(t) : valorDe(t)), 0),
             pendentesHTML + (faturasHTML || ''));
 
-    box.innerHTML = html;
-    // Cliques: itens da lixeira (restaurar/apagar) ou o resto (editar, excluir, faturas...)
-    box.onclick = e => (e.target.closest('[data-lixeira-restaurar], [data-lixeira-apagar]')
-        ? onCliqueLixeira(e) : _onCliqueProximas(e));
+    const linkAmpla = `<button type="button" class="busca-ampla-btn" data-busca-ampla>🔎 Buscar em todos os meses <small>dica: &gt;100 &lt;50 100-200 2026 jan</small></button>`;
+    box.innerHTML = linkAmpla + html;
+    // Cliques: busca em todos os meses, itens da lixeira (restaurar/apagar) ou o resto (editar, excluir, faturas...)
+    box.onclick = e => {
+        if (e.target.closest('[data-busca-ampla]')) return buscarAmpla(termo);
+        return e.target.closest('[data-lixeira-restaurar], [data-lixeira-apagar]') ? onCliqueLixeira(e) : _onCliqueProximas(e);
+    };
 
     // A lixeira (excluídos nos últimos 30 dias) também entra na busca — vem
     // depois, de forma assíncrona; só aplica se o termo ainda for o mesmo.
-    const vazio = () => `<div class="rec-grupo rec-grupo--vazio"><span class="rec-grupo-nome">🔎 Nada encontrado pra "${termo}"</span></div>`;
+    const vazio = () => `${linkAmpla}<div class="rec-grupo rec-grupo--vazio"><span class="rec-grupo-nome">🔎 Nada encontrado neste mês pra "${termo}"</span></div>`;
     if (typeof buscarLixeira !== 'function') { if (!html) box.innerHTML = vazio(); return; }
     buscarLixeira(termo).then(itens => {
-        if ((document.getElementById('buscaGlobal')?.value || '').trim() !== termo) return;
+        if ((document.getElementById('buscaGlobal')?.value || '').trim() !== termo || box.dataset.modo === 'ampla') return;
         if (!itens.length) { if (!html) box.innerHTML = vazio(); return; }
         const total = itens.reduce((s, i) => s + (Number((i.dados || {}).valor) || 0), 0);
-        box.innerHTML = html + `
+        box.innerHTML = linkAmpla + html + `
         <details class="rec-grupo" data-nome="__busca_lixeira__" style="--cor-rec:var(--text-muted)" ${abertos.__busca_lixeira__ !== false ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">🗑️ Lixeira</span>
