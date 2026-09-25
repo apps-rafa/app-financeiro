@@ -785,3 +785,9 @@
 
 /* Selo de lançamento conciliado com o banco */
 .conc-selo { font-size: .7rem; line-height: 1; flex: none; opacity: .9; }
+
+/* Busca em todos os meses */
+.busca-ampla-btn { display: block; width: 100%; box-sizing: border-box; margin: 0 0 .6rem; padding: .55rem .7rem; background: var(--surface); border: 1px dashed var(--border-strong, var(--border)); border-radius: var(--radius-sm); color: var(--text); font-size: .8rem; font-weight: 600; cursor: pointer; text-align: left; }
+.busca-ampla-btn small { display: block; margin-top: .15rem; font-weight: 400; color: var(--text-muted); font-size: .68rem; }
+.busca-ampla-resumo { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .8rem; margin: 0 0 .8rem; font-size: .8rem; }
+.busca-ampla-resumo span { color: var(--text-muted); flex: 1 1 12rem; }
