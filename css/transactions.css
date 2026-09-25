@@ -782,3 +782,6 @@
 .fatura-banco b { color: var(--text); }
 .fatura-banco.ok { color: var(--receita-text); }
 .fatura-banco.dif { color: #f59e0b; }
+
+/* Selo de lançamento conciliado com o banco */
+.conc-selo { font-size: .7rem; line-height: 1; flex: none; opacity: .9; }

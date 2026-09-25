@@ -181,6 +181,16 @@ async function carregarSaldoContas() {
     if (typeof atualizarResumo === 'function') atualizarResumo();
 }
 
+/** Ids dos lançamentos (manuais ou do bot) já conciliados com uma transação do
+ *  banco — ganham o selo 🏦 nas listas. Os que vieram do próprio Pluggy não
+ *  precisam (são do banco por definição). */
+async function carregarConciliadas() {
+    const { data, error } = await sb.from('transacoes_importadas')
+        .select('transacao_id').eq('status', 'confirmada').not('transacao_id', 'is', null);
+    if (error) { console.error(error); return; }
+    estadoApp.conciliadas = new Set((data || []).map(r => r.transacao_id));
+}
+
 /** Faturas do banco (pluggy_faturas) por cartão — o Próximos compara o total
  *  lançado no app com o total da fatura do banco (ver renderFaturasCartao). */
 async function carregarFaturasBanco() {
@@ -708,21 +718,38 @@ async function _marcarDuplicatasPluggy(itens) {
     const datas = itens.map(i => String(i.data).slice(0, 10)).sort();
     const ampliar = (iso, d) => { const x = new Date(iso + 'T12:00:00'); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
     const { data: existentes, error } = await sb.from('transacoes')
-        .select('tipo, valor, data, metodo')
+        .select('id, tipo, valor, data, metodo, origem')
         .gte('data', ampliar(datas[0], -2)).lte('data', ampliar(datas[datas.length - 1], 2));
     if (error) console.error(error);
     const pool = existentes || [];
     const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
     const rotuloDe = id => { const m = id ? metodos.find(x => x.id === id) : null; return m ? rotuloMetodo(m) : null; };
+    // Conciliação: além de "suspeita", cada item guarda o lançamento manual/do
+    // bot (origem que não é 'pluggy') que ele confirma — um pra um (o mesmo
+    // lançamento nunca concilia 2 transações do banco), preferindo a data mais
+    // próxima e a mesma forma de pgto. Ao importar, a linha do banco é LIGADA a
+    // esse lançamento (🏦) em vez de descartada.
+    const conciliadas = estadoApp.conciliadas || new Set();
+    const usados = new Set();
+    const dif = (t, item) => _diffDias(String(t.data).slice(0, 10), String(item.data).slice(0, 10));
+    const casa = (t, item, rot) =>
+        t.tipo === item.tipo &&
+        Math.abs(Math.abs(parseFloat(t.valor)) - Math.abs(parseFloat(item.valor))) < 0.005 &&
+        typeof _diffDias === 'function' && dif(t, item) <= 2 &&
+        (!rot || !t.metodo || t.metodo === rot);
+    const ordenados = [...itens].sort((a, b) => String(a.data).localeCompare(String(b.data)) || a.id - b.id);
+    const candidatoPorItem = new Map();
+    for (const item of ordenados) {
+        const rot = rotuloDe(item.metodo_sugerido);
+        const cands = pool
+            .filter(t => t.origem !== 'pluggy' && !usados.has(t.id) && !conciliadas.has(t.id) && casa(t, item, rot))
+            .sort((a, b) => ((rot && b.metodo === rot) ? 1 : 0) - ((rot && a.metodo === rot) ? 1 : 0) || dif(a, item) - dif(b, item));
+        if (cands.length) { usados.add(cands[0].id); candidatoPorItem.set(item.id, cands[0].id); }
+    }
     return itens.map(item => {
         const rot = rotuloDe(item.metodo_sugerido);
-        const suspeita = pool.some(t =>
-            t.tipo === item.tipo &&
-            Math.abs(Math.abs(parseFloat(t.valor)) - Math.abs(parseFloat(item.valor))) < 0.005 &&
-            typeof _diffDias === 'function' && _diffDias(String(t.data).slice(0, 10), String(item.data).slice(0, 10)) <= 2 &&
-            (!rot || !t.metodo || t.metodo === rot)
-        );
-        return { ...item, _duplicataSuspeita: suspeita };
+        const suspeita = candidatoPorItem.has(item.id) || pool.some(t => casa(t, item, rot));
+        return { ...item, _duplicataSuspeita: suspeita, _candidatoId: candidatoPorItem.get(item.id) ?? null };
     });
 }
 
@@ -865,7 +892,7 @@ async function carregarRevisaoPluggy() {
     // Com mais de uma conta na fila, cada conta vira um grupo (Nubank: Crédito,
     // Mercado Pago: Conta...) com os 3 grupos de sempre dentro; com uma só, fica
     // como sempre foi.
-    const notaDup = `<p class="import-csv-nota">Mesmo tipo, data (± 2 dias) e valor de algo já lançado no app. Vêm com X (não entram) — clique no ↺ pra reativar se for mesmo um lançamento novo.</p>`;
+    const notaDup = `<p class="import-csv-nota">Mesmo tipo, data (± 2 dias) e valor de algo já lançado no app. Vêm com X: ao importar, cada uma é conciliada com o lançamento que já existe (ele ganha o selo 🏦), sem duplicar — clique no ↺ se for mesmo um lançamento novo.</p>`;
     const tresGrupos = (pref, lRev, lDup, lPro) =>
         grupo(`${pref}revisar`, '⚠️ Para revisar', lRev) +
         grupo(`${pref}duplicatas`, '🔁 Possíveis duplicatas — já existe algo parecido no app', lDup, notaDup) +
@@ -1147,19 +1174,35 @@ async function importarProntasPluggy() {
         }
     }
 
-    // Só agora as linhas marcadas com "X" saem da fila de verdade.
+    // Só agora as linhas marcadas com "X" saem da fila de verdade. As que têm um
+    // lançamento correspondente (duplicata reconhecida) são CONCILIADAS: a linha
+    // do banco fica ligada a ele (status 'confirmada'), em vez de só descartada.
+    let conciliadasN = 0;
     if (idsIgnoradas.length) {
-        const { error } = await sb.from('transacoes_importadas').update({ status: 'ignorada' }).in('id', idsIgnoradas);
-        if (error) { console.error(error); falhas++; }
-        else idsIgnoradas.forEach(id => { _ignoradasPluggy.delete(id); delete _categoriaEscolhidaPluggy[id]; });
+        const conciliar = idsIgnoradas.filter(id => _revisaoPluggyCache[id] && _revisaoPluggyCache[id]._candidatoId);
+        const descartar = idsIgnoradas.filter(id => !conciliar.includes(id));
+        for (const id of conciliar) {
+            const { error } = await sb.from('transacoes_importadas')
+                .update({ status: 'confirmada', transacao_id: _revisaoPluggyCache[id]._candidatoId }).eq('id', id);
+            if (error) { console.error(error); falhas++; } else conciliadasN++;
+        }
+        if (descartar.length) {
+            const { error } = await sb.from('transacoes_importadas').update({ status: 'ignorada' }).in('id', descartar);
+            if (error) { console.error(error); falhas++; }
+        }
+        if (!falhas) idsIgnoradas.forEach(id => { _ignoradasPluggy.delete(id); delete _categoriaEscolhidaPluggy[id]; });
     }
 
     if (barra) barra.hidden = true;
-    const descartadas = idsIgnoradas.length && !falhas ? ` · ${idsIgnoradas.length} descartado${idsIgnoradas.length === 1 ? '' : 's'}` : '';
+    const descartadasN = idsIgnoradas.length - conciliadasN;
+    const descartadas = !falhas
+        ? (conciliadasN ? ` · ${conciliadasN} conciliado${conciliadasN === 1 ? '' : 's'} 🏦` : '') + (descartadasN > 0 ? ` · ${descartadasN} descartado${descartadasN === 1 ? '' : 's'}` : '')
+        : '';
     mostrarNotificacao(
         falhas ? `${ok} importado(s), ${falhas} com erro` : `${ok} lançamento${ok === 1 ? '' : 's'} importado${ok === 1 ? '' : 's'}${descartadas}`,
         falhas ? 'erro' : 'sucesso'
     );
+    await carregarConciliadas();
     await carregarRevisaoPluggy();
     if (typeof recarregarDados === 'function') await recarregarDados();
     if (typeof atualizarUI === 'function') atualizarUI();
