@@ -523,3 +523,6 @@ main.main {
 
 /* Swipe de mês: o painel que sai pelo lado não gera rolagem horizontal */
 main.main { overflow-x: hidden; }
+
+/* Configurações: sem altura mínima forçada (criava barra de rolagem sem conteúdo) */
+.area-conteudo:has(#menus.active) { min-height: 0; }
