@@ -956,25 +956,24 @@ async function carregarRevisaoPluggy() {
     // Mercado Pago: Conta...) com os 3 grupos de sempre dentro; com uma só, fica
     // como sempre foi.
     const notaDup = `<p class="import-csv-nota">Mesmo tipo, data (± 2 dias) e valor de algo já lançado no app. Vêm com X: ao importar, cada uma é conciliada com o lançamento que já existe (ele ganha o selo 🏦), sem duplicar — clique no ↺ se for mesmo um lançamento novo.</p>`;
-    const tresGrupos = (pref, lRev, lDup, lPro) =>
+    const doisGrupos = (pref, lRev, lDup) =>
         grupo(`${pref}revisar`, '⚠️ Para revisar', lRev) +
-        grupo(`${pref}duplicatas`, '🔁 Possíveis duplicatas — já existe algo parecido no app', lDup, notaDup) +
-        grupo(`${pref}prontas`, '✓ Prontas', lPro);
+        grupo(`${pref}duplicatas`, '🔁 Possíveis duplicatas — já existe algo parecido no app', lDup, notaDup);
     const blocosPorConta = () => {
         const ids = [...new Set(marcados.map(i => i.conta_id))];
-        if (ids.length <= 1) return tresGrupos('pluggy-', revisar, duplicatas, prontas);
+        if (ids.length <= 1) return doisGrupos('pluggy-', revisar, duplicatas);
         const nomes = ids.map(id => contasPorId[id] ? tituloContaPluggyCurto(contasPorId[id]) : 'Conta');
         return ids.map((id, k) => {
             const dela = l => l.filter(i => i.conta_id === id);
-            const lRev = dela(revisar), lDup = dela(duplicatas), lPro = dela(prontas);
-            const total = lRev.length + lDup.length + lPro.length;
+            const lRev = dela(revisar), lDup = dela(duplicatas);
+            const total = lRev.length + lDup.length;
             const repetido = nomes.filter(n => n === nomes[k]).length > 1;
             const c = contasPorId[id];
             const nome = repetido && c && c.numero_mascarado ? `${nomes[k]} (${String(c.numero_mascarado).slice(-4)})` : nomes[k];
             return _grupoColapsavelConciliar({
                 id: `pluggy-conta-${id}`, abertos: _abertosPluggy, padraoAberto: true,
                 titulo: `🏦 ${nome} (${total})`,
-                corpo: tresGrupos(`pluggy-c${id}-`, lRev, lDup, lPro),
+                corpo: doisGrupos(`pluggy-c${id}-`, lRev, lDup),
             });
         }).join('');
     };
@@ -998,19 +997,17 @@ async function carregarRevisaoPluggy() {
             ${duplicatas.length ? ` · <span class="alerta">${duplicatas.length} possível${duplicatas.length === 1 ? '' : 'is'} duplicata${duplicatas.length === 1 ? '' : 's'}</span>` : ''}
         </p>`,
         blocosPorConta(),
+        jaIgnoradasHTML,
+        tabelaHistorico,
+        grupo('pluggy-prontas', '✓ Prontas', prontas),
         `<div class="import-csv-acoes">
             <button type="button" class="btn-submit" id="btnImportarProntasPluggy"
                 title="${totalIgnoradas ? `As ${totalIgnoradas} linha(s) com X serão descartadas da fila.` : ''}"
                 ${prontasAoVivo.length || totalIgnoradas ? '' : 'disabled'}>
                 Importar ${prontasAoVivo.length} lançamento${prontasAoVivo.length === 1 ? '' : 's'}
             </button>
-            <button type="button" class="mini-btn" id="btnCancelarProntasPluggy"
-                title="Desfaz o que você mudou aqui (categorias escolhidas, descrições editadas e X) — volta tudo ao que veio da Pluggy. Não apaga nada."
-                ${temAlteracoes ? '' : 'disabled'}>Cancelar</button>
         </div>
         <div id="pluggyImportProgresso" class="import-csv-progresso" hidden></div>`,
-        jaIgnoradasHTML,
-        tabelaHistorico,
     ].join('');
 
     container.querySelectorAll('details[data-grupo-id]').forEach(det => {
@@ -1018,7 +1015,6 @@ async function carregarRevisaoPluggy() {
     });
 
     document.getElementById('btnImportarProntasPluggy')?.addEventListener('click', importarProntasPluggy);
-    document.getElementById('btnCancelarProntasPluggy')?.addEventListener('click', cancelarProntasPluggy);
 
     container.onclick = onRevisaoPluggyClick;
     container.onchange = onRevisaoPluggyChange;
@@ -1171,7 +1167,6 @@ function onRevisaoPluggyChange(e) {
     } else if (e.target.dataset.campo === 'descricao') {
         // Só guarda — sem re-render (senão o campo perde o foco/cursor).
         _descricaoEditadaPluggy[id] = e.target.value;
-        document.getElementById('btnCancelarProntasPluggy')?.removeAttribute('disabled');
     }
 }
 
