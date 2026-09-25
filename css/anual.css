@@ -53,9 +53,6 @@
 .anual-barra-atual-lg { opacity: .9; background: var(--despesa-text); }
 .anual-barra-atual-lg.entradas { background: var(--receita-text); }
 .anual-tabela .ant { color: var(--text-muted); }
-.anual-tabela td.orc button { border: 1px dashed var(--border-strong, var(--border)); background: transparent; color: var(--text-muted); border-radius: 6px; font: inherit; padding: .05rem .4rem; cursor: pointer; }
-.anual-tabela td.orc button:hover { color: var(--text); border-color: var(--primary); }
-.anual-tabela td.cel.estourou { box-shadow: inset 0 0 0 2px var(--despesa-text); font-weight: 700; }
 .anual-tabela .anual-nome.clicavel { cursor: pointer; }
 .anual-tabela .anual-nome.clicavel:hover span { text-decoration: underline; }
 .anual-filtros select { background: var(--surface-2); color: var(--text); border: 1px solid var(--border-strong, var(--border)); border-radius: var(--radius-sm); padding: 0 .6rem; font-size: .8rem; font-weight: 600; }
@@ -64,15 +61,15 @@
 .anual-tabela .grafico-linha th, .anual-tabela .grafico-linha td { border-bottom: 1px solid var(--border); background: var(--surface); vertical-align: bottom; padding: .6rem .3rem .3rem; }
 .anual-tabela .grafico-rot { vertical-align: bottom; }
 .anual-tabela .grafico-rot .leg { display: inline-flex; align-items: center; gap: .25rem; font-size: .66rem; font-weight: 600; color: var(--text-muted); }
-.leg i { display: inline-block; width: .6rem; height: .6rem; border-radius: 2px; margin-left: .3rem; }
-.leg i.rec, .barra.rec { --cap: var(--receita-text); }
-.leg i.desp, .barra.desp { --cap: var(--despesa-text); }
+.anual-tabela .leg i { display: inline-block; width: .6rem; height: .6rem; border-radius: 2px; margin-left: .3rem; }
+.anual-tabela .leg i.rec, .anual-tabela .barra.rec { --cap: var(--receita-text); }
+.anual-tabela .leg i.desp, .anual-tabela .barra.desp { --cap: var(--despesa-text); }
 .leg i { background: var(--cap); }
-.grafico-cel { height: 150px; }
-.grafico-cel .par { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 130px; }
-.grafico-cel .barra { width: 40%; max-width: 22px; min-width: 8px; display: flex; flex-direction: column-reverse; border-radius: 4px 4px 0 0; overflow: hidden; border-top: 3px solid var(--cap); background: var(--surface-2); }
-.grafico-cel .barra .seg { display: block; min-height: 1px; }
-.grafico-cel.atual .barra { box-shadow: 0 0 0 1px var(--text-muted); }
+.anual-tabela .grafico-cel { height: 150px; }
+.anual-tabela .grafico-cel .par { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 130px; }
+.anual-tabela .grafico-cel .barra { width: 40%; max-width: 22px; min-width: 8px; display: flex; flex-direction: column-reverse; border-radius: 4px 4px 0 0; overflow: hidden; border-top: 3px solid var(--cap); background: var(--surface-2); }
+.anual-tabela .grafico-cel .barra .seg { display: block; min-height: 1px; }
+.anual-tabela .grafico-cel.atual .barra { box-shadow: 0 0 0 1px var(--text-muted); }
 /* Comparação de dois meses */
 .anual-cmp { display: flex; flex-direction: column; gap: .7rem; }
 .anual-cmp-topo { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
@@ -80,3 +77,12 @@
 .anual-tabela-cmp { min-width: 0; }
 .anual-tabela-cmp th.anual-nome { position: static; }
 .anual-bloco { margin: 0; }
+
+/* Respiro entre os blocos da página (o conteúdo é montado dentro de #anualConteudo) */
+#anualConteudo { display: flex; flex-direction: column; gap: 1.5rem; }
+.anual-barra-topo { margin-bottom: .4rem; }
+/* Mês em foco: o resto fica esmaecido */
+.anual-tabela .dim { opacity: .3; }
+.anual-tabela th.mes.foco button { color: var(--text); text-decoration: underline; }
+.anual-tabela th.mes button { cursor: pointer; }
+.anual-card.foco { border-color: var(--primary); }

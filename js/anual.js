@@ -7,8 +7,8 @@
  * - O gráfico é a primeira linha da própria tabela (barras empilhadas, uma cor
  *   por categoria/forma), então cada barra fica exatamente sobre o seu mês.
  * - Meses passados sem nenhum lançamento não aparecem.
- * - Filtro por uma categoria/forma, comparação entre DOIS MESES e orçamento
- *   mensal por categoria de despesa (tabela `orcamentos`).
+ * - Filtro por uma categoria/forma, comparação entre DOIS MESES e foco num mês
+ *   (tocar no nome do mês destaca aquele mês nos cartões, no gráfico e na tabela).
  * Mesma regra do dashboard: receita com forma "Crédito" é estorno/reembolso e
  * abate a despesa desse cartão.
  * (A comparação ano x ano existiu na 1ª versão — PR #248 — e foi tirada da tela.)
@@ -24,7 +24,7 @@ const estadoAnual = {
     filtro: '',           // nome de uma linha (categoria/forma) ou '' = todas
     cmp: { ativo: false, a: null, b: null }, // comparação de dois meses (0-11)
     porAno: {},           // ano -> transações
-    orcamentos: {},       // categoria -> valor mensal
+    foco: null,           // mês (0-11) em foco ao tocar no cabeçalho; null = ano todo
     carregando: false,
 };
 
@@ -41,12 +41,6 @@ async function _buscarTransacoesDoAno(ano) {
         if (!data || data.length < 1000) break;
     }
     return todas;
-}
-
-async function _carregarOrcamentos() {
-    const { data, error } = await sb.from('orcamentos').select('categoria, valor');
-    if (error) { console.warn('Orçamentos indisponíveis:', error.message); return; }
-    estadoAnual.orcamentos = Object.fromEntries((data || []).map(o => [o.categoria, Number(o.valor)]));
 }
 
 const _brl0 = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
@@ -134,7 +128,7 @@ function _mesesVisiveis(conjuntos, ano) {
 
 /** Linha do gráfico (1ª linha da tabela): DUAS barras por mês — receita (esquerda) e despesa
  *  (direita) — cada uma empilhada com uma cor por categoria/forma, na mesma escala. */
-function _linhaGrafico(linhasR, linhasD, meses, mesAtual) {
+function _linhaGrafico(linhasR, linhasD, meses, mesAtual, dim = () => '') {
     const soma = (linhas, i) => linhas.filter(l => !l.nome.startsWith('(−)')).reduce((a, l) => a + Math.max(0, l.meses[i]), 0);
     const max = Math.max(...meses.flatMap(i => [soma(linhasR, i), soma(linhasD, i)]), 1);
     const ALTURA = 130;
@@ -145,7 +139,7 @@ function _linhaGrafico(linhasR, linhasD, meses, mesAtual) {
         const segs = positivos.map(l => `<span class="seg" style="flex:${l.meses[i]};background:${_corDoNomeAnual(l.nome)}" title="${rotulo} · ${_esc(l.nome)} · ${MESES_ANUAL_LONGO[i]}: ${_fmtMoeda(l.meses[i])} (${Math.round(l.meses[i] / total * 100)}%)"></span>`).join('');
         return `<div class="barra ${classe}" style="height:${h.toFixed(0)}px" title="${rotulo} de ${MESES_ANUAL_LONGO[i]}: ${_fmtMoeda(total)}">${segs}</div>`;
     };
-    const cels = meses.map(i => `<td class="grafico-cel${i === mesAtual ? ' atual' : ''}"><div class="par">${barra(linhasR, i, 'rec', 'Receita')}${barra(linhasD, i, 'desp', 'Despesa')}</div></td>`).join('');
+    const cels = meses.map(i => `<td class="grafico-cel${i === mesAtual ? ' atual' : ''}${dim(i)}"><div class="par">${barra(linhasR, i, 'rec', 'Receita')}${barra(linhasD, i, 'desp', 'Despesa')}</div></td>`).join('');
     return `<tr class="grafico-linha"><th class="anual-nome grafico-rot"><span class="leg"><i class="rec"></i>Receita <i class="desp"></i>Despesa</span></th>${cels}<td class="grafico-cel"></td></tr>`;
 }
 
@@ -204,38 +198,50 @@ function _renderVisaoAnual() {
     const varMes = ref > 0 ? _pct(totais[ref], totais[ref - 1]) : null;
     const fmtVar = p => (p === null ? '—' : `${p > 0 ? '▲' : p < 0 ? '▼' : ''} ${Math.abs(p).toFixed(0)}%`);
 
-    // Orçamento (só despesa por categoria)
-    const usaOrc = tipo === 'saidas' && agrupar === 'categoria';
-    const orc = usaOrc ? estadoAnual.orcamentos : {};
-    const somaOrc = linhas.reduce((a, l) => a + (orc[l.nome] || 0), 0);
-    const gastoNoMesOrc = linhas.filter(l => orc[l.nome]).reduce((a, l) => a + l.meses[ref], 0);
+    const foco = estadoAnual.foco;
+    const dim = i => (foco !== null && i !== foco ? ' dim' : '') + (foco === i ? ' foco' : '');
+    // Com um mês em foco, as linhas passam a vir ordenadas pelo maior valor DAQUELE mês
+    const linhasOrd = foco === null ? linhas : [...linhas].sort((a, b) => (a.nome.startsWith('(−)') ? 1 : 0) - (b.nome.startsWith('(−)') ? 1 : 0) || b.meses[foco] - a.meses[foco]);
 
     const maxCel = Math.max(1, ...linhas.flatMap(l => l.meses.map(x => Math.abs(x))));
     const corHeat = tipo === 'entradas' ? 'var(--receita-text)' : 'var(--despesa-text)';
-    const linhasHTML = linhas.map(l => {
+    const linhasHTML = linhasOrd.map(l => {
         const negativa = l.nome.startsWith('(−)');
-        const limite = usaOrc && !negativa ? (orc[l.nome] || 0) : 0;
         const cel = meses.map(i => {
             const x = l.meses[i];
-            if (Math.abs(x) < 0.005) return `<td class="vazio">–</td>`;
+            if (Math.abs(x) < 0.005) return `<td class="vazio${dim(i)}">–</td>`;
             const forca = Math.round(8 + 42 * Math.min(1, Math.abs(x) / maxCel));
-            const estourou = limite && x > limite;
-            return `<td class="cel${i === mesAtual ? ' atual' : ''}${estourou ? ' estourou' : ''}" style="background:color-mix(in srgb, ${negativa ? 'var(--receita-text)' : corHeat} ${forca}%, transparent)" title="${_esc(l.nome)} · ${MESES_ANUAL_LONGO[i]}: ${_fmtMoeda(x)}${estourou ? ` — acima do orçamento (${_fmtMoeda(limite)})` : ''}">${_fmtCel(x)}</td>`;
+            return `<td class="cel${i === mesAtual ? ' atual' : ''}${dim(i)}" style="background:color-mix(in srgb, ${negativa ? 'var(--receita-text)' : corHeat} ${forca}%, transparent)" title="${_esc(l.nome)} · ${MESES_ANUAL_LONGO[i]}: ${_fmtMoeda(x)}">${_fmtCel(x)}</td>`;
         }).join('');
         const ponto = negativa ? '' : `<i class="anual-ponto" style="background:${_corDoNomeAnual(l.nome)}"></i>`;
         const alvoFiltro = negativa ? '' : ` data-anual-linha="${_esc(l.nome)}" title="Filtrar só ${_esc(l.nome)}"`;
-        const colOrc = usaOrc ? (negativa ? '<td></td>' : `<td class="orc"><button type="button" data-anual-orc="${_esc(l.nome)}" title="Definir orçamento mensal de ${_esc(l.nome)}">${limite ? _fmtCel(limite) : '+'}</button></td>`) : '';
-        return `<tr><th scope="row" class="anual-nome${negativa ? '' : ' clicavel'}"${alvoFiltro}>${ponto}<span>${_esc(l.nome)}</span></th>${cel}<td class="total">${_fmtCel(l.total)}</td>${colOrc}</tr>`;
+        return `<tr><th scope="row" class="anual-nome${negativa ? '' : ' clicavel'}"${alvoFiltro}>${ponto}<span>${_esc(l.nome)}</span></th>${cel}<td class="total">${_fmtCel(l.total)}</td></tr>`;
     }).join('');
 
     const deltas = meses.map(i => {
-        if (i === 0 || !totais[i - 1] || (ultimoMes >= 0 && i > ultimoMes)) return `<td class="vazio">–</td>`;
+        if (i === 0 || !totais[i - 1] || (ultimoMes >= 0 && i > ultimoMes)) return `<td class="vazio${dim(i)}">–</td>`;
         const p = _pct(totais[i], totais[i - 1]);
-        return `<td class="delta ${_classeVar(p)}">${_fmtPct(p)}</td>`;
+        return `<td class="delta ${_classeVar(p)}${dim(i)}">${_fmtPct(p)}</td>`;
     }).join('');
-    const cabExtra = usaOrc ? '<th class="total" title="Orçamento mensal por categoria">Orçam.</th>' : '';
-    const rodTot = usaOrc ? `<td class="orc">${somaOrc ? _fmtCel(somaOrc) : ''}</td>` : '';
-    const rodVar = usaOrc ? '<td></td>' : '';
+
+    // Cartões: ano todo, ou o mês em foco
+    let cartoes;
+    if (foco === null) {
+        cartoes = `
+            <div class="anual-card"><span>${nomeTipo} no ano</span><b>${_fmtMoeda(totalAno)}</b></div>
+            <div class="anual-card"><span>Média por mês</span><b>${_fmtMoeda(media)}</b></div>
+            <div class="anual-card"><span>Maior mês</span><b>${totalAno ? `${MESES_ANUAL_LONGO[iMax]} · ${_fmtMoeda(totais[iMax])}` : '—'}</b></div>
+            <div class="anual-card"><span>${MESES_ANUAL[ref]} vs. mês anterior</span><b class="${_classeVar(varMes)}">${fmtVar(varMes)}</b></div>`;
+    } else {
+        const totF = totais[foco];
+        const pF = foco > 0 ? _pct(totF, totais[foco - 1]) : null;
+        const topo = [...linhas].filter(l => !l.nome.startsWith('(−)')).sort((a, b) => b.meses[foco] - a.meses[foco])[0];
+        cartoes = `
+            <div class="anual-card foco"><span>${nomeTipo} em ${MESES_ANUAL_LONGO[foco]}</span><b>${_fmtMoeda(totF)}</b></div>
+            <div class="anual-card foco"><span>vs. ${foco > 0 ? MESES_ANUAL_LONGO[foco - 1] : 'mês anterior'}</span><b class="${_classeVar(pF)}">${fmtVar(pF)}</b></div>
+            <div class="anual-card foco"><span>Parte do ano</span><b>${totalAno ? `${Math.round(totF / totalAno * 100)}%` : '—'}</b></div>
+            <div class="anual-card foco"><span>Maior ${agrupar === 'categoria' ? 'categoria' : 'forma'}</span><b>${topo && topo.meses[foco] > 0 ? `${_esc(topo.nome)} · ${_fmtMoeda(topo.meses[foco])}` : '—'}</b></div>`;
+    }
 
     const opcoes = v.todas.filter(l => !l.nome.startsWith('(−)')).map(l => `<option value="${_esc(l.nome)}"${l.nome === estadoAnual.filtro ? ' selected' : ''}>${_esc(l.nome)}</option>`).join('');
     const rotuloTodas = agrupar === 'categoria' ? 'Todas as categorias' : 'Todas as formas';
@@ -244,32 +250,27 @@ function _renderVisaoAnual() {
         <div class="anual-filtros">
             <select id="anualFiltro" aria-label="Filtrar"><option value="">${rotuloTodas}</option>${opcoes}</select>
             <button type="button" class="anual-toggle${estadoAnual.cmp.ativo ? ' active' : ''}" data-anual-cmp title="Comparar dois meses">⇄ Comparar meses</button>
+            ${foco !== null ? `<button type="button" class="anual-toggle active" data-foco-limpar title="Voltar a ver o ano todo">${MESES_ANUAL_LONGO[foco]} ✕</button>` : ''}
         </div>
-        <div class="anual-cards">
-            <div class="anual-card"><span>${nomeTipo} no ano</span><b>${_fmtMoeda(totalAno)}</b></div>
-            <div class="anual-card"><span>Média por mês</span><b>${_fmtMoeda(media)}</b></div>
-            <div class="anual-card"><span>Maior mês</span><b>${totalAno ? `${MESES_ANUAL_LONGO[iMax]} · ${_fmtMoeda(totais[iMax])}` : '—'}</b></div>
-            <div class="anual-card"><span>${MESES_ANUAL[ref]} vs. mês anterior</span><b class="${_classeVar(varMes)}">${fmtVar(varMes)}</b></div>
-            ${somaOrc ? `<div class="anual-card"><span>Orçamento de ${MESES_ANUAL[ref]}</span><b class="${gastoNoMesOrc > somaOrc ? 'ruim' : 'bom'}">${_fmtMoeda(gastoNoMesOrc)} de ${_fmtMoeda(somaOrc)}</b></div>` : ''}
-        </div>
+        <div class="anual-cards">${cartoes}</div>
         ${_renderComparacaoMeses(v, meses, ref)}
         ${linhas.length ? `
         <div class="anual-tabela-wrap anual-bloco">
             <table class="anual-tabela">
                 <thead>
-                    ${_linhaGrafico(filtra(baseR), filtra(baseD), meses, mesAtual)}
+                    ${_linhaGrafico(filtra(baseR), filtra(baseD), meses, mesAtual, dim)}
                     <tr><th class="anual-nome">${agrupar === 'categoria' ? 'Categoria' : 'Forma de pgto.'}</th>
-                    ${meses.map(i => `<th class="mes${i === mesAtual ? ' atual' : ''}"><button type="button" data-ir-mes="${i}" title="Ir para ${MESES_ANUAL_LONGO[i]}">${MESES_ANUAL[i]}</button></th>`).join('')}
-                    <th class="total">Total</th>${cabExtra}</tr>
+                    ${meses.map(i => `<th class="mes${i === mesAtual ? ' atual' : ''}${dim(i)}"><button type="button" data-foco-mes="${i}" title="Focar em ${MESES_ANUAL_LONGO[i]}">${MESES_ANUAL[i]}</button></th>`).join('')}
+                    <th class="total">Total</th></tr>
                 </thead>
                 <tbody>${linhasHTML}</tbody>
                 <tfoot>
-                    <tr class="tot"><th scope="row" class="anual-nome">Total</th>${meses.map(i => `<td class="${i === mesAtual ? 'atual' : ''}">${totais[i] ? _fmtCel(totais[i]) : '–'}</td>`).join('')}<td class="total">${_fmtCel(totalAno)}</td>${rodTot}</tr>
-                    <tr class="var"><th scope="row" class="anual-nome">vs. mês anterior</th>${deltas}<td></td>${rodVar}</tr>
+                    <tr class="tot"><th scope="row" class="anual-nome">Total</th>${meses.map(i => `<td class="${i === mesAtual ? 'atual' : ''}${dim(i)}">${totais[i] ? _fmtCel(totais[i]) : '–'}</td>`).join('')}<td class="total">${_fmtCel(totalAno)}</td></tr>
+                    <tr class="var"><th scope="row" class="anual-nome">vs. mês anterior</th>${deltas}<td></td></tr>
                 </tfoot>
             </table>
         </div>
-        <p class="menu-hint anual-nota">Valores em R$ (sem centavos), pelo mês da competência${v.temEstorno ? '; estornos/reembolsos no cartão abatem a despesa' : ''}. No gráfico, a barra da esquerda é a receita e a da direita a despesa do mês, coloridas pela proporção de cada ${agrupar === 'categoria' ? 'categoria' : 'forma de pagamento'}. Meses passados sem lançamento não aparecem. Toque num mês para abri-lo${usaOrc ? ', no nome de uma categoria para filtrá-la e em “Orçam.” para definir o limite mensal (célula acima do limite fica com borda vermelha)' : ''}.</p>`
+        <p class="menu-hint anual-nota">Valores em R$ (sem centavos), pelo mês da competência${v.temEstorno ? '; estornos/reembolsos no cartão abatem a despesa' : ''}. No gráfico, a barra da esquerda é a receita e a da direita a despesa do mês, coloridas pela proporção de cada ${agrupar === 'categoria' ? 'categoria' : 'forma de pagamento'}. Meses passados sem lançamento não aparecem. Toque no nome de um mês para focar nele (toque de novo para voltar ao ano) e no nome de uma ${agrupar === 'categoria' ? 'categoria' : 'forma'} para filtrá-la.</p>`
         : `<p class="empty-message">Nada lançado em ${ano}${estadoAnual.filtro ? ` para “${_esc(estadoAnual.filtro)}”` : ''}.</p>`}`;
 }
 
@@ -285,7 +286,6 @@ async function carregarVisaoAnual(forcar = false) {
         cont.innerHTML = '<p class="loading">Carregando...</p>';
         try {
             estadoAnual.porAno[estadoAnual.ano] = await _buscarTransacoesDoAno(estadoAnual.ano);
-            if (forcar) await _carregarOrcamentos();
         } catch (e) {
             console.error(e);
             cont.innerHTML = '<p class="empty-message">Erro ao carregar o ano</p>';
@@ -297,34 +297,6 @@ async function carregarVisaoAnual(forcar = false) {
     _renderVisaoAnual();
 }
 
-/** Diálogo do orçamento mensal de uma categoria. */
-function _editarOrcamento(categoria) {
-    const atual = estadoAnual.orcamentos[categoria];
-    mostrarDialogo({
-        titulo: `Orçamento mensal — ${_esc(categoria)}`,
-        corpoHTML: `<div class="campo"><label for="dlgOrcValor">Limite por mês (R$)</label>
-            <input type="text" id="dlgOrcValor" inputmode="decimal" placeholder="Ex: 800,00" value="${atual ? String(atual).replace('.', ',') : ''}" autocomplete="off"></div>
-            <p class="menu-hint">Vale para todos os meses. Os meses acima do limite ficam com borda vermelha.</p>`,
-        acoes: [
-            { label: 'Cancelar' },
-            ...(atual ? [{ label: 'Remover', perigo: true, onClick: async () => {
-                const { error } = await sb.from('orcamentos').delete().eq('categoria', categoria);
-                if (error) { mostrarNotificacao('Erro ao remover o orçamento', 'erro'); return true; }
-                delete estadoAnual.orcamentos[categoria];
-                _renderVisaoAnual();
-            } }] : []),
-            { label: 'Salvar', primario: true, onClick: async (ov) => {
-                const v = parseFloat(String(ov.querySelector('#dlgOrcValor').value).replace(/\./g, '').replace(',', '.'));
-                if (!(v > 0)) { mostrarNotificacao('Informe um valor maior que zero', 'info'); return true; }
-                const { error } = await sb.from('orcamentos').upsert({ categoria, valor: v }, { onConflict: 'user_id,categoria' });
-                if (error) { console.error(error); mostrarNotificacao('Erro ao salvar o orçamento', 'erro'); return true; }
-                estadoAnual.orcamentos[categoria] = v;
-                _renderVisaoAnual();
-            } },
-        ],
-    });
-}
-
 function iniciarVisaoAnual() {
     const aba = document.getElementById('anual');
     if (!aba) return;
@@ -332,23 +304,16 @@ function iniciarVisaoAnual() {
         const btnTipo = e.target.closest('[data-anual-tipo]');
         const btnAgr = e.target.closest('[data-anual-agrupar]');
         const btnAno = e.target.closest('[data-anual-ano]');
-        const btnMes = e.target.closest('[data-ir-mes]');
-        const btnOrc = e.target.closest('[data-anual-orc]');
+        const btnMes = e.target.closest('[data-foco-mes]');
         const linha = e.target.closest('[data-anual-linha]');
         if (btnTipo) { estadoAnual.tipo = btnTipo.dataset.anualTipo; estadoAnual.filtro = ''; carregarVisaoAnual(); }
         else if (btnAgr) { estadoAnual.agrupar = btnAgr.dataset.anualAgrupar; estadoAnual.filtro = ''; carregarVisaoAnual(); }
-        else if (btnAno) { estadoAnual.ano += Number(btnAno.dataset.anualAno); estadoAnual.filtro = ''; estadoAnual.cmp.a = estadoAnual.cmp.b = null; carregarVisaoAnual(); }
+        else if (btnAno) { estadoAnual.ano += Number(btnAno.dataset.anualAno); estadoAnual.filtro = ''; estadoAnual.foco = null; estadoAnual.cmp.a = estadoAnual.cmp.b = null; carregarVisaoAnual(); }
         else if (e.target.closest('[data-anual-cmp]')) { estadoAnual.cmp.ativo = !estadoAnual.cmp.ativo; _renderVisaoAnual(); }
         else if (e.target.closest('[data-anual-cmp-inverter]')) { const c = estadoAnual.cmp; [c.a, c.b] = [c.b, c.a]; _renderVisaoAnual(); }
-        else if (btnOrc) { _editarOrcamento(btnOrc.dataset.anualOrc); }
+        else if (btnMes) { const m = Number(btnMes.dataset.focoMes); estadoAnual.foco = estadoAnual.foco === m ? null : m; _renderVisaoAnual(); }
         else if (linha) { estadoAnual.filtro = estadoAnual.filtro === linha.dataset.anualLinha ? '' : linha.dataset.anualLinha; _renderVisaoAnual(); }
-        else if (btnMes) {
-            // Leva o app pro mês tocado e volta ao normal
-            estadoApp.mesAtual = new Date(estadoAnual.ano, Number(btnMes.dataset.irMes), 1);
-            if (typeof fecharAbas === 'function') fecharAbas();
-            if (typeof recarregarDados === 'function') await recarregarDados();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+        else if (e.target.closest('[data-foco-limpar]')) { estadoAnual.foco = null; _renderVisaoAnual(); }
     });
     aba.addEventListener('change', e => {
         if (e.target.id === 'anualFiltro') { estadoAnual.filtro = e.target.value; _renderVisaoAnual(); }
