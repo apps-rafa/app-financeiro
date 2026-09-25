@@ -623,18 +623,29 @@ async function mostrarRecemLancados(qtd = 5) {
     document.body.classList.add('buscando');
     if (!box.querySelector('.rec-grupo-itens')) box.innerHTML = '<p class="loading">Carregando...</p>';
     const { data, error } = await sb.from('transacoes').select('*')
-        .order('criado_em', { ascending: false }).order('id', { ascending: false }).range(0, qtd - 1);
+        .order('criado_em', { ascending: false }).order('id', { ascending: false }).range(0, qtd * 12 - 1);
     if (box.dataset.modo !== 'ampla') return; // o usuário já mudou de tela/busca
     if (error) { console.error(error); box.innerHTML = '<p class="empty-message">Erro ao carregar</p>'; return; }
-    const itens = (data || []).map(r => ({ ...mapearTransacao(r), tipo: r.tipo }));
+    // Parcelas da mesma compra (grupo_id) viram UMA linha: a parcela 1
+    const todos = (data || []).map(r => ({ ...mapearTransacao(r), tipo: r.tipo }));
+    const porGrupo = new Map();
+    todos.forEach(i => { if (i.grupoId && (!porGrupo.has(i.grupoId) || (i.parcelaNum || 0) < (porGrupo.get(i.grupoId).parcelaNum || 0))) porGrupo.set(i.grupoId, i); });
+    const vistos = new Set();
+    const unicos = [];
+    todos.forEach(i => {
+        if (i.grupoId) { if (vistos.has(i.grupoId)) return; vistos.add(i.grupoId); unicos.push(porGrupo.get(i.grupoId)); }
+        else unicos.push(i);
+    });
+    const itens = unicos.slice(0, qtd);
+    const temMais = unicos.length > qtd || (data || []).length === qtd * 12;
     box.innerHTML = `
         <div class="busca-ampla-resumo">
             <b>🕓 Recém-lançados</b>
             <span>Os ${itens.length} últimos lançamentos criados</span>
-            <button type="button" class="mini-btn" data-recentes-fechar>✕ fechar</button>
+            <button type="button" class="mini-btn" data-recentes-fechar aria-label="Fechar" title="Fechar">✕</button>
         </div>
         <div class="rec-grupo-itens recentes-lista">${itens.map(i => gerarHTMLTransacao(i, i.tipo === 'entradas' ? 'entrada' : 'saida', { semAcoes: true })).join('') || '<p class="empty-message">Nenhum lançamento ainda</p>'}</div>
-        ${data && data.length === qtd ? `<button type="button" class="busca-ampla-btn" data-recentes-mais="${qtd + 5}">Carregar mais 5</button>` : ''}`;
+        ${temMais ? `<button type="button" class="busca-ampla-btn" data-recentes-mais="${qtd + 5}">Carregar mais 5</button>` : ''}`;
     box.onclick = e => {
         const mais = e.target.closest('[data-recentes-mais]');
         if (mais) return mostrarRecemLancados(Number(mais.dataset.recentesMais));
