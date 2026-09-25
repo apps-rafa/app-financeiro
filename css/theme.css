@@ -559,3 +559,24 @@ body .pluggy-conta-sync { flex: 1 1 calc(50% - .25rem); min-width: 0; height: va
 @media (max-width: 600px) {
     body .pluggy-toolbar-btns { flex: 1 1 100%; }
 }
+
+/* Histórico Pluggy no mesmo grupo dos outros: total do subgrupo à direita,
+   cards ocupando a largura toda do grupo. */
+.hist-total { float: right; font-variant-numeric: tabular-nums; color: var(--text); }
+#pluggyRevisaoLista .historico-lista { margin: 0 -.7rem; padding: 0; }
+@media (max-width: 600px) { #pluggyRevisaoLista .historico-lista { margin: 0 -.35rem; } }
+
+/* Barra do Pluggy: mesma fonte e peso em todos os elementos */
+body .pluggy-toolbar .pluggy-sync-mes,
+body .pluggy-toolbar .pluggy-sync-ano-valor,
+body .pluggy-toolbar .pluggy-sync-ano-seta,
+body .pluggy-toolbar .pluggy-total-valor,
+body .pluggy-toolbar .pluggy-toolbar-label,
+body .pluggy-toolbar .pluggy-toggle-opt,
+body .pluggy-toolbar .pluggy-conta-sync,
+body .pluggy-toolbar .pluggy-toolbar-btn { font-size: .78rem; font-weight: 600; }
+
+/* Comandos do Telegram */
+.tg-comandos { display: grid; grid-template-columns: auto 1fr; gap: .45rem .8rem; margin: 0 0 1rem; align-items: baseline; }
+.tg-comandos dt { font-weight: 700; color: var(--primary); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8rem; }
+.tg-comandos dd { margin: 0; font-size: .8rem; color: var(--text-muted); }
