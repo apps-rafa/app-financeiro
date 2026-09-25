@@ -119,8 +119,25 @@ function configurarEventListeners() {
     // Busca em tempo real (Receitas/Despesas) — filtra a cada tecla, funciona
     // igual em qualquer modo de visualização (ver _filtrarPorBusca em js/ui.js).
     const buscaGlobalEl = document.getElementById('buscaGlobal');
+    const buscaLimparEl = document.getElementById('buscaLimpar');
+    const sincronizarBuscaLimpar = () => { if (buscaLimparEl) buscaLimparEl.hidden = !buscaGlobalEl.value; };
     if (buscaGlobalEl) buscaGlobalEl.addEventListener('input', () => {
+        sincronizarBuscaLimpar();
         if (typeof atualizarBuscaGlobal === 'function') atualizarBuscaGlobal();
+    });
+    if (buscaLimparEl) buscaLimparEl.addEventListener('click', () => {
+        buscaGlobalEl.value = '';
+        sincronizarBuscaLimpar();
+        if (typeof atualizarBuscaGlobal === 'function') atualizarBuscaGlobal();
+        buscaGlobalEl.focus();
+    });
+
+    // "✕" do formulário de lançamento: cancela a edição (voltando pra tela de
+    // origem) ou, num lançamento novo, só fecha a aba.
+    const fecharFormEl = document.getElementById('fecharFormulario');
+    if (fecharFormEl) fecharFormEl.addEventListener('click', () => {
+        if (estadoApp.editandoId) cancelarEdicaoTransacao(true);
+        if (document.getElementById('adicionar')?.classList.contains('active')) fecharAbas();
     });
 
     // Aba Próximas: filtro de tipo (Despesa/Receita) + modo de agrupamento

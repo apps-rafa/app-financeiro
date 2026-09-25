@@ -133,7 +133,10 @@
             <div class="area-conteudo">
             <!-- Busca universal: procura em Receitas, Despesas e Próximos, de qualquer tela -->
             <section class="busca-global">
-                <input type="search" id="buscaGlobal" name="busca-global" aria-label="Buscar em todo o app" class="busca-lista" placeholder="🔎 Buscar em tudo..." autocomplete="off">
+                <div class="busca-campo">
+                    <input type="search" id="buscaGlobal" name="busca-global" aria-label="Buscar em todo o app" class="busca-lista" placeholder="🔎 Buscar em tudo..." autocomplete="off">
+                    <button type="button" id="buscaLimpar" class="busca-limpar" aria-label="Limpar busca" hidden>✕</button>
+                </div>
             </section>
             <section id="resultadoBusca" class="resultado-busca" hidden></section>
 
@@ -206,6 +209,7 @@
                                 <svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg><span class="tipo-label">Receita</span>
                             </button>
                         </div>
+                        <button type="button" id="fecharFormulario" class="form-fechar" aria-label="Fechar" title="Fechar">✕</button>
                     </div>
 
                     <input type="hidden" id="tipoTransacao" value="saidas">
