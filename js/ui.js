@@ -1230,7 +1230,7 @@ function iniciarEdicaoTransacao(trans, tipoTransacao) {
     }
     sincronizarModoEdicao();
     // Guarda a tela de origem para voltar depois de salvar/cancelar
-    estadoApp.abaOrigemEdicao = document.querySelector('.tab-btn.active')?.dataset.tab || null;
+    estadoApp.abaOrigemEdicao = document.querySelector('.tab-content.active')?.id || null;
 
     mudarAba('adicionar');
 
