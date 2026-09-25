@@ -65,10 +65,10 @@ function htmlLinhaRevisao(o) {
  * pelo id completo; começam abertos.
  *   colunas   títulos das colunas DEPOIS da primeira (a do X/ação, sem título)
  */
-function htmlSubgruposRevisao({ idPai, abertos, itens, tipoDe, colunas, htmlLinha }) {
+function htmlSubgruposRevisao({ idPai, abertos, itens, tipoDe, colunas, htmlLinha, subAberto = true }) {
     const cab = `<thead><tr><th></th>${colunas.map(c => `<th>${c}</th>`).join('')}</tr></thead>`;
     const sub = (tipo, lista) => !lista.length ? '' : _grupoColapsavelConciliar({
-        id: `${idPai}-${tipo}`, abertos, padraoAberto: true,
+        id: `${idPai}-${tipo}`, abertos, padraoAberto: subAberto,
         titulo: `${tipo === 'entradas' ? 'Receitas' : 'Despesas'} (${lista.length})`,
         corpo: `
     <div class="import-csv-tabela-wrap import-csv-tabela-wrap--solta">
@@ -83,11 +83,11 @@ function htmlSubgruposRevisao({ idPai, abertos, itens, tipoDe, colunas, htmlLinh
 }
 
 /** Grupo pai (details) com os subgrupos Despesas/Receitas dentro. */
-function htmlGrupoRevisao({ id, titulo, abertos, padraoAberto, itens, tipoDe, colunas, htmlLinha, nota = '' }) {
+function htmlGrupoRevisao({ id, titulo, abertos, padraoAberto, itens, tipoDe, colunas, htmlLinha, nota = '', subAberto = true }) {
     if (!itens.length) return '';
     return _grupoColapsavelConciliar({
         id, abertos, padraoAberto, titulo: `${titulo} (${itens.length})`,
-        corpo: nota + htmlSubgruposRevisao({ idPai: id, abertos, itens, tipoDe, colunas, htmlLinha })
+        corpo: nota + htmlSubgruposRevisao({ idPai: id, abertos, itens, tipoDe, colunas, htmlLinha, subAberto })
     });
 }
 
