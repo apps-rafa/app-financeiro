@@ -578,13 +578,14 @@ function urlMiniApp(r: RascunhoLancamento, l: ListasUsuario): string {
  *  de usado. Reenviada também quando o usuário digita uma descrição. */
 async function enviarRascunho(
   token: string, chatId: number, r: RascunhoLancamento,
-  admin?: ReturnType<typeof createClient>, userId?: string,
+  admin?: ReturnType<typeof createClient>, userId?: string, cabecalho?: string,
 ) {
   const sinal = r.tipo === "entradas" ? "💰 Receita" : "💸 Despesa";
   const dataFmt = new Date(`${r.data}T00:00:00`).toLocaleDateString("pt-BR");
   const ehCreditoSaida = r.tipo === "saidas" && r.metodoKind === "Crédito";
   const compFatura = r.competencia || competenciaDe(r.data, r.diaFechamento);
   const linhas = [
+    cabecalho ?? null,
     sinal,
     `Valor: ${formatarMoedaBR(r.valor)}${r.parcelas && r.parcelas > 1 ? " (total)" : ""}`,
     `Data: ${dataFmt}`,
@@ -741,6 +742,92 @@ async function responderComandoConsulta(
   await tg(token, "sendMessage", { chat_id: chatId, text: texto });
 }
 
+/** Avisa no Telegram (todos os chats vinculados) que algo falhou — no máximo 1 alerta
+ *  por hora para a mesma chave, pra uma falha repetida não virar spam. */
+async function avisarErroBot(admin: ReturnType<typeof createClient>, token: string, chave: string, texto: string) {
+  try {
+    const { data } = await admin.from("alertas_bot").select("enviado_em").eq("chave", chave).maybeSingle();
+    if (data && Date.now() - new Date(data.enviado_em).getTime() < 60 * 60 * 1000) return;
+    await admin.from("alertas_bot").upsert({ chave, enviado_em: new Date().toISOString() });
+    const { data: users } = await admin.from("telegram_users").select("chat_id");
+    for (const u of (users ?? []) as { chat_id: number }[]) await tg(token, "sendMessage", { chat_id: u.chat_id, text: texto.slice(0, 900) });
+  } catch (e) {
+    console.error("Falha ao avisar erro:", e);
+  }
+}
+
+/** Lembretes dos lançamentos recorrentes que vencem HOJE (dia do mês; em mês curto vale o
+ *  último dia). O primeiro do dia vira um rascunho com ✅ Confirmar / ✏️ Editar / ❌ Cancelar;
+ *  como só existe 1 rascunho por chat, os demais do mesmo dia vão como aviso de texto. */
+async function executarLembretes(admin: ReturnType<typeof createClient>, token: string): Promise<number> {
+  const hoje = hojeBrasiliaISO();
+  const [ano, mes, dia] = hoje.split("-").map(Number);
+  const ultimoDia = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+  const { data: rec } = await admin.from("recorrentes").select("*").eq("ativo", true);
+  const devidos = ((rec ?? []) as { id: number; user_id: string; descricao: string; tipo: "entradas" | "saidas"; valor: number; categoria: string; metodo: string | null; dia_mes: number; ultimo_lembrete: string | null }[])
+    .filter((r) => (r.dia_mes === dia || (dia === ultimoDia && r.dia_mes > ultimoDia))
+      && (!r.ultimo_lembrete || String(r.ultimo_lembrete).slice(0, 7) !== hoje.slice(0, 7)));
+  const porUsuario = new Map<string, typeof devidos>();
+  for (const r of devidos) porUsuario.set(r.user_id, [...(porUsuario.get(r.user_id) ?? []), r]);
+  let enviados = 0;
+  for (const [userId, lista] of porUsuario) {
+    const { data: tgUser } = await admin.from("telegram_users").select("chat_id").eq("user_id", userId).maybeSingle();
+    if (!tgUser) continue;
+    const listas = await carregarListasUsuario(admin, userId);
+    const [primeiro, ...outros] = lista;
+    const metodoObj = primeiro.metodo ? listas.metodos.find((m) => rotuloMetodo(m) === primeiro.metodo) ?? null : null;
+    const rascunho: RascunhoLancamento = {
+      tipo: primeiro.tipo, valor: Number(primeiro.valor), descricao: primeiro.descricao, categoria: primeiro.categoria,
+      metodo: primeiro.metodo, metodoKind: metodoObj?.metodo_kind ?? null, diaFechamento: metodoObj?.dia_fechamento ?? null,
+      data: hoje, parcelas: null,
+    };
+    await admin.from("telegram_rascunhos").delete().eq("chat_id", tgUser.chat_id);
+    const { error } = await admin.from("telegram_rascunhos").insert({ user_id: userId, chat_id: tgUser.chat_id, dados: rascunho });
+    if (!error) {
+      await enviarRascunho(token, tgUser.chat_id, rascunho, admin, userId, "🔁 Lançamento recorrente — vence hoje");
+      enviados++;
+      await admin.from("recorrentes").update({ ultimo_lembrete: hoje }).eq("id", primeiro.id);
+    }
+    if (outros.length) {
+      await tg(token, "sendMessage", {
+        chat_id: tgUser.chat_id,
+        text: `🔁 Também vence hoje:\n${outros.map((r) => `• ${r.descricao || r.categoria} — ${formatarMoedaBR(Number(r.valor))}`).join("\n")}\n\nConfirme o de cima e lance estes pelo app (ou mande tipo "gastei 100 no ...").`,
+      });
+      for (const r of outros) await admin.from("recorrentes").update({ ultimo_lembrete: hoje }).eq("id", r.id);
+      enviados += outros.length;
+    }
+  }
+  return enviados;
+}
+
+/** Backup completo (lançamentos, menus e recorrentes) mandado como arquivo .json no Telegram. */
+async function executarBackup(
+  admin: ReturnType<typeof createClient>, token: string, so?: { chat_id: number; user_id: string },
+): Promise<void> {
+  const { data: users } = so ? { data: [so] } : await admin.from("telegram_users").select("user_id, chat_id");
+  const hoje = hojeBrasiliaISO();
+  for (const u of (users ?? []) as { user_id: string; chat_id: number }[]) {
+    const transacoes: unknown[] = [];
+    for (let ini = 0; ; ini += 1000) {
+      const { data, error } = await admin.from("transacoes").select("*").eq("user_id", u.user_id).order("id").range(ini, ini + 999);
+      if (error) throw error;
+      transacoes.push(...(data ?? []));
+      if (!data || data.length < 1000) break;
+    }
+    const [{ data: menus }, { data: recorrentes }] = await Promise.all([
+      admin.from("menu_itens").select("*").eq("user_id", u.user_id),
+      admin.from("recorrentes").select("*").eq("user_id", u.user_id),
+    ]);
+    const json = JSON.stringify({ gerado_em: new Date().toISOString(), transacoes, menu_itens: menus ?? [], recorrentes: recorrentes ?? [] });
+    const form = new FormData();
+    form.append("chat_id", String(u.chat_id));
+    form.append("caption", `💾 Backup Ctrl Fin — ${transacoes.length} lançamentos (${hoje})`);
+    form.append("document", new Blob([json], { type: "application/json" }), `ctrl-fin-backup-${hoje}.json`);
+    const resp = await fetch(`${TELEGRAM_API}${token}/sendDocument`, { method: "POST", body: form });
+    if (!resp.ok) throw new Error(`Telegram sendDocument falhou (${resp.status}): ${await resp.text()}`);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") {
     return json({ error: "Método não suportado" }, 405);
@@ -751,6 +838,23 @@ Deno.serve(async (req: Request) => {
   if (!token || !webhookSecret) {
     console.error("TELEGRAM_BOT_TOKEN/TELEGRAM_WEBHOOK_SECRET não configurados");
     return json({ ok: true }); // 200 pro Telegram não ficar reenviando
+  }
+  // Tarefas agendadas (pg_cron): lembretes de recorrentes e backup semanal
+  const segredoCron = req.headers.get("x-cron-secret");
+  if (segredoCron) {
+    const adminCron = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: seg } = await adminCron.from("app_cron_segredo").select("valor").eq("nome", "tarefas").maybeSingle();
+    if (!seg || segredoCron !== seg.valor) return json({ error: "Não autorizado" }, 401);
+    const corpo = await req.json().catch(() => ({}));
+    try {
+      if (corpo.tarefa === "lembretes") return json({ ok: true, enviados: await executarLembretes(adminCron, token) });
+      if (corpo.tarefa === "backup") { await executarBackup(adminCron, token); return json({ ok: true }); }
+      return json({ error: "Tarefa desconhecida" }, 400);
+    } catch (e) {
+      console.error(e);
+      await avisarErroBot(adminCron, token, `cron-${corpo.tarefa}`, `⚠️ A tarefa agendada "${corpo.tarefa}" falhou: ${String(e).slice(0, 300)}`);
+      return json({ error: String(e) }, 500);
+    }
   }
   if (req.headers.get("X-Telegram-Bot-Api-Secret-Token") !== webhookSecret) {
     return json({ error: "Não autorizado" }, 401);
@@ -954,6 +1058,19 @@ Deno.serve(async (req: Request) => {
       // da aba Configurações > Notificações do app).
       if (/^\/lancamento(?:@\w+)?(?:\s|$)/i.test(texto)) {
         await tg(token, "sendMessage", { chat_id: chatId, text: TEXTO_AJUDA_LANCAMENTO });
+        return json({ ok: true });
+      }
+
+      // "/backup": manda agora o arquivo de backup (o automático sai todo domingo).
+      if (/^\/backup(?:@\w+)?(?:\s|$)/i.test(texto)) {
+        const { data: tgB } = await supabaseAdmin.from("telegram_users").select("user_id").eq("chat_id", chatId).maybeSingle();
+        if (!tgB) {
+          await tg(token, "sendMessage", { chat_id: chatId, text: "Conta não vinculada — mande /start com o código do app primeiro." });
+          return json({ ok: true });
+        }
+        await tg(token, "sendMessage", { chat_id: chatId, text: "💾 Gerando o backup..." });
+        try { await executarBackup(supabaseAdmin, token, { chat_id: chatId, user_id: tgB.user_id }); }
+        catch (e) { console.error(e); await tg(token, "sendMessage", { chat_id: chatId, text: "Deu erro ao gerar o backup — tenta de novo." }); }
         return json({ ok: true });
       }
 
@@ -1286,6 +1403,7 @@ Deno.serve(async (req: Request) => {
     try {
       const chatId = update?.message?.chat?.id ?? update?.callback_query?.message?.chat?.id;
       if (chatId) await tg(token, "sendMessage", { chat_id: chatId, text: "Deu um erro aqui do meu lado — tenta de novo em instantes." });
+      await avisarErroBot(supabaseAdmin, token, "telegram-webhook", `⚠️ Erro no bot: ${String(e instanceof Error ? e.message : e).slice(0, 300)}`);
     } catch (_) { /* melhor esforço mesmo */ }
     return json({ ok: true }); // sempre 200 pro Telegram não reenviar em loop
   }
