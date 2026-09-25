@@ -300,12 +300,38 @@ function ehRendimentoPluggy(categoriaBruta: string | null | undefined): boolean 
   return (categoriaBruta || "").trim().toLowerCase() === "proceeds interests and dividends";
 }
 
+interface EscolhaUltima {
+  tipo: "entradas" | "saidas";
+  valor: number;
+  data: string;
+  descricao: string;
+  conta_id: number;
+}
+
+const LIMITE_ESCOLHAS = 12;
+
+/** Botões 1..n do teclado, em linhas de até 4 sem sobrar um sozinho (5 -> 3+2, 7 -> 4+3, 9 -> 3+3+3). */
+function tecladoNumeros(n: number): { text: string }[][] {
+  const linhas = Math.ceil(n / 4);
+  const base = Math.floor(n / linhas);
+  let extra = n % linhas;
+  let k = 1;
+  const out: { text: string }[][] = [];
+  for (let i = 0; i < linhas; i++) {
+    const tam = base + (extra > 0 ? 1 : 0);
+    if (extra > 0) extra--;
+    out.push(Array.from({ length: tam }, () => ({ text: String(k++) })));
+  }
+  return out;
+}
+
 /** Força a Pluggy buscar dados novos AGORA nas contas passadas (PATCH
  *  /items/{id}, mesma chamada do "Sincronizar agora" no app) e manda de
  *  volta um log com as 3 transações mais recentes de cada uma. Usado pelo
  *  /atualizar tanto pra "Todas as contas" quanto pra uma conta escolhida
  *  no teclado. */
 async function executarAtualizacaoPluggy(
+  admin: ReturnType<typeof createClient>,
   token: string,
   chatId: number,
   contas: ContaPluggy[],
@@ -332,6 +358,7 @@ async function executarAtualizacaoPluggy(
     // client.
     const dateFrom = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const blocos: string[] = [];
+    const escolhas: EscolhaUltima[] = [];
     for (const conta of contas) {
       const titulo = escaparHtml(tituloContaPluggyDetalhado(conta));
       try {
@@ -348,7 +375,10 @@ async function executarAtualizacaoPluggy(
           const data = String(t.date).slice(0, 10).split("-").reverse().join("/");
           const sinal = t.type === "CREDIT" ? "+" : "-";
           const desc = t.description || t.descriptionRaw || "(sem descrição)";
-          return `• ${data} ${sinal}${formatarMoedaBR(Math.abs(Number(t.amount) || 0))} — ${desc}`;
+          const valor = Math.abs(Number(t.amount) || 0);
+          const n = escolhas.length + 1;
+          if (n <= LIMITE_ESCOLHAS) escolhas.push({ tipo: t.type === "CREDIT" ? "entradas" : "saidas", valor, data: String(t.date).slice(0, 10), descricao: t.description || t.descriptionRaw || "", conta_id: conta.id });
+          return `${n <= LIMITE_ESCOLHAS ? `${n}.` : "•"} ${data} ${sinal}${formatarMoedaBR(valor)} — ${escaparHtml(desc)}`;
         });
         blocos.push(`🏦 <b>${titulo}</b>\n${linhas.join("\n")}`);
       } catch (e) {
@@ -357,10 +387,18 @@ async function executarAtualizacaoPluggy(
       }
     }
 
+    // Guarda as numeradas pra o toque no número virar um rascunho de lançamento
+    let teclado: unknown = undefined;
+    const { data: tgU } = await admin.from("telegram_users").select("user_id").eq("chat_id", chatId).maybeSingle();
+    if (tgU && escolhas.length) {
+      await admin.from("telegram_ultimas").upsert({ chat_id: chatId, user_id: tgU.user_id, itens: escolhas, criado_em: new Date().toISOString() });
+      teclado = { keyboard: [...tecladoNumeros(escolhas.length), [{ text: "❌ Cancelar" }]], resize_keyboard: true, is_persistent: true, one_time_keyboard: false };
+    }
     await tg(token, "sendMessage", {
       chat_id: chatId,
       parse_mode: "HTML",
-      text: `✅ Atualizado. Últimas transações por conta:\n\n${blocos.join("\n\n")}`,
+      text: `✅ Atualizado. Últimas transações por conta:\n\n${blocos.join("\n\n")}${teclado ? "\n\n👇 Toque no número pra eu preparar o lançamento." : ""}`,
+      ...(teclado ? { reply_markup: teclado } : {}),
     });
   } catch (e) {
     console.error("Erro no /atualizar:", e);
@@ -1017,7 +1055,7 @@ Deno.serve(async (req: Request) => {
         // Só 1 conta conectada: não faz sentido perguntar, vai direto.
         if (contas.length === 1) {
           await tg(token, "sendMessage", { chat_id: chatId, text: "🔄 Atualizando..." });
-          await executarAtualizacaoPluggy(token, chatId, contas);
+          await executarAtualizacaoPluggy(supabaseAdmin, token, chatId, contas);
           return json({ ok: true });
         }
 
@@ -1048,7 +1086,35 @@ Deno.serve(async (req: Request) => {
               text: `🔄 Atualizando ${texto === BOTAO_TODAS_CONTAS ? `${alvo.length} conta(s)` : tituloContaPluggyDetalhado(alvo[0])}...`,
               reply_markup: { remove_keyboard: true },
             });
-            await executarAtualizacaoPluggy(token, chatId, alvo);
+            await executarAtualizacaoPluggy(supabaseAdmin, token, chatId, alvo);
+            return json({ ok: true });
+          }
+        }
+      }
+
+      // Toque num número da lista do /atualizar: prepara o lançamento daquela transação.
+      if (/^([1-9]|1[0-2])$/.test(texto)) {
+        const { data: ult } = await supabaseAdmin.from("telegram_ultimas").select("user_id, itens, criado_em").eq("chat_id", chatId).maybeSingle();
+        const itens = (ult?.itens ?? []) as EscolhaUltima[];
+        const escolha = ult && Date.now() - new Date(ult.criado_em).getTime() < 60 * 60 * 1000 ? itens[Number(texto) - 1] : null;
+        if (ult && escolha) {
+          await supabaseAdmin.from("telegram_ultimas").delete().eq("chat_id", chatId);
+          const listas = await carregarListasUsuario(supabaseAdmin, ult.user_id);
+          const { data: conta } = await supabaseAdmin.from("pluggy_contas").select("metodo_id").eq("id", escolha.conta_id).maybeSingle();
+          const { data: met } = conta?.metodo_id
+            ? await supabaseAdmin.from("menu_itens").select("nome, metodo_kind, banco, dia_fechamento").eq("id", conta.metodo_id).maybeSingle()
+            : { data: null };
+          const cats = [...listas.catsR.map((nome) => ({ nome, categoria_tipo: "entradas" })), ...listas.catsD.map((nome) => ({ nome, categoria_tipo: "saidas" }))];
+          const rascunho: RascunhoLancamento = {
+            tipo: escolha.tipo, valor: escolha.valor, descricao: escolha.descricao,
+            categoria: sugerirCategoriaTexto(escolha.descricao, escolha.tipo, cats).nome,
+            metodo: met ? rotuloMetodo(met) : null, metodoKind: met?.metodo_kind ?? null, diaFechamento: met?.dia_fechamento ?? null,
+            data: escolha.data, parcelas: null,
+          };
+          await supabaseAdmin.from("telegram_rascunhos").delete().eq("chat_id", chatId);
+          const { error: errR } = await supabaseAdmin.from("telegram_rascunhos").insert({ user_id: ult.user_id, chat_id: chatId, dados: rascunho });
+          if (!errR) {
+            await enviarRascunho(token, chatId, rascunho, supabaseAdmin, ult.user_id, `🏦 Transação nº ${texto} do banco`);
             return json({ ok: true });
           }
         }
@@ -1088,6 +1154,7 @@ Deno.serve(async (req: Request) => {
       // de id — o mais recente do chat já resolve. "Cancelar" sempre junto
       // do "Confirmar", nunca só um dos dois.
       if (texto === "✅ Confirmar" || texto === "❌ Cancelar") {
+        if (texto === "❌ Cancelar") await supabaseAdmin.from("telegram_ultimas").delete().eq("chat_id", chatId);
         const { data: tgUser } = await supabaseAdmin.from("telegram_users").select("user_id").eq("chat_id", chatId).maybeSingle();
         const { data: rascunho } = tgUser
           ? await supabaseAdmin.from("telegram_rascunhos").select("id, dados")
@@ -1298,7 +1365,7 @@ Deno.serve(async (req: Request) => {
           chat_id: chatId, message_id: cq.message.message_id,
           text: `🔄 Atualizando ${contaId ? tituloContaPluggyDetalhado(alvo[0]) : `${alvo.length} conta(s)`}...`,
         });
-        await executarAtualizacaoPluggy(token, chatId, alvo);
+        await executarAtualizacaoPluggy(supabaseAdmin, token, chatId, alvo);
         return json({ ok: true });
       }
 
