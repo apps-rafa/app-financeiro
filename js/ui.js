@@ -229,7 +229,7 @@ function atualizarResumo() {
     const gastoDiarioValor = dias > 0 ? (estadoApp.resumo.balanco || 0) / dias : 0;
     if (gd) {
         gd.textContent = mask(formatarMoeda(gastoDiarioValor));
-        if (gdSub) gdSub.textContent = dias > 0 ? `${dias} dia${dias === 1 ? '' : 's'} restante${dias === 1 ? '' : 's'}` : (_mesFuturo() ? 'começa quando o mês chegar' : 'mês encerrado');
+        if (gdSub) gdSub.textContent = dias > 0 ? `${dias} dia${dias === 1 ? '' : 's'} restante${dias === 1 ? '' : 's'}` : (_mesFuturo() ? 'inicia na virada do mês' : 'mês encerrado');
     }
 
     // Espelha os totais no resumo compacto (barra fixa) — com "R$", sem centavos ",00"
