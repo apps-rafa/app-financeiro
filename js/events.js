@@ -45,7 +45,6 @@ function configurarEventListeners() {
     // painel próprio. Abaixo disso, volta pro lugar. Esquerda = mês seguinte.
     const dashboardEl = document.querySelector('.dashboard');
     if (dashboardEl) {
-        const reduzMovimento = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         let g = null; // { x, y, t, horizontal, dx }
         let animando = false;
         const T_SAIDA = 'transform .18s ease-in, opacity .18s ease-in';
@@ -92,7 +91,6 @@ function configurarEventListeners() {
             const d = estadoApp.mesAtual;
             estadoApp.mesAtual = new Date(d.getFullYear(), d.getMonth() + sentido, 1);
             animando = true;
-            if (reduzMovimento()) { await recarregarDados(); limpar(); animando = false; return; }
             // sai pro lado do gesto enquanto os dados do novo mês carregam
             dashboardEl.style.transition = T_SAIDA;
             mover(-sentido * larg, 0);

@@ -65,6 +65,12 @@
                 </div>
             </div>
 
+            <!-- Saldo real das contas bancárias (Open Finance): fora do dashboard, logo abaixo do calendário -->
+            <div class="saldo-contas" id="saldoContas" hidden title="Saldo atual das contas bancárias conectadas (Open Finance)">
+                <span class="sc-rot">🏦 Saldo em contas <em class="sc-hoje">hoje</em></span>
+                <b class="sc-val" id="saldoContasValor">R$ 0,00</b>
+            </div>
+
             <!-- Resumo compacto: aparece ao rolar para além do dashboard -->
             <div class="mini-resumo" id="miniResumo" hidden>
                 <span class="mini-box entradas"><i><svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg></i><b id="miniEntradas">R$ 0,00</b></span>
@@ -115,10 +121,6 @@
                     <h3>📅 Gasto diário</h3>
                     <p class="amount" id="gastoDiario">R$ 0,00</p>
                     <p class="sub" id="gastoDiarioSub"></p>
-                </div>
-                <div class="summary-card saldo-contas" id="saldoContas" hidden title="Saldo atual das contas bancárias conectadas (Open Finance)">
-                    <span class="sc-rot">🏦 Saldo em contas <em class="sc-hoje">hoje</em></span>
-                    <b class="sc-val" id="saldoContasValor">R$ 0,00</b>
                 </div>
             </section>
 
