@@ -1220,3 +1220,36 @@ summary [role="button"] { font-family: Arial; text-align: center; }
   #pluggyContasList .campo-com-add--mini select { flex: 1 1 auto; min-width: 0; }
   #pluggyContasList .campo-com-add--mini .btn-mini-add { flex: 0 0 2.2rem; width: 2.2rem; }
 }
+
+/* ---- Revisão/Histórico do Pluggy (e CSV/PDF): cabe na largura, sem "caderno
+   dentro de caderno". Só o grupo de fora tem caixa; subgrupos (Despesas/
+   Receitas) e tabelas ficam sem contorno nem linhas de divisão. ---- */
+#pluggyRevisaoLista, #pluggyRevisaoLista > * { min-width: 0; max-width: 100%; }
+.import-csv-grupo { min-width: 0; max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; }
+.import-csv-grupo-titulo { white-space: normal; }
+.import-csv-grupo[open] > .import-csv-grupo-titulo { border-bottom: 0; }
+.import-csv-grupo .import-csv-grupo {
+  border: 0; background: transparent; border-radius: 0; padding: 0; margin: .2rem 0;
+}
+.import-csv-grupo .import-csv-grupo > .import-csv-grupo-titulo { margin: 0; padding: .35rem 0; }
+.import-csv-tabela-wrap--solta { overflow-x: visible; }
+.import-csv-tabela th { position: static; background: transparent; border-bottom: 0; }
+.import-csv-tabela td { border-bottom: 0; }
+.import-csv-tabela--compacta {
+  table-layout: fixed; width: 100%;
+}
+.import-csv-tabela--compacta th,
+.import-csv-tabela--compacta td { width: auto; white-space: normal; overflow-wrap: anywhere; }
+.import-csv-tabela--compacta th:nth-child(1), .import-csv-tabela--compacta td:nth-child(1) { width: 2.2rem; }
+.import-csv-tabela--compacta th:nth-child(2), .import-csv-tabela--compacta td:nth-child(2) { width: 2.5rem; }
+.import-csv-tabela--compacta th:nth-child(3), .import-csv-tabela--compacta td:nth-child(3) { width: 4rem; }
+.import-csv-tabela--compacta th:nth-child(4), .import-csv-tabela--compacta td:nth-child(4) { width: 26%; }
+.import-csv-tabela--compacta select { width: 100%; max-width: none; }
+.import-csv-tabela--compacta .import-desc-input { min-width: 0; }
+.import-csv-tabela--compacta .btn-icon { min-width: 0; width: 1.2rem; padding: 0; font-size: .62rem; }
+@media (max-width: 600px) {
+  .import-csv-tabela, .import-csv-tabela tr, .import-csv-tabela th, .import-csv-tabela td,
+  .import-csv-tabela td span, .import-csv-tabela th span { font-size: .7rem; }
+  .import-csv-tabela select, .import-desc-input { font-size: .7rem; }
+  .import-csv-desc { max-width: none; }
+}

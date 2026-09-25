@@ -404,3 +404,8 @@ body.editando-lancamento #resultadoBusca { display: none !important; }
    somava com o da faixa (.area-conteudo) e o estreitava. Distância busca →
    formulário = margin da busca (igual à do dashboard → busca). */
 .area-conteudo .form-transacao { padding: 0; }
+
+/* Faixa abaixo do dashboard com o mesmo fundo do dashboard (não o do header/cards) */
+.area-conteudo { background: transparent; }
+.area-conteudo:has(#entradas.active) { background: var(--receita-bg); }
+.area-conteudo:has(#saidas.active)   { background: var(--despesa-bg); }
