@@ -24,7 +24,8 @@ function atualizarUI() {
     // Atualizar listas
     atualizarEntradasLista();
     atualizarSaidasLista();
-    atualizarBuscaGlobal();
+    // Busca em todos os meses aberta: não refaz (voltar pra janela recarrega os dados e apagaria o resultado)
+    if (document.getElementById('resultadoBusca')?.dataset.modo !== 'ampla') atualizarBuscaGlobal();
 
     // "Próximas" acompanha o mês em exibição
     if (document.getElementById('proximas')?.classList.contains('active')) {

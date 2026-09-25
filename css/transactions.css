@@ -791,3 +791,7 @@
 .busca-ampla-btn small { display: block; margin-top: .15rem; font-weight: 400; color: var(--text-muted); font-size: .68rem; }
 .busca-ampla-resumo { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .8rem; margin: 0 0 .8rem; font-size: .8rem; }
 .busca-ampla-resumo span { color: var(--text-muted); flex: 1 1 12rem; }
+
+/* Dica "buscar em todos os meses" acoplada à barra de busca */
+.busca-global:has(+ #resultadoBusca > .busca-ampla-btn:first-child) .busca-lista { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+#resultadoBusca > .busca-ampla-btn:first-child { margin-top: calc(-1 * var(--spacing-md)); border-top-left-radius: 0; border-top-right-radius: 0; border-top-style: solid; }
