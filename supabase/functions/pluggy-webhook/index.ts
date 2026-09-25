@@ -60,6 +60,12 @@ async function guardarFaturasBanco(
 }
 
 /** Mesmo rótulo do formulário do app (js/menus-api.js:rotuloMetodo). */
+/** "PIX" e "PIX <banco>" são a mesma forma de pagamento (tudo é PIX). */
+function mesmaFormaPgto(a: string, b: string): boolean {
+  const pix = (x: string) => /^pix(\s|$)/i.test(x.trim());
+  return a === b || (pix(a) && pix(b));
+}
+
 function rotuloMetodo(m: { nome: string; metodo_kind: string | null; banco: string | null }): string {
   if (!m.metodo_kind || m.metodo_kind === "Dinheiro") return m.nome;
   return m.banco ? `${m.metodo_kind} ${m.banco}` : m.metodo_kind;
@@ -113,9 +119,9 @@ async function conciliarComExistentes(
         .filter((t: { id: number; tipo: string; valor: string | number; data: string; metodo: string | null }) =>
           !usados.has(t.id) && !jaLigados.has(t.id) && t.tipo === item.tipo &&
           Math.abs(Math.abs(Number(t.valor)) - Math.abs(Number(item.valor))) < 0.005 &&
-          diffDias(t.data, item.data) <= 2 && (!rot || !t.metodo || t.metodo === rot))
+          diffDias(t.data, item.data) <= 2 && (!rot || !t.metodo || mesmaFormaPgto(t.metodo, rot)))
         .sort((a: { data: string; metodo: string | null }, b: { data: string; metodo: string | null }) =>
-          ((rot && b.metodo === rot) ? 1 : 0) - ((rot && a.metodo === rot) ? 1 : 0) ||
+          ((rot && b.metodo && mesmaFormaPgto(b.metodo, rot)) ? 1 : 0) - ((rot && a.metodo && mesmaFormaPgto(a.metodo, rot)) ? 1 : 0) ||
           diffDias(a.data, item.data) - diffDias(b.data, item.data));
       if (!cands.length) continue;
       const { error } = await cliente.from("transacoes_importadas")

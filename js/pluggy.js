@@ -745,6 +745,14 @@ async function limparFilaRevisaoPluggy(btn) {
     await carregarRevisaoPluggy();
 }
 
+/** "PIX" e "PIX <banco>" são a mesma forma de pagamento (tudo é PIX); sem forma
+ *  de um dos lados, não há como discordar. */
+function _mesmaFormaPgto(a, b) {
+    if (!a || !b) return true;
+    const pix = x => /^pix(\s|$)/i.test(String(x).trim());
+    return a === b || (pix(a) && pix(b));
+}
+
 /** Marca cada item pendente como possível duplicata — mesmo tipo, mesmo
  *  valor (tolerância de 1 centavo), data a até 2 dias e, quando os dois lados
  *  têm forma de pgto., a MESMA forma — de algum lançamento já gravado no app.
@@ -773,14 +781,14 @@ async function _marcarDuplicatasPluggy(itens) {
         t.tipo === item.tipo &&
         Math.abs(Math.abs(parseFloat(t.valor)) - Math.abs(parseFloat(item.valor))) < 0.005 &&
         typeof _diffDias === 'function' && dif(t, item) <= 2 &&
-        (!rot || !t.metodo || t.metodo === rot);
+        (!rot || !t.metodo || _mesmaFormaPgto(t.metodo, rot));
     const ordenados = [...itens].sort((a, b) => String(a.data).localeCompare(String(b.data)) || a.id - b.id);
     const candidatoPorItem = new Map();
     for (const item of ordenados) {
         const rot = rotuloDe(item.metodo_sugerido);
         const cands = pool
             .filter(t => t.origem !== 'pluggy' && !usados.has(t.id) && !conciliadas.has(t.id) && casa(t, item, rot))
-            .sort((a, b) => ((rot && b.metodo === rot) ? 1 : 0) - ((rot && a.metodo === rot) ? 1 : 0) || dif(a, item) - dif(b, item));
+            .sort((a, b) => ((rot && b.metodo && _mesmaFormaPgto(b.metodo, rot)) ? 1 : 0) - ((rot && a.metodo && _mesmaFormaPgto(a.metodo, rot)) ? 1 : 0) || dif(a, item) - dif(b, item));
         if (cands.length) { usados.add(cands[0].id); candidatoPorItem.set(item.id, cands[0].id); }
     }
     return itens.map(item => {
@@ -813,6 +821,8 @@ async function carregarRevisaoPluggy() {
     if (_telaLimpaPluggy) {
         const btnL = document.getElementById('btnLimparRevisaoPluggy');
         if (btnL) btnL.disabled = true;
+        const tOrig = document.getElementById('pluggyOrigemTitulo');
+        if (tOrig) tOrig.hidden = true;
         container.innerHTML = '<p class="empty-message">Tela limpa — toque em "Sincronizar agora" pra ver tudo de novo</p>';
         container.onclick = null;
         container.onchange = null;
@@ -847,6 +857,14 @@ async function carregarRevisaoPluggy() {
     const pendentesBrutos = data || [];
     const marcados = await _marcarDuplicatasPluggy(pendentesBrutos);
     _revisaoPluggyCache = Object.fromEntries(marcados.map(item => [item.id, item]));
+    // Título com a origem dos lançamentos da fila (uma ou mais contas)
+    const tituloOrigem = document.getElementById('pluggyOrigemTitulo');
+    if (tituloOrigem) {
+        const nomesOrigem = [...new Set(marcados.map(i => i.conta_id))]
+            .map(id => contasPorId[id] ? tituloContaPluggyCurto(contasPorId[id]) : null).filter(Boolean);
+        tituloOrigem.textContent = nomesOrigem.length ? `Lançamentos ${nomesOrigem.join(' · ')}` : '';
+        tituloOrigem.hidden = !nomesOrigem.length;
+    }
     _atualizarTotalMesPluggy();
 
     // "confirmada" com transacao_id apontando pra um lançamento que não
