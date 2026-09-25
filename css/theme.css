@@ -413,3 +413,20 @@ body.editando-lancamento #resultadoBusca { display: none !important; }
 /* Buscando: só o resultado da busca aparece — qualquer aba aberta (formulário,
    listas, config...) some e volta como estava quando a busca é limpa. */
 body.buscando .area-conteudo > .tab-content { display: none !important; }
+
+/* Cards de lançamento: colados um no outro, baixos, zebrados e sem a barra de
+   cor à esquerda (o tipo já aparece pela cor do grupo/valor) — mais fácil de
+   ler em sequência. "body" só pra ganhar dos vários .despesa-item por
+   breakpoint espalhados nos outros arquivos. */
+body .despesa-item {
+    border-left: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: .3rem .7rem;
+    gap: .4rem;
+    background: transparent;
+    animation: none;
+}
+body .despesa-item:nth-of-type(even) { background: color-mix(in srgb, var(--surface-3) 55%, transparent); }
+body .rec-grupo-itens, body .fatura-itens, body .historico-lista { gap: 0; }
+body .despesa-actions { flex-direction: row; gap: .15rem; }
