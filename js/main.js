@@ -54,6 +54,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     await carregarDados();
     if (typeof carregarSaldoContas === 'function') carregarSaldoContas();
     if (typeof carregarFaturasBanco === 'function') carregarFaturasBanco();
+    // Já mostra o último saldo guardado e, em seguida, busca o atual na Pluggy
+    if (typeof atualizarSaldosPluggy === 'function') {
+        atualizarSaldosPluggy(true);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') atualizarSaldosPluggy();
+        });
+    }
     if (typeof carregarConciliadas === 'function') carregarConciliadas().then(() => atualizarUI());
 
     // Atualizar UI

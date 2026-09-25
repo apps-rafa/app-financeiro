@@ -381,7 +381,7 @@ input.campo-travado,
 .busca-campo .busca-lista { padding-right: 2rem; }
 .busca-campo .busca-lista::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
 .busca-limpar {
-    position: absolute; right: .35rem; top: 50%; transform: translateY(-50%);
+    position: absolute; right: .35rem;
     width: 1.5rem; height: 1.5rem; padding: 0; border: none; border-radius: 50%;
     background: transparent; color: var(--text-muted); font-size: .8rem; line-height: 1; cursor: pointer;
 }
@@ -459,3 +459,15 @@ body .despesa-conteudo { column-gap: .35rem; }
     .chip .cat-full { display: none; }
     .chip .cat-curto { display: inline; }
 }
+
+/* Chips logo depois do valor (sem coluna fixa pro valor) */
+body .despesa-valor { min-width: 0; }
+
+/* Espaço entre os grupos de uma lista: o grid (1rem) somava com a margem do
+   grupo — ficava exagerado. */
+body .transacoes-lista, body .despesas-lista { gap: 0; }
+body .rec-grupo { margin-bottom: .35rem; }
+
+/* "×" da busca: centralizado sem transform — a regra global *:hover{transform:none}
+   (animations.css) cancelava o translateY(-50%) e o botão pulava no hover. */
+.busca-limpar { transform: none; top: 0; bottom: 0; margin: auto 0; }

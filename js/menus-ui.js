@@ -205,8 +205,8 @@ function renderFeriados() {
       <div class="menu-item ${f.ativo ? 'ativo' : 'inativo'}">
         <div class="item-info"><div class="item-nome">${_ferDataBR(f.data)} · ${f.nome}</div></div>
         <div class="item-actions">
-          <button class="mini-btn" data-fer-toggle="1" data-fer-id="${f.id || ''}" data-fer-iso="${f.data}" data-fer-cat="${cat}" data-fer-ativo="${f.ativo ? 1 : 0}">${f.ativo ? 'desativar' : 'ativar'}</button>
-          ${f.oficial ? '' : `<button class="mini-btn" data-fer-del="${f.id}">apagar</button>`}
+          <button type="button" class="import-x" data-fer-toggle="1" data-fer-id="${f.id || ''}" data-fer-iso="${f.data}" data-fer-cat="${cat}" data-fer-ativo="${f.ativo ? 1 : 0}" title="${f.ativo ? 'Desativar' : 'Reativar'}" aria-label="${f.ativo ? 'Desativar' : 'Reativar'}">${f.ativo ? '×' : '↺'}</button>
+          ${f.oficial ? '' : `<button type="button" class="btn-icon btn-danger" data-fer-del="${f.id}" title="Apagar" aria-label="Apagar">🗑️</button>`}
         </div>
       </div>`).join('') : `<p class="empty-text">Nenhum feriado ${CATEGORIA_FERIADO_ROTULO[cat].toLowerCase()} em ${feriadosAnoView}</p>`;
   });

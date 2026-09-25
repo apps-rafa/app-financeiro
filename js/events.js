@@ -62,17 +62,21 @@ function configurarEventListeners() {
         const T_SAIDA = 'transform .18s ease-in, opacity .18s ease-in';
         const T_ENTRADA = 'transform .22s ease-out, opacity .22s ease-out';
 
+        // Estilos com !important inline: o animations.css tem regras globais
+        // !important que zeram transform/transition (inclusive em :hover, que no
+        // toque fica "preso" no último elemento tocado).
+        const ajustarTransicao = v => dashboardEl.style.setProperty("transition", v, "important");
         const mover = (dx, opacidade) => {
-            dashboardEl.style.transform = `translateX(${dx}px)`;
-            dashboardEl.style.opacity = String(opacidade);
+            dashboardEl.style.setProperty("transform", `translateX(${dx}px)`, "important");
+            dashboardEl.style.setProperty("opacity", String(opacidade), "important");
         };
-        const limpar = () => { dashboardEl.style.transition = ''; dashboardEl.style.transform = ''; dashboardEl.style.opacity = ''; };
+        const limpar = () => { dashboardEl.style.removeProperty("transition"); dashboardEl.style.removeProperty("transform"); dashboardEl.style.removeProperty("opacity"); };
 
         dashboardEl.addEventListener('touchstart', e => {
             if (animando || e.touches.length !== 1) { g = null; return; }
             const t = e.touches[0];
             g = { x: t.clientX, y: t.clientY, t: Date.now(), horizontal: false, dx: 0 };
-            dashboardEl.style.transition = 'none';
+            ajustarTransicao('none');
         }, { passive: true });
 
         dashboardEl.addEventListener('touchmove', e => {
@@ -95,7 +99,7 @@ function configurarEventListeners() {
             const larg = dashboardEl.offsetWidth || 1;
             const rapido = Math.abs(gesto.dx) > 40 && (Date.now() - gesto.t) < 250;
             if (cancelar || (Math.abs(gesto.dx) < larg * 0.25 && !rapido)) {
-                dashboardEl.style.transition = T_ENTRADA; mover(0, 1);
+                ajustarTransicao(T_ENTRADA); mover(0, 1);
                 setTimeout(limpar, 240);
                 return;
             }
@@ -104,14 +108,14 @@ function configurarEventListeners() {
             estadoApp.mesAtual = new Date(d.getFullYear(), d.getMonth() + sentido, 1);
             animando = true;
             // sai pro lado do gesto enquanto os dados do novo mês carregam
-            dashboardEl.style.transition = T_SAIDA;
+            ajustarTransicao(T_SAIDA);
             mover(-sentido * larg, 0);
             await Promise.all([recarregarDados(), new Promise(r => setTimeout(r, 190))]);
             // entra vindo do lado oposto
-            dashboardEl.style.transition = 'none';
+            ajustarTransicao('none');
             mover(sentido * larg, 0);
             void dashboardEl.offsetWidth; // força o reflow antes de animar
-            dashboardEl.style.transition = T_ENTRADA;
+            ajustarTransicao(T_ENTRADA);
             mover(0, 1);
             setTimeout(() => { limpar(); animando = false; }, 240);
         };
