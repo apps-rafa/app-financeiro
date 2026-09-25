@@ -118,7 +118,7 @@
 }
 .lixeira-info { min-width: 0; flex: 1 1 auto; }
 .lixeira-linha1 { display: flex; align-items: baseline; gap: .5rem; min-width: 0; }
-.lixeira-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .85rem; }
+.lixeira-desc { white-space: normal; overflow-wrap: anywhere; font-size: .85rem; }
 .lixeira-valor.receita { color: var(--receita-text); }
 .lixeira-valor.despesa { color: var(--despesa-text); }
 .lixeira-linha2 { font-size: .72rem; color: var(--text-muted); margin-top: .15rem; }

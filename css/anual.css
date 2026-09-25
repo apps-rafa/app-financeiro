@@ -24,7 +24,7 @@
 .anual-tabela { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 760px; font-size: .74rem; font-variant-numeric: tabular-nums; }
 .anual-tabela th, .anual-tabela td { padding: .32rem .4rem; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
 .anual-tabela thead th { color: var(--text-muted); font-weight: 600; background: var(--surface-2); position: sticky; top: 0; }
-.anual-tabela .anual-nome { text-align: left; position: sticky; left: 0; background: var(--surface); z-index: 1; min-width: 8.5rem; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.anual-tabela .anual-nome { text-align: left; position: sticky; left: 0; background: var(--surface); z-index: 1; min-width: 8.5rem; max-width: 11rem; font-weight: 600; white-space: normal; overflow-wrap: anywhere; }
 .anual-tabela thead .anual-nome { background: var(--surface-2); z-index: 2; }
 .anual-tabela .anual-ponto { display: inline-block; width: .55rem; height: .55rem; border-radius: 50%; margin-right: .4rem; vertical-align: baseline; }
 .anual-tabela td.vazio { color: var(--text-muted); opacity: .5; text-align: center; }
@@ -90,7 +90,7 @@
 /* ---- Celular ---- */
 @media (max-width: 600px) {
   /* 1ª coluna congelada mais estreita; legenda do gráfico uma por linha */
-  .anual-tabela .anual-nome { min-width: 5.6rem; max-width: 6.6rem; font-size: .7rem; }
+  .anual-tabela .anual-nome { min-width: 6.2rem; max-width: 7.4rem; font-size: .7rem; line-height: 1.15; }
   .anual-tabela .anual-ponto { margin-right: .3rem; }
   .anual-tabela .grafico-rot .leg { flex-direction: column; align-items: flex-start; gap: .2rem; }
   .anual-tabela .leg i { margin-left: 0; margin-right: .25rem; }
@@ -110,3 +110,19 @@
   .anual-cmp-topo b, .anual-cmp-topo > span { text-align: center; }
   .anual-cmp-topo .anual-toggle { width: 100%; }
 }
+
+/* Nome abreviado no celular (nunca "…"): o inteiro fica no title */
+.anual-tabela .nm-curto { display: none; }
+@media (max-width: 600px) {
+  .anual-tabela .nm-full { display: none; }
+  .anual-tabela .nm-curto { display: inline; }
+}
+/* Seções Despesas / Receitas dentro da mesma tabela */
+.anual-tabela tr.sec th.sec-tit, .anual-tabela tr.sec td { background: var(--surface-2); text-transform: uppercase; letter-spacing: .04em; font-size: .68rem; color: var(--text-muted); font-weight: 700; }
+.anual-tabela tr.sec.desp th.sec-tit { box-shadow: inset 3px 0 0 var(--despesa-text); }
+.anual-tabela tr.sec.rec th.sec-tit { box-shadow: inset 3px 0 0 var(--receita-text); }
+.anual-tabela tbody tr.tot th, .anual-tabela tbody tr.tot td { font-weight: 700; border-top: 2px solid var(--border-strong, var(--border)); }
+.anual-tabela tbody tr.var th, .anual-tabela tbody tr.var td { color: var(--text-muted); font-size: .68rem; }
+.anual-tabela tfoot tr.saldo th, .anual-tabela tfoot tr.saldo td { font-weight: 700; border-top: 2px solid var(--border-strong, var(--border)); background: var(--surface-2); }
+.anual-tabela .bom { color: var(--receita-text); }
+.anual-tabela .ruim { color: var(--despesa-text); }
