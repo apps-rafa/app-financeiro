@@ -471,3 +471,26 @@ body .rec-grupo { margin-bottom: .35rem; }
 /* "×" da busca: centralizado sem transform — a regra global *:hover{transform:none}
    (animations.css) cancelava o translateY(-50%) e o botão pulava no hover. */
 .busca-limpar { transform: none; top: 0; bottom: 0; margin: auto 0; }
+
+/* Zebrado ocupando 100% da largura do grupo: o container dos cards não tem
+   mais padding lateral (o recuo do texto fica no próprio card). */
+body .rec-grupo-itens, body .fatura-itens, body .historico-lista { padding-left: 0; padding-right: 0; }
+body .despesa-item { padding-left: .8rem; padding-right: .8rem; }
+body .rec-grupo-itens > .grupo-barra { padding-left: .8rem; padding-right: .8rem; }
+@media (max-width: 480px) {
+    body .rec-grupo-itens { padding: 0 0 .4rem; }
+    body .despesa-item { padding-left: .65rem; padding-right: .65rem; }
+    body .rec-grupo-itens > .grupo-barra { padding-left: .65rem; padding-right: .65rem; }
+}
+
+/* Cabeçalho: tema e sair com a mesma altura */
+body #btnTema, body #btnLogout { height: 1.9rem; min-width: 1.9rem; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; padding-top: 0; padding-bottom: 0; }
+
+/* "Próximos" 3/4 e lixeira 1/4 da coluna */
+body .tabs-dir [data-tab="proximas"] { flex: 3 1 0; min-width: 0; }
+body .tabs-dir .tab-btn-icone { flex: 1 1 0; min-width: 0; padding-left: 0; padding-right: 0; }
+
+/* Resumo compacto: valores não vazam dos boxes */
+.mini-box { gap: .15rem; padding: .35rem .12rem; }
+.mini-box i { font-size: .66rem; }
+.mini-box b { font-size: .6rem; }
