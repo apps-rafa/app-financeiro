@@ -181,6 +181,21 @@ async function carregarSaldoContas() {
     if (typeof atualizarResumo === 'function') atualizarResumo();
 }
 
+/** Faturas do banco (pluggy_faturas) por cartão — o Próximos compara o total
+ *  lançado no app com o total da fatura do banco (ver renderFaturasCartao). */
+async function carregarFaturasBanco() {
+    const [{ data: faturas, error: e1 }, { data: contas, error: e2 }] = await Promise.all([
+        sb.from('pluggy_faturas').select('conta_id, vencimento, total'),
+        sb.from('pluggy_contas').select('id, metodo_id').eq('tipo_conta', 'CREDIT'),
+    ]);
+    if (e1 || e2) { console.error(e1 || e2); return; }
+    const metodoDaConta = new Map((contas || []).map(c => [c.id, c.metodo_id]));
+    estadoApp.faturasBanco = (faturas || [])
+        .map(f => ({ metodoId: metodoDaConta.get(f.conta_id) ?? null, vencimento: f.vencimento, total: f.total }))
+        .filter(f => f.metodoId != null && f.vencimento && typeof f.total === 'number');
+    if (document.getElementById('proximas')?.classList.contains('active') && typeof atualizarProximasTransacoes === 'function') atualizarProximasTransacoes();
+}
+
 /** Carrega e renderiza as contas conectadas (Importar > Pluggy). */
 async function carregarContasConectadas() {
     const container = document.getElementById('pluggyContasList');
@@ -627,6 +642,7 @@ async function sincronizarPluggyAgora() {
         );
         await carregarRevisaoPluggy();
         carregarSaldoContas();
+        carregarFaturasBanco();
     } catch (e) {
         console.error(e);
         mostrarNotificacao('Erro ao sincronizar com a Pluggy', 'erro');
