@@ -228,7 +228,7 @@ function atualizarResumo() {
     const gastoDiarioValor = dias > 0 ? (estadoApp.resumo.balanco || 0) / dias : 0;
     if (gd) {
         gd.textContent = mask(formatarMoeda(gastoDiarioValor));
-        if (gdSub) gdSub.textContent = `${dias} dia${dias === 1 ? '' : 's'} restante${dias === 1 ? '' : 's'}`;
+        if (gdSub) gdSub.textContent = dias > 0 ? `${dias} dia${dias === 1 ? '' : 's'} restante${dias === 1 ? '' : 's'}` : (_mesFuturo() ? 'começa quando o mês chegar' : 'mês encerrado');
     }
 
     // Espelha os totais no resumo compacto (barra fixa) — com "R$", sem centavos ",00"
@@ -295,9 +295,9 @@ function diasRestantesMesVigente() {
     if (mesRef.getFullYear() === hoje.getFullYear() && mesRef.getMonth() === hoje.getMonth()) {
         return Math.max(1, totalDias - hoje.getDate() + 1);
     }
-    const ehPassado = mesRef.getFullYear() < hoje.getFullYear()
-        || (mesRef.getFullYear() === hoje.getFullYear() && mesRef.getMonth() < hoje.getMonth());
-    return ehPassado ? 0 : totalDias;
+    // Mês passado ou futuro: sem gasto diário (o do futuro só passa a ser calculado quando o mês chegar)
+    // Mês futuro: o gasto diário só passa a ser calculado quando o mês chegar
+    return 0;
 }
 
 /** Lê de localStorage o modo salvo pra essa lista, validando contra as opções atuais. */
@@ -2023,4 +2023,12 @@ function _htmlNomeCategoriaChip(nome) {
     const curto = abreviarCategoria(nome);
     if (String(nome).length <= 13 || curto === nome) return nome;
     return `<span class="cat-full">${nome}</span><span class="cat-curto">${curto}</span>`;
+}
+
+/** O mês em exibição ainda não chegou? */
+function _mesFuturo() {
+    const hoje = new Date();
+    const mesRef = estadoApp.mesAtual || hoje;
+    return mesRef.getFullYear() > hoje.getFullYear()
+        || (mesRef.getFullYear() === hoje.getFullYear() && mesRef.getMonth() > hoje.getMonth());
 }
