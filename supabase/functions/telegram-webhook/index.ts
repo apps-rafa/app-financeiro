@@ -794,51 +794,7 @@ async function avisarErroBot(admin: ReturnType<typeof createClient>, token: stri
   }
 }
 
-/** Lembretes dos lançamentos recorrentes que vencem HOJE (dia do mês; em mês curto vale o
- *  último dia). O primeiro do dia vira um rascunho com ✅ Confirmar / ✏️ Editar / ❌ Cancelar;
- *  como só existe 1 rascunho por chat, os demais do mesmo dia vão como aviso de texto. */
-async function executarLembretes(admin: ReturnType<typeof createClient>, token: string): Promise<number> {
-  const hoje = hojeBrasiliaISO();
-  const [ano, mes, dia] = hoje.split("-").map(Number);
-  const ultimoDia = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
-  const { data: rec } = await admin.from("recorrentes").select("*").eq("ativo", true);
-  const devidos = ((rec ?? []) as { id: number; user_id: string; descricao: string; tipo: "entradas" | "saidas"; valor: number; categoria: string; metodo: string | null; dia_mes: number; ultimo_lembrete: string | null }[])
-    .filter((r) => (r.dia_mes === dia || (dia === ultimoDia && r.dia_mes > ultimoDia))
-      && (!r.ultimo_lembrete || String(r.ultimo_lembrete).slice(0, 7) !== hoje.slice(0, 7)));
-  const porUsuario = new Map<string, typeof devidos>();
-  for (const r of devidos) porUsuario.set(r.user_id, [...(porUsuario.get(r.user_id) ?? []), r]);
-  let enviados = 0;
-  for (const [userId, lista] of porUsuario) {
-    const { data: tgUser } = await admin.from("telegram_users").select("chat_id").eq("user_id", userId).maybeSingle();
-    if (!tgUser) continue;
-    const listas = await carregarListasUsuario(admin, userId);
-    const [primeiro, ...outros] = lista;
-    const metodoObj = primeiro.metodo ? listas.metodos.find((m) => rotuloMetodo(m) === primeiro.metodo) ?? null : null;
-    const rascunho: RascunhoLancamento = {
-      tipo: primeiro.tipo, valor: Number(primeiro.valor), descricao: primeiro.descricao, categoria: primeiro.categoria,
-      metodo: primeiro.metodo, metodoKind: metodoObj?.metodo_kind ?? null, diaFechamento: metodoObj?.dia_fechamento ?? null,
-      data: hoje, parcelas: null,
-    };
-    await admin.from("telegram_rascunhos").delete().eq("chat_id", tgUser.chat_id);
-    const { error } = await admin.from("telegram_rascunhos").insert({ user_id: userId, chat_id: tgUser.chat_id, dados: rascunho });
-    if (!error) {
-      await enviarRascunho(token, tgUser.chat_id, rascunho, admin, userId, "🔁 Lançamento recorrente — vence hoje");
-      enviados++;
-      await admin.from("recorrentes").update({ ultimo_lembrete: hoje }).eq("id", primeiro.id);
-    }
-    if (outros.length) {
-      await tg(token, "sendMessage", {
-        chat_id: tgUser.chat_id,
-        text: `🔁 Também vence hoje:\n${outros.map((r) => `• ${r.descricao || r.categoria} — ${formatarMoedaBR(Number(r.valor))}`).join("\n")}\n\nConfirme o de cima e lance estes pelo app (ou mande tipo "gastei 100 no ...").`,
-      });
-      for (const r of outros) await admin.from("recorrentes").update({ ultimo_lembrete: hoje }).eq("id", r.id);
-      enviados += outros.length;
-    }
-  }
-  return enviados;
-}
-
-/** Backup completo (lançamentos, menus e recorrentes) mandado como arquivo .json no Telegram. */
+/** Backup completo (lançamentos e menus) mandado como arquivo .json no Telegram. */
 async function executarBackup(
   admin: ReturnType<typeof createClient>, token: string, so?: { chat_id: number; user_id: string },
 ): Promise<void> {
@@ -852,11 +808,8 @@ async function executarBackup(
       transacoes.push(...(data ?? []));
       if (!data || data.length < 1000) break;
     }
-    const [{ data: menus }, { data: recorrentes }] = await Promise.all([
-      admin.from("menu_itens").select("*").eq("user_id", u.user_id),
-      admin.from("recorrentes").select("*").eq("user_id", u.user_id),
-    ]);
-    const json = JSON.stringify({ gerado_em: new Date().toISOString(), transacoes, menu_itens: menus ?? [], recorrentes: recorrentes ?? [] });
+    const { data: menus } = await admin.from("menu_itens").select("*").eq("user_id", u.user_id);
+    const json = JSON.stringify({ gerado_em: new Date().toISOString(), transacoes, menu_itens: menus ?? [] });
     const form = new FormData();
     form.append("chat_id", String(u.chat_id));
     form.append("caption", `💾 Backup Ctrl Fin — ${transacoes.length} lançamentos (${hoje})`);
@@ -877,7 +830,7 @@ Deno.serve(async (req: Request) => {
     console.error("TELEGRAM_BOT_TOKEN/TELEGRAM_WEBHOOK_SECRET não configurados");
     return json({ ok: true }); // 200 pro Telegram não ficar reenviando
   }
-  // Tarefas agendadas (pg_cron): lembretes de recorrentes e backup semanal
+  // Tarefa agendada (pg_cron): backup semanal
   const segredoCron = req.headers.get("x-cron-secret");
   if (segredoCron) {
     const adminCron = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -885,7 +838,6 @@ Deno.serve(async (req: Request) => {
     if (!seg || segredoCron !== seg.valor) return json({ error: "Não autorizado" }, 401);
     const corpo = await req.json().catch(() => ({}));
     try {
-      if (corpo.tarefa === "lembretes") return json({ ok: true, enviados: await executarLembretes(adminCron, token) });
       if (corpo.tarefa === "backup") { await executarBackup(adminCron, token); return json({ ok: true }); }
       return json({ error: "Tarefa desconhecida" }, 400);
     } catch (e) {

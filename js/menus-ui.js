@@ -112,10 +112,6 @@ async function carregarAbaMenus() {
         <h3 class="dados-selecao-titulo">Telegram</h3>
         <div id="pluggyTelegramBox" class="pluggy-telegram"></div>
 
-        <h3 class="dados-selecao-titulo">Lançamentos recorrentes</h3>
-        <p class="menu-hint">Todo mês, no dia marcado, o bot te lembra e você confirma com um toque. Crie tocando em 🔁 num lançamento.</p>
-        <div id="recorrentesLista" class="recorrentes-lista"></div>
-
         <h3 class="dados-selecao-titulo">Comandos do bot</h3>
         <p class="menu-hint">Depois de vincular, mande estes comandos no chat do bot:</p>
         <dl class="tg-comandos">
@@ -208,7 +204,6 @@ async function carregarAbaMenus() {
   }
 
   if (typeof iniciarPluggy === 'function') iniciarPluggy();
-  if (typeof carregarRecorrentes === 'function') carregarRecorrentes();
   if (typeof iniciarDados === 'function') iniciarDados();
 }
 

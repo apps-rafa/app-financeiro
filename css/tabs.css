@@ -134,7 +134,6 @@
     .lixeira-linha3 { font-size: .58rem; }
     .lixeira-acoes { gap: .25rem; }
     .lixeira-acoes .mini-btn { font-size: .74rem; padding: .2rem .45rem; min-width: 0; }
-    .lixeira-acoes .lx-txt { display: none; }
     #lixeira .menu-hint { font-size: .68rem; }
 }
 
