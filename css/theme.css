@@ -430,3 +430,13 @@ body .despesa-item {
 body .despesa-item:nth-of-type(even) { background: color-mix(in srgb, var(--surface-3) 55%, transparent); }
 body .rec-grupo-itens, body .fatura-itens, body .historico-lista { gap: 0; }
 body .despesa-actions { flex-direction: row; gap: .15rem; }
+
+/* Lançamentos: dia, tricode e valor em colunas alinhadas na vertical (valor à
+   esquerda) — leitura em sequência mais confortável; e chips mais baixos (só o
+   chip: o tamanho da fonte não muda). */
+body .despesa-data { flex: 0 0 auto; gap: .25rem; }
+body .despesa-dia { display: inline-block; min-width: 1.15rem; text-align: right; }
+body .despesa-dow { display: inline-block; min-width: 1.9rem; text-align: left; }
+body .despesa-valor { flex: 0 0 auto; min-width: 4.9rem; text-align: left; white-space: nowrap; }
+body .chip { padding: .02rem .42rem; line-height: 1.2; }
+body .despesa-conteudo { column-gap: .35rem; }
