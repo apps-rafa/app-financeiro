@@ -622,3 +622,7 @@ body.modo-anual #resultadoBusca { display: none !important; }
 
 /* Respiro entre o grupo de duplicatas e os filtros (Receitas/Despesas) */
 #duplicatasEntradas:not(:empty), #duplicatasSaidas:not(:empty) { margin-bottom: .8rem; }
+
+/* Visão anual: sem a faixa vazia entre o cabeçalho e o conteúdo */
+body.modo-anual main.main { padding-top: 0; }
+body.modo-anual .area-conteudo { border-top: 0; }
