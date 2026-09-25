@@ -182,7 +182,11 @@ function configurarEventListeners() {
     // Busca em tempo real (Receitas/Despesas) — filtra a cada tecla, funciona
     // igual em qualquer modo de visualização (ver _filtrarPorBusca em js/ui.js).
     const buscaGlobalEl = document.getElementById('buscaGlobal');
-    document.getElementById('btnRecentes')?.addEventListener('click', () => mostrarRecemLancados(5));
+    document.getElementById('btnRecentes')?.addEventListener('click', () => {
+        const box = document.getElementById('resultadoBusca');
+        if (box && !box.hidden && box.dataset.recentes === '1') atualizarBuscaGlobal(); // toggle: fecha
+        else mostrarRecemLancados(5);
+    });
     const buscaLimparEl = document.getElementById('buscaLimpar');
     const sincronizarBuscaLimpar = () => { if (buscaLimparEl) buscaLimparEl.hidden = !buscaGlobalEl.value; };
     if (buscaGlobalEl) buscaGlobalEl.addEventListener('input', () => {
@@ -438,6 +442,13 @@ function fecharAbas() {
 
 function mudarAba(novaAba) {
     const ativa = document.querySelector('.tab-content.active')?.id;
+
+    // "Recém-lançados" aberto: a aba pedida abre por cima (fecha a lista, sem alternar a aba)
+    const boxRec = document.getElementById('resultadoBusca');
+    if (boxRec && !boxRec.hidden && boxRec.dataset.recentes === '1') {
+        atualizarBuscaGlobal();
+        if (novaAba === ativa) return;
+    }
 
     // Clicar na aba já aberta apenas fecha tudo (sem reabrir nada).
     if (novaAba === ativa) {
