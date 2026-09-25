@@ -811,6 +811,34 @@ function _descricaoAoVivoPluggy(item) {
     return item.id in _descricaoEditadaPluggy ? _descricaoEditadaPluggy[item.id] : (item.descricao_banco || '');
 }
 
+/** Chave de uma descrição do banco (mesma regra do pluggy-webhook: minúsculas, sem acento,
+ *  sem números/pontuação; vazia se curta demais). */
+function _chaveDescricaoBancoPluggy(d) {
+    const k = String(d || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    return k.length >= 4 ? k : '';
+}
+
+/** Categoria aprendida: se você já lançou antes algo com a MESMA descrição do banco e
+ *  corrigiu a categoria, sugere essa categoria (a mais recente) no lugar da automática. */
+async function _aplicarCategoriasAprendidasPluggy(itens) {
+    if (!itens.length) return;
+    const { data, error } = await sb.from('transacoes').select('categoria, dados_originais, data')
+        .eq('origem', 'pluggy').order('data', { ascending: false }).limit(3000);
+    if (error) { console.warn('Aprendizado de categorias indisponível:', error.message); return; }
+    const mapa = new Map();
+    for (const t of data || []) {
+        const k = _chaveDescricaoBancoPluggy(t.dados_originais && t.dados_originais.descricao_banco);
+        if (k && t.categoria && !mapa.has(k)) mapa.set(k, t.categoria);
+    }
+    const m = (estadoApp.menus) || {};
+    itens.forEach(item => {
+        const aprendida = mapa.get(_chaveDescricaoBancoPluggy(item.descricao_banco));
+        const lista = (item.tipo === 'entradas' ? m.categoriasReceita : m.categoriasDespesa) || [];
+        if (aprendida && lista.includes(aprendida)) item.categoria_sugerida = aprendida;
+    });
+}
+
 /** Carrega e renderiza a fila de revisão (Importar > Pluggy): pendentes
  *  (divididos em duplicatas/a revisar/prontas, igual CSV/PDF) + um
  *  histórico do que já foi confirmado (revisável, não editável aqui). */
@@ -855,6 +883,7 @@ async function carregarRevisaoPluggy() {
     }
 
     const pendentesBrutos = data || [];
+    await _aplicarCategoriasAprendidasPluggy(pendentesBrutos);
     const marcados = await _marcarDuplicatasPluggy(pendentesBrutos);
     _revisaoPluggyCache = Object.fromEntries(marcados.map(item => [item.id, item]));
     // Título com a origem dos lançamentos da fila (uma ou mais contas)

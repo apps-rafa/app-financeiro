@@ -15,7 +15,7 @@
 // Ver plano da integração: memória "app-financeiro-pluggy-integracao".
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { notificarTelegramNovas } from "../_shared/telegram.ts";
+import { avisarErroTelegram, notificarTelegramNovas } from "../_shared/telegram.ts";
 
 const PLUGGY_API_URL = "https://api.pluggy.ai";
 const DIAS_HISTORICO_PRIMEIRA_SYNC = 30;
@@ -60,6 +60,34 @@ async function guardarFaturasBanco(
 }
 
 /** Mesmo rótulo do formulário do app (js/menus-api.js:rotuloMetodo). */
+/** Chave de uma descrição do banco pra reconhecer o mesmo estabelecimento ("GUANABARA 0123" ==
+ *  "guanabara 4567"): minúsculas, sem acento, sem números/pontuação. Vazia se muito curta. */
+function chaveDescricaoBanco(d: string | null | undefined): string {
+  const k = String(d ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim();
+  return k.length >= 4 ? k : "";
+}
+
+/** O que você JÁ corrigiu antes: descrição do banco -> categoria final do lançamento
+ *  (a mais recente vale). Usado no lugar da sugestão automática. */
+async function carregarCategoriasAprendidas(
+  // deno-lint-ignore no-explicit-any
+  cliente: any, userId: string,
+): Promise<Map<string, string>> {
+  const mapa = new Map<string, string>();
+  try {
+    const { data } = await cliente.from("transacoes").select("categoria, dados_originais, data")
+      .eq("user_id", userId).eq("origem", "pluggy").order("data", { ascending: false }).limit(3000);
+    for (const t of (data ?? []) as { categoria: string; dados_originais: { descricao_banco?: string } | null }[]) {
+      const k = chaveDescricaoBanco(t.dados_originais?.descricao_banco);
+      if (k && t.categoria && !mapa.has(k)) mapa.set(k, t.categoria);
+    }
+  } catch (e) {
+    console.error("Aprendizado de categorias indisponível:", e);
+  }
+  return mapa;
+}
+
 /** "PIX" e "PIX <banco>" são a mesma forma de pagamento (tudo é PIX). */
 function mesmaFormaPgto(a: string, b: string): boolean {
   const pix = (x: string) => /^pix(\s|$)/i.test(x.trim());
@@ -361,6 +389,7 @@ Deno.serve(async (req: Request) => {
       .eq("user_id", userId);
 
     const apiKey = await getPluggyApiKey();
+    const aprendidas = await carregarCategoriasAprendidas(supabaseAdmin, userId);
     let novasNoTotal = 0;
 
     for (const conta of contas) {
@@ -394,7 +423,11 @@ Deno.serve(async (req: Request) => {
               tipo,
               descricao_banco: descricaoBanco,
               categoria_pluggy: categoriaTraduzida,
-              categoria_sugerida: sugerirCategoria(categoriaTraduzida, descricaoBanco, tipo, categoriasApp ?? []),
+              categoria_sugerida: (() => {
+                const aprendida = aprendidas.get(chaveDescricaoBanco(descricaoBanco));
+                const existe = aprendida && (categoriasApp ?? []).some((c: { nome: string; categoria_tipo: string | null }) => c.nome === aprendida && c.categoria_tipo === tipo);
+                return existe ? aprendida : sugerirCategoria(categoriaTraduzida, descricaoBanco, tipo, categoriasApp ?? []);
+              })(),
               metodo_sugerido: conta.metodo_id ?? null,
               parcela_num: Number(t.creditCardMetadata?.totalInstallments) > 1 && Number(t.creditCardMetadata?.installmentNumber) >= 1
                 ? Number(t.creditCardMetadata.installmentNumber) : null,
@@ -436,6 +469,7 @@ Deno.serve(async (req: Request) => {
           .eq("id", conta.id);
       } catch (e) {
         console.error(`Erro sincronizando conta ${conta.id} via webhook:`, e);
+        await avisarErroTelegram(supabaseAdmin, `pluggy-conta-${conta.id}`, `⚠️ Falha ao sincronizar a conta ${conta.nome_conta ?? conta.id} pelo Open Finance: ${String(e instanceof Error ? e.message : e).slice(0, 250)}`);
         await supabaseAdmin.from("pluggy_contas").update({ status: "erro" }).eq("id", conta.id);
       }
     }
@@ -443,6 +477,10 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true, novas: novasNoTotal, contasProcessadas: contas.length });
   } catch (e) {
     console.error(e);
+    try {
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await avisarErroTelegram(admin, "pluggy-webhook", `⚠️ Erro no webhook da Pluggy: ${String(e instanceof Error ? e.message : e).slice(0, 250)}`);
+    } catch (_) { /* melhor esforço */ }
     return json({ error: String(e instanceof Error ? e.message : e) }, 500);
   }
 });
