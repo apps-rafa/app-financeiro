@@ -27,17 +27,15 @@
   /* 5 itens: 5 colunas; ao quebrar, grade de 6 colunas com spans que
      preenchem 100% de TODAS as linhas — 3+2 (até 700px) e 2+3 (até 420px),
      nunca um item sozinho (viúva). */
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 0.35rem;
 }
 @media (max-width: 700px) {
   .subtabs-itens { grid-template-columns: repeat(6, 1fr); }
   .subtabs-itens > .subtab { grid-column: span 2; }
-  .subtabs-itens > .subtab:nth-child(n+4) { grid-column: span 3; }
 }
 @media (max-width: 420px) {
   .subtabs-itens > .subtab { grid-column: span 3; }
-  .subtabs-itens > .subtab:nth-child(n+3) { grid-column: span 2; }
 }
 
 /* Rótulos longos ("Formas de pagamento", "Frequência") encolhem em níveis

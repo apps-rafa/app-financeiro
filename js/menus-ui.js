@@ -43,6 +43,7 @@ async function carregarAbaMenus() {
           </button>
           <button class="subtab" data-sub="fer">📅 <span class="subtab-texto">Feriados</span></button>
           <button class="subtab" data-sub="of">🏦 <span class="subtab-texto">Open Finance</span></button>
+          <button class="subtab" data-sub="notif">🔔 <span class="subtab-texto">Notificações</span></button>
           <button class="subtab" data-sub="dados">💾 <span class="subtab-texto">Dados</span></button>
         </div>
       </div>
@@ -107,10 +108,30 @@ async function carregarAbaMenus() {
         </details>`).join('')}
       </div>
 
-      <div class="menu-section" data-sub="of" hidden>
-        <h3 class="dados-selecao-titulo">Notificações</h3>
+      <div class="menu-section" data-sub="notif" hidden>
+        <h3 class="dados-selecao-titulo">Telegram</h3>
         <div id="pluggyTelegramBox" class="pluggy-telegram"></div>
 
+        <h3 class="dados-selecao-titulo">Comandos do bot</h3>
+        <p class="menu-hint">Depois de vincular, mande estes comandos no chat do bot:</p>
+        <dl class="tg-comandos">
+          <dt>/atualizar</dt><dd>Pede à Pluggy dados novos das suas contas (você escolhe qual no teclado) e mostra as 3 últimas transações de cada uma.</dd>
+          <dt>/resumo</dt><dd>Receitas, despesas e balanço do mês.</dd>
+          <dt>/diario</dt><dd>Quanto você ainda pode gastar por dia até o fim do mês.</dd>
+          <dt>/credito</dt><dd>Gasto do mês em cada cartão de crédito e o total.</dd>
+          <dt>/pix</dt><dd>Total gasto no PIX no mês: quanto já foi pago e quanto ainda resta.</dd>
+          <dt>/ultimos</dt><dd>Os 5 últimos lançamentos feitos no app.</dd>
+        </dl>
+        <h3 class="dados-selecao-titulo">Lançar por mensagem</h3>
+        <p class="menu-hint">
+          Escreva como falaria: <em>gastei 35,90 no mercado</em>, <em>recebi 200 de salário</em>, <em>vendi meu casaco por 200 reais</em>,
+          <em>comprei um carro de 80000 parcelado em 10x</em>. O bot monta um rascunho com valor, categoria e forma de pagamento
+          e só grava depois que você tocar em <b>✅ Confirmar</b> no teclado. Se responder qualquer outra coisa
+          (sem ser os botões), ele entende como a <b>descrição</b> do lançamento.
+        </p>
+      </div>
+
+      <div class="menu-section" data-sub="of" hidden>
         <h3 class="dados-selecao-titulo">Pluggy</h3>
         <div class="menu-secao-topo">
           <p class="menu-hint">

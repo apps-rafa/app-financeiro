@@ -919,31 +919,23 @@ async function carregarRevisaoPluggy() {
         htmlLinha: gerarHTMLImportadaPluggy,
     });
 
-    // Histórico no MESMO visual dos grupos das páginas de Receitas/Despesas
-    // (rec-grupo + subgrupos com contagem e total, cards zebrados).
-    const _abertoHist = (id, padrao) => (_abertosPluggy[id] !== undefined ? _abertosPluggy[id] : padrao);
+    // Histórico: MESMO markup dos outros grupos desta página (import-csv-grupo),
+    // com um subgrupo por tipo cujo corpo são os cards dos lançamentos.
     const _somaHist = l => l.reduce((acc, i) => acc + (parseFloat(i.transacao.valor) || 0), 0);
-    const tabelaHistorico = !historicoValido.length ? '' : `
-        <details class="rec-grupo rec-grupo--plano" data-grupo-id="pluggy-historico" ${_abertoHist('pluggy-historico', false) ? 'open' : ''}>
-          <summary>
-            <span class="rec-grupo-nome">📜 Já lançados (histórico) (${historicoValido.length})</span>
-          </summary>
-          <div class="rec-grupo-itens">${['saidas', 'entradas'].map(tipo => {
+    const tabelaHistorico = !historicoValido.length ? '' : _grupoColapsavelConciliar({
+        id: 'pluggy-historico', abertos: _abertosPluggy, padraoAberto: false,
+        titulo: `📜 Já lançados (histórico) (${historicoValido.length})`,
+        corpo: ['saidas', 'entradas'].map(tipo => {
             const lista = historicoValido.filter(i => (i.transacao.tipo === 'entradas') === (tipo === 'entradas'))
                 .sort((x, y) => String(y.transacao.data).localeCompare(String(x.transacao.data)));
             if (!lista.length) return '';
-            const id = `pluggy-historico-${tipo}`;
-            return `
-            <details class="subgrupo" data-grupo-id="${id}" ${_abertoHist(id, false) ? 'open' : ''}>
-              <summary class="subgrupo-cab">
-                <span class="subgrupo-nome">${tipo === 'entradas' ? 'Receitas' : 'Despesas'} (${lista.length})</span>
-                <span class="subgrupo-espaco"></span>
-                <span class="subgrupo-total"><span class="tot-valor">${formatarMoeda(_somaHist(lista))}</span></span>
-              </summary>
-              ${lista.map(gerarHTMLHistoricoPluggy).join('')}
-            </details>`;
-          }).join('')}</div>
-        </details>`;
+            return _grupoColapsavelConciliar({
+                id: `pluggy-historico-${tipo}`, abertos: _abertosPluggy, padraoAberto: false,
+                titulo: `${tipo === 'entradas' ? 'Receitas' : 'Despesas'} (${lista.length})<span class="hist-total">${formatarMoeda(_somaHist(lista))}</span>`,
+                corpo: `<div class="historico-lista rec-grupo-itens">${lista.map(gerarHTMLHistoricoPluggy).join('')}</div>`,
+            });
+        }).join(''),
+    });
 
     // Com mais de uma conta na fila, cada conta vira um grupo (Nubank: Crédito,
     // Mercado Pago: Conta...) com os 3 grupos de sempre dentro; com uma só, fica
