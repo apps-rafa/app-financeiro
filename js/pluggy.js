@@ -737,10 +737,14 @@ async function limparFilaRevisaoPluggy(btn) {
     const original = '🧹 Limpar';
     btn.disabled = true;
     try {
-        // Só a fila PENDENTE: as já ignoradas (X) e as confirmadas ficam guardadas —
-        // senão, na próxima sincronização, tudo que você ignorou voltava pra revisão.
+        // Limpa a TELA: as pendentes são apagadas (o sync as traz de novo); as já
+        // ignoradas (X) e as confirmadas só ficam OCULTAS — continuam no banco pra
+        // o próximo sync não trazer de volta o que já foi visto.
         const { error } = await sb.from('transacoes_importadas').delete().eq('status', 'pendente');
         if (error) throw error;
+        const { error: errOculta } = await sb.from('transacoes_importadas')
+            .update({ oculta: true }).in('status', ['ignorada', 'confirmada']).eq('oculta', false);
+        if (errOculta) throw errOculta;
         mostrarNotificacao('Fila de revisão limpa', 'sucesso');
         // carregarRevisaoPluggy decide se o botão fica habilitado (só
         // habilita se ainda sobrar algo pra limpar).
@@ -826,14 +830,14 @@ async function carregarRevisaoPluggy() {
         // Pluggy sugeriu originalmente (categoria_sugerida fica "congelada").
         sb.from('transacoes_importadas')
             .select('*, transacao:transacao_id(id, data, valor, tipo, categoria, descricao, metodo, competencia)')
-            .eq('status', 'confirmada').order('criado_em', { ascending: false }).limit(20),
+            .eq('status', 'confirmada').eq('oculta', false).order('criado_em', { ascending: false }).limit(20),
         sb.from('pluggy_contas').select('*'),
         // Marcadas com X numa revisão anterior (status 'ignorada' — ficam
         // fora da fila 'pendente' pra sempre). Sem isso, sincronizar de novo
         // um período já revisado achava "0 novas" e a tela ficava vazia,
         // sem rastro do que já tinha sido visto — agora aparecem aqui,
         // riscadas, em vez de simplesmente sumir.
-        sb.from('transacoes_importadas').select('*').eq('status', 'ignorada').order('data', { ascending: false }).limit(100),
+        sb.from('transacoes_importadas').select('*').eq('status', 'ignorada').eq('oculta', false).order('data', { ascending: false }).limit(100),
     ]);
     const contasPorId = Object.fromEntries((contasRows || []).map(c => [c.id, c]));
     const jaIgnoradas = jaIgnoradasBrutas || [];
@@ -891,7 +895,7 @@ async function carregarRevisaoPluggy() {
 
     // "Limpar" só habilita se há algo visível pra limpar (pendentes, histórico ou já ignoradas).
     const btnLimparRevisao = document.getElementById('btnLimparRevisaoPluggy');
-    if (btnLimparRevisao) btnLimparRevisao.disabled = !pendentesBrutos.length;
+    if (btnLimparRevisao) btnLimparRevisao.disabled = !pendentesBrutos.length && !historicoValido.length && !jaIgnoradas.length;
 
     if (!pendentesBrutos.length && !historicoValido.length && !jaIgnoradas.length) {
         container.innerHTML = '<p class="empty-message">Nada pendente — toque em "Sincronizar agora" pra buscar transações novas</p>';
