@@ -333,7 +333,7 @@ function _renderSeletorContasSyncPluggy(conectadas) {
         const ligar = btn.dataset.sincronizar !== '1';
         btn.classList.toggle('active', ligar);
         btn.dataset.sincronizar = ligar ? '1' : '0';
-        associarSincronizarConta(Number(btn.dataset.id), ligar);
+        Promise.resolve(associarSincronizarConta(Number(btn.dataset.id), ligar)).then(() => carregarRevisaoPluggy());
         _atualizarBotaoSincronizarPluggy();
     };
     _atualizarBotaoSincronizarPluggy();
@@ -630,12 +630,14 @@ function _preencherSeletorSyncPluggy() {
 function onChangeSyncMesPluggy(e) {
     _syncPluggy.mes = parseInt(e.target.value, 10) || _syncPluggy.mes;
     _atualizarTotalMesPluggy();
+    carregarRevisaoPluggy();
 }
 
 function onClickSyncAnoPluggy(delta) {
     _syncPluggy.ano += delta;
     _preencherSeletorSyncPluggy();
     _atualizarTotalMesPluggy();
+    carregarRevisaoPluggy();
 }
 
 function calcularDateFromSyncPluggy() {
@@ -866,7 +868,7 @@ async function carregarRevisaoPluggy() {
         // Pluggy sugeriu originalmente (categoria_sugerida fica "congelada").
         sb.from('transacoes_importadas')
             .select('*, transacao:transacao_id(id, data, valor, tipo, categoria, descricao, metodo, competencia)')
-            .eq('status', 'confirmada').order('criado_em', { ascending: false }).limit(20),
+            .eq('status', 'confirmada').order('criado_em', { ascending: false }).limit(300),
         sb.from('pluggy_contas').select('*'),
         // Marcadas com X numa revisão anterior (status 'ignorada' — ficam
         // fora da fila 'pendente' pra sempre). Sem isso, sincronizar de novo
@@ -876,7 +878,11 @@ async function carregarRevisaoPluggy() {
         sb.from('transacoes_importadas').select('*').eq('status', 'ignorada').order('data', { ascending: false }).limit(100),
     ]);
     const contasPorId = Object.fromEntries((contasRows || []).map(c => [c.id, c]));
-    const jaIgnoradas = jaIgnoradasBrutas || [];
+    // Histórico e já ignoradas só do mês escolhido e das contas marcadas pra sincronizar
+    // (senão sincronizar outubro na conta corrente mostrava o cartão de setembro).
+    const compEscopo = `${_syncPluggy.ano}-${String(_syncPluggy.mes).padStart(2, '0')}`;
+    const noEscopo = (contaId, ref) => !!(contasPorId[contaId] && contasPorId[contaId].sincronizar) && String(ref || '').startsWith(compEscopo);
+    const jaIgnoradas = (jaIgnoradasBrutas || []).filter(i => noEscopo(i.conta_id, i.competencia_fatura || i.data));
 
     if (error) {
         console.error(error);
@@ -903,7 +909,7 @@ async function carregarRevisaoPluggy() {
     // continuar ocupando o histórico como um "Lançamento apagado" — isso é
     // lixo da revisão, não histórico de verdade. Apaga esse resíduo e
     // segue só com o que ainda tem o lançamento de verdade por trás.
-    const historicoValido = (historico || []).filter(item => item.transacao);
+    const historicoValido = (historico || []).filter(item => item.transacao && noEscopo(item.conta_id, item.transacao.competencia || item.transacao.data));
     const historicoOrfao = (historico || []).filter(item => !item.transacao);
     if (historicoOrfao.length) {
         sb.from('transacoes_importadas').delete().in('id', historicoOrfao.map(item => item.id))
