@@ -1891,28 +1891,26 @@ function atualizarCampoMetodoReceita() {
     const categoriaAtual = document.querySelector(SELECTORS.categoria)?.value;
     const ehEstorno = categoriaAtual === CATEGORIA_ESTORNO;
     const ehReembolso = categoriaAtual === CATEGORIA_REEMBOLSO;
-    const comMetodo = ehEstorno || ehReembolso;
-
+    // Receita SEMPRE mostra a Forma de pagamento (opcional). Todas as formas
+    // aparecem; as que não servem pra categoria escolhida ficam cinzas
+    // (desabilitadas): só "Estorno" aceita cartão de crédito; qualquer outra
+    // categoria (Reembolso incluso) aceita só Pix/Dinheiro/etc., sem crédito.
     const blocoMetodo = document.getElementById('metodoBloco');
-    if (blocoMetodo) blocoMetodo.hidden = !comMetodo;
+    if (blocoMetodo) blocoMetodo.hidden = false;
     const metodoSel = document.querySelector(SELECTORS.metodo);
     if (metodoSel) {
         metodoSel.required = false;
         const atual = metodoSel.value;
         metodoSel.innerHTML = '<option value="">Selecione...</option>';
-        if (comMetodo) {
-            (estadoApp.menus.metodos || [])
-                .filter(m => ehEstorno ? m.metodoKind === 'Crédito' : (m.metodoKind === 'PIX' || m.metodoKind === 'PIX/Débito'))
-                .forEach(m => {
-                    const label = rotuloMetodo(m);
-                    const o = document.createElement('option');
-                    o.value = label; o.textContent = label;
-                    metodoSel.appendChild(o);
-                });
-            metodoSel.value = atual;
-        } else {
-            metodoSel.value = '';
-        }
+        (estadoApp.menus.metodos || []).forEach(m => {
+            const label = rotuloMetodo(m);
+            const o = document.createElement('option');
+            o.value = label; o.textContent = label;
+            o.disabled = ehEstorno ? m.metodoKind !== 'Crédito' : m.metodoKind === 'Crédito';
+            metodoSel.appendChild(o);
+        });
+        const opAtual = [...metodoSel.options].find(o => o.value === atual);
+        metodoSel.value = opAtual && !opAtual.disabled ? atual : '';
     }
     const compGrp = document.getElementById('competenciaGroup');
     if (compGrp) compGrp.hidden = true; // receita nunca mostra o select "Mês"
