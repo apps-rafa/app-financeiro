@@ -583,3 +583,8 @@ body .pluggy-toolbar .pluggy-toolbar-btn { font-size: .78rem; font-weight: 600; 
 
 /* Legenda do selo 🏦 acima dos grupos da revisão */
 .pluggy-legenda { margin: 0 0 .5rem; font-size: .75rem; color: var(--text-muted); }
+
+/* Total (Pluggy) numa linha só dele quando não cabe ao lado do mês/ano */
+@media (max-width: 600px) {
+    body .pluggy-toolbar .pluggy-total { flex: 1 1 100%; min-width: 0; }
+}
