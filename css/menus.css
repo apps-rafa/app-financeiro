@@ -1268,3 +1268,23 @@ summary [role="button"] { font-family: Arial; text-align: center; }
   .import-csv-tabela--compacta td:nth-child(5) { grid-column: 1 / -1; }
   .import-csv-tabela--compacta td:nth-child(1) { white-space: nowrap; }
 }
+
+/* Histórico: lista de cards iguais aos das páginas de Receitas/Despesas */
+.historico-lista { display: flex; flex-direction: column; gap: .4rem; padding: .2rem 0 .3rem; }
+
+/* Revisão no celular: TUDO numa linha só (X · Data · Valor · Categoria · Descrição),
+   colunas coladas e só o quanto o conteúdo precisa. */
+@media (max-width: 600px) {
+  .import-csv-tabela--compacta tr {
+    grid-template-columns: 1.25rem 2rem 3.3rem minmax(0, .85fr) minmax(0, 1fr);
+    column-gap: .2rem; row-gap: 0; padding: .15rem 0;
+  }
+  .import-csv-tabela--compacta th:nth-child(5) { display: block; }
+  .import-csv-tabela--compacta td:nth-child(5) { grid-column: auto; }
+  .import-csv-tabela--compacta,
+  .import-csv-tabela--compacta th, .import-csv-tabela--compacta td,
+  .import-csv-tabela--compacta td span { font-size: .62rem; }
+  .import-csv-tabela--compacta select { font-size: .62rem; padding: .1rem .5rem .1rem .15rem; background-size: .45rem; background-position: right .15rem center; }
+  .import-csv-tabela--compacta .import-desc-input { font-size: .62rem; padding: .1rem .2rem; }
+  .import-csv-tabela--compacta .import-x { width: 1rem; height: 1rem; font-size: .5rem; }
+}
