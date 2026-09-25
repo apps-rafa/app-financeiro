@@ -504,6 +504,14 @@ async function enviarRascunho(token: string, chatId: number, r: RascunhoLancamen
 // "competencia"; receita com método de cartão de crédito é estorno/reembolso e
 // abate a despesa desse cartão em vez de contar como receita.
 
+const TEXTO_AJUDA_LANCAMENTO = [
+  "✍️ Lançar por mensagem",
+  "",
+  "Escreva como falaria: gastei 35,90 no mercado, recebi 200 de salário, vendi meu casaco por 200 reais, comprei um carro de 80000 parcelado em 10x.",
+  "",
+  "Eu monto um rascunho com valor, categoria e forma de pagamento e só grava depois que você tocar em ✅ Confirmar no teclado. Se responder qualquer outra coisa (sem ser os botões), eu entendo como a descrição do lançamento.",
+].join("\n");
+
 const MESES_PT = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
 async function responderComandoConsulta(
@@ -748,6 +756,13 @@ Deno.serve(async (req: Request) => {
             return json({ ok: true });
           }
         }
+      }
+
+      // "/lancamento": só explica como lançar por mensagem (mesma explicação
+      // da aba Configurações > Notificações do app).
+      if (/^\/lancamento(?:@\w+)?(?:\s|$)/i.test(texto)) {
+        await tg(token, "sendMessage", { chat_id: chatId, text: TEXTO_AJUDA_LANCAMENTO });
+        return json({ ok: true });
       }
 
       // Consultas rápidas do mês.
