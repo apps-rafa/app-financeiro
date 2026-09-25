@@ -1597,7 +1597,7 @@ function renderFaturasCartao(container, termo = '', soNaoRealizadas = false) {
                 confereBadge = bate
                     ? '<span class="fatura-confere ok" title="Confere com a fatura do banco">✓</span>'
                     : `<span class="fatura-confere dif" title="Diferença de ${formatarMoeda(Math.abs(dif))} em relação à fatura do banco">⚠</span>`;
-                confereLinha = `<div class="fatura-banco ${bate ? 'ok' : 'dif'}">🏦 Fatura do banco: <b>${formatarMoeda(banco.total)}</b> (vcto. ${vB}) — ${bate
+                confereLinha = `<div class="fatura-banco ${bate ? 'ok' : 'dif'}">🏦 Fatura do banco: <b>${formatarMoeda(banco.total)}</b> (vcto. ${vB})<br>${bate
                     ? '✓ confere com o lançado'
                     : `⚠ ${dif > 0 ? 'lançado a mais' : 'falta lançar'}: <b>${formatarMoeda(Math.abs(dif))}</b>`}</div>`;
             }
