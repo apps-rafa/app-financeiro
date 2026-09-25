@@ -103,3 +103,29 @@ export async function notificarTelegramNovas(
     await enviarMensagemTelegram(token, tgUser.chat_id, texto, botoes);
   }
 }
+
+/** Avisa no Telegram (todos os chats vinculados) que algo falhou em segundo plano — no
+ *  máximo 1 alerta por hora para a mesma chave (tabela alertas_bot), pra não virar spam. */
+export async function avisarErroTelegram(
+  supabaseAdmin: SupabaseClient,
+  chave: string,
+  texto: string,
+): Promise<void> {
+  try {
+    const token = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    if (!token) return;
+    const { data } = await supabaseAdmin.from("alertas_bot").select("enviado_em").eq("chave", chave).maybeSingle();
+    if (data && Date.now() - new Date(data.enviado_em).getTime() < 60 * 60 * 1000) return;
+    await supabaseAdmin.from("alertas_bot").upsert({ chave, enviado_em: new Date().toISOString() });
+    const { data: users } = await supabaseAdmin.from("telegram_users").select("chat_id");
+    for (const u of (users ?? []) as { chat_id: number }[]) {
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: u.chat_id, text: String(texto).slice(0, 900) }),
+      }).catch(() => {});
+    }
+  } catch (e) {
+    console.error("Falha ao avisar erro:", e);
+  }
+}
