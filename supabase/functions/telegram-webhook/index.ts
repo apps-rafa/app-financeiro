@@ -81,20 +81,45 @@ function sugerirCategoriaTexto(
   texto: string,
   tipo: "entradas" | "saidas",
   categoriasApp: { nome: string; categoria_tipo: string | null }[],
-): string {
+): { nome: string; termo: string | null } {
   const candidatas = categoriasApp.filter((c) => c.categoria_tipo === tipo);
   const alvo = texto.toLowerCase();
   const porNome = candidatas.find((c) => alvo.includes(c.nome.toLowerCase()));
-  if (porNome) return porNome.nome;
+  if (porNome) return { nome: porNome.nome, termo: porNome.nome };
 
   const porPalavraChave = sugerirCategoriaPorPalavraChave(texto);
   if (porPalavraChave) {
     const achada = candidatas.find((c) => c.nome.toLowerCase() === porPalavraChave.toLowerCase());
-    if (achada) return achada.nome;
+    if (achada) {
+      const padrao = PALAVRAS_CHAVE_CATEGORIA.find((p) => p.padrao.test(alvo))!.padrao;
+      return { nome: achada.nome, termo: alvo.match(padrao)?.[0] ?? null };
+    }
   }
 
   const outros = candidatas.find((c) => c.nome.toLowerCase() === "outros");
-  return outros?.nome || candidatas[0]?.nome || (tipo === "entradas" ? "Outros" : "Outros");
+  return { nome: outros?.nome || candidatas[0]?.nome || "Outros", termo: null };
+}
+
+function escaparRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Descrição do rascunho: sobra do texto depois de tirar tudo que já virou
+ *  outro campo (valor, forma de pgto., categoria) — em branco se nada sobrar
+ *  (o usuário pode digitar uma descrição depois, ver a resposta ao rascunho). */
+function extrairDescricao(resto: string, termos: (string | null | undefined)[]): string {
+  let d = resto;
+  for (const t of termos) {
+    if (t) d = d.replace(new RegExp(escaparRegex(t), "gi"), " ");
+  }
+  d = d.replace(/\b(cr[eé]dito|d[eé]bito|pix|dinheiro|cart[aã]o)\b/gi, " ").replace(/\s+/g, " ").trim();
+  // conectivos sobrando nas pontas ("no", "de", "e"...)
+  const conectivos = new Set(["um", "uma", "uns", "umas", "o", "a", "os", "as", "meu", "minha", "de", "do", "da", "no", "na", "em", "com", "e", "pelo", "pela", "pra", "para"]);
+  const palavras = d.split(" ").filter(Boolean);
+  while (palavras.length && conectivos.has(palavras[0].toLowerCase())) palavras.shift();
+  while (palavras.length && conectivos.has(palavras[palavras.length - 1].toLowerCase())) palavras.pop();
+  d = palavras.join(" ");
+  return d ? d.charAt(0).toUpperCase() + d.slice(1) : "";
 }
 
 interface RascunhoLancamento {
@@ -106,6 +131,8 @@ interface RascunhoLancamento {
   metodoKind: string | null;
   diaFechamento: number | null;
   data: string;
+  /** Compra parcelada no crédito: nº de parcelas (valor = total da compra). */
+  parcelas?: number | null;
 }
 
 /** 'YYYY-MM-DD' de hoje em horário de Brasília (sem lib de timezone —
@@ -114,23 +141,47 @@ function hojeBrasiliaISO(): string {
   return new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+// Verbos (qualquer tempo: "vender", "vendi", "vendeu"...) que indicam ENTRADA de
+// dinheiro — só o radical, o resto da palavra é aceito. Os com lookahead só
+// valem em formas que não colidem com outras palavras (ex.: "entrada" de um
+// carro é despesa, "entrou" é receita).
+const VERBOS_RECEITA = /(?<![\p{L}])(?:receb|ganh|vend|rach|divid|reembols|estorn|devolv|devolu|deposit|lucr|fatur|resgat|arrecad|sal[aá]rio|freela|b[oô]nus|comiss[aã]o|cobr(?=ei|ou|ar|amos)|rend(?=er|eu|i(?![\p{L}])|endo)|entr(?=ou|ar|aram)|cai(?=u|r|ram)|sobr(?=ou|ar)|me pag(?=ou|aram))[\p{L}]*/giu;
+const VERBOS_DESPESA = /(?<![\p{L}])(?:gast|compr|pagu|pagar|pagamento)[\p{L}]*/giu;
+
 /** Interpreta uma mensagem de texto livre como um lançamento — "gastei
- *  35,90 no mercado", "recebi 200 de salário". Precisa achar um valor em
- *  dinheiro no texto; sem isso, não é um lançamento (retorna null e o bot
- *  cai no "não entendi"). */
-function interpretarValorETipo(texto: string): { valor: number; tipo: "entradas" | "saidas"; resto: string } | null {
-  const m = texto.match(/(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?|\d+(?:,\d{1,2})?)/);
+ *  35,90 no mercado", "recebi 200 de salário", "comprei um carro de 80000
+ *  parcelado em 10x". Precisa achar um valor em dinheiro no texto; sem isso,
+ *  não é um lançamento (retorna null e o bot cai no "não entendi"). O valor
+ *  é sempre o TOTAL da compra; "parcelas" só vem preenchido em "10x"/"em 10
+ *  vezes"/"10 parcelas". */
+function interpretarValorETipo(texto: string): { valor: number; tipo: "entradas" | "saidas"; resto: string; parcelas: number | null } | null {
+  let corpo = texto;
+  let parcelas: number | null = null;
+  const mp = corpo.match(/(?:parcelad[oa]s?\s+)?(?:em\s+)?(\d{1,2})\s*(?:x|vezes|parcelas?)(?![\p{L}])/iu);
+  if (mp) {
+    const n = parseInt(mp[1], 10);
+    if (n >= 2 && n <= 48) { parcelas = n; corpo = corpo.replace(mp[0], " "); }
+  }
+  corpo = corpo.replace(/(?<![\p{L}])parcelad[oa]s?(?![\p{L}])|(?<![\p{L}])parcelei(?![\p{L}])/giu, " ");
+
+  const m = corpo.match(/\d+(?:\.\d{3})*(?:[.,]\d{1,2})?/);
   if (!m) return null;
-  const valor = parseFloat(m[1].replace(/\./g, "").replace(",", "."));
+  const bruto = m[0];
+  const normal = bruto.includes(",") ? bruto.replace(/\./g, "").replace(",", ".")
+    : /^\d+\.\d{1,2}$/.test(bruto) ? bruto : bruto.replace(/\./g, "");
+  const valor = parseFloat(normal);
   if (!isFinite(valor) || valor <= 0) return null;
 
-  const ehReceita = /\b(recebi|ganhei|caiu|entrou|sal[aá]rio ca[ií]u)\b/i.test(texto);
+  // (cópias sem a flag "g": .test() num regex global guarda estado entre chamadas)
+  const ehReceita = new RegExp(VERBOS_RECEITA.source, "iu").test(texto) && !new RegExp(VERBOS_DESPESA.source, "iu").test(texto);
   const tipo: "entradas" | "saidas" = ehReceita ? "entradas" : "saidas";
-  const resto = (texto.slice(0, m.index) + texto.slice((m.index ?? 0) + m[0].length))
-    .replace(/\b(r\$|reais?|conto|pila|de|no|na|em|com|paguei|gastei|comprei|recebi|ganhei)\b/gi, "")
+  const resto = (corpo.slice(0, m.index) + " " + corpo.slice((m.index ?? 0) + bruto.length))
+    .replace(/(?<![\p{L}])(?:r\$|reais?|conto|pila)(?![\p{L}])/giu, " ")
+    .replace(VERBOS_RECEITA, " ")
+    .replace(VERBOS_DESPESA, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return { valor, tipo, resto };
+  return { valor, tipo, resto, parcelas };
 }
 
 interface ContaPluggy {
@@ -338,6 +389,17 @@ function competenciaDe(dataISO: string, diaFechamento: number | null): string {
   return `${ano}-${String(mes + 1).padStart(2, "0")}-01`;
 }
 
+/** Soma `n` meses a uma data ISO (dia limitado ao último do mês) — igual ao
+ *  addMeses do app (js/recorrencia.js). */
+function addMeses(dataISO: string, n: number): string {
+  const [ano0, mes0, dia0] = dataISO.split("-").map(Number);
+  const total = mes0 - 1 + n;
+  const ano = ano0 + Math.floor(total / 12);
+  const mes = ((total % 12) + 12) % 12;
+  const ultimo = new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate();
+  return `${ano}-${String(mes + 1).padStart(2, "0")}-${String(Math.min(dia0, ultimo)).padStart(2, "0")}`;
+}
+
 /** Grava de vez um rascunho (ver RascunhoLancamento) como lançamento de
  *  verdade em `transacoes` — chamado tanto pelo teclado (texto exato
  *  "✅ Confirmar") quanto pelo botão inline antigo (callback "nlconfirmar",
@@ -349,6 +411,36 @@ async function confirmarRascunhoNoBanco(
 ): Promise<{ erro: unknown }> {
   const ehCredito = d.metodoKind === "Crédito";
   const competencia = competenciaDe(d.data, ehCredito ? d.diaFechamento : null);
+
+  // Compra parcelada: uma linha por parcela, igual ao adicionarParceladoAPI do
+  // app (grupo_id comum, centavos distribuídos, 1 mês entre parcelas).
+  const n = d.parcelas && d.parcelas > 1 && ehCredito && d.tipo === "saidas" ? d.parcelas : 0;
+  if (n) {
+    const grupoId = crypto.randomUUID();
+    const totalCent = Math.round(d.valor * 100);
+    const base = Math.floor(totalCent / n);
+    const resto = totalCent - base * n;
+    const registros = Array.from({ length: n }, (_, i) => ({
+      tipo: d.tipo,
+      data: addMeses(d.data, i),
+      valor: (base + (i < resto ? 1 : 0)) / 100,
+      metodo: d.metodo,
+      categoria: d.categoria,
+      descricao: d.descricao,
+      forma_pagamento: "À vista",
+      tipo_recorrencia: "Parcelada",
+      competencia: i === 0 ? competencia : addMeses(competencia, i),
+      status: "Ativa",
+      grupo_id: grupoId,
+      parcela_num: i + 1,
+      parcelas_total: n,
+      valor_total: totalCent / 100,
+      user_id: userId,
+    }));
+    const { error: erroParcelas } = await supabaseAdmin.from("transacoes").insert(registros);
+    return { erro: erroParcelas };
+  }
+
   const { error } = await supabaseAdmin.from("transacoes").insert({
     tipo: d.tipo,
     data: d.data,
@@ -363,6 +455,34 @@ async function confirmarRascunhoNoBanco(
     user_id: userId,
   });
   return { erro: error };
+}
+
+/** Mensagem do rascunho + teclado Confirmar/Cancelar (embaixo, onde se digita,
+ *  em vez de botão dentro da mensagem). "one_time_keyboard" some sozinho depois
+ *  de usado. Reenviada também quando o usuário digita uma descrição. */
+async function enviarRascunho(token: string, chatId: number, r: RascunhoLancamento) {
+  const sinal = r.tipo === "entradas" ? "💰 Receita" : "💸 Despesa";
+  const dataFmt = new Date(`${r.data}T00:00:00`).toLocaleDateString("pt-BR");
+  const linhas = [
+    sinal,
+    `Valor: ${formatarMoedaBR(r.valor)}${r.parcelas && r.parcelas > 1 ? " (total)" : ""}`,
+    `Data: ${dataFmt}`,
+    `Categoria: ${r.categoria}`,
+    `Descrição: ${r.descricao || "(em branco — digite pra adicionar)"}`,
+    r.tipo === "saidas" ? `Forma de pgto.: ${r.metodo || "nenhuma cadastrada — ajuste no app"}` : null,
+    r.parcelas && r.parcelas > 1 ? `Parcelas: ${r.parcelas}x de ${formatarMoedaBR(r.valor / r.parcelas)}` : null,
+    "",
+    "Confirma?",
+  ].filter((l) => l !== null).join("\n");
+  await tg(token, "sendMessage", {
+    chat_id: chatId,
+    text: linhas,
+    reply_markup: {
+      keyboard: [[{ text: "✅ Confirmar" }, { text: "❌ Cancelar" }]],
+      resize_keyboard: true,
+      one_time_keyboard: true,
+    },
+  });
 }
 
 Deno.serve(async (req: Request) => {
@@ -541,6 +661,20 @@ Deno.serve(async (req: Request) => {
       // texto, não dá pra saber o que é — cai no "não entendi" de sempre.
       const achado = interpretarValorETipo(texto);
       if (!achado) {
+        // Sem valor no texto e com rascunho esperando confirmação: o texto é
+        // a descrição — atualiza e repete o rascunho (com Confirmar/Cancelar).
+        const { data: tgU } = await supabaseAdmin.from("telegram_users").select("user_id").eq("chat_id", chatId).maybeSingle();
+        const { data: pend } = tgU
+          ? await supabaseAdmin.from("telegram_rascunhos").select("id, dados")
+              .eq("chat_id", chatId).eq("user_id", tgU.user_id)
+              .order("criado_em", { ascending: false }).limit(1).maybeSingle()
+          : { data: null };
+        if (pend) {
+          const nova: RascunhoLancamento = { ...(pend.dados as RascunhoLancamento), descricao: texto.charAt(0).toUpperCase() + texto.slice(1) };
+          await supabaseAdmin.from("telegram_rascunhos").update({ dados: nova }).eq("id", pend.id);
+          await enviarRascunho(token, chatId, nova);
+          return json({ ok: true });
+        }
         await tg(token, "sendMessage", {
           chat_id: chatId,
           text: "Não entendi. Pra lançar por aqui, manda algo tipo \"gastei 35,90 no mercado\" ou \"recebi 200 de salário\" — eu monto um rascunho e só grava depois de você confirmar no teclado. Também entendo os botões de Confirmar/Ignorar (quando chegam da Pluggy) e o comando /atualizar.",
@@ -562,9 +696,9 @@ Deno.serve(async (req: Request) => {
         supabaseAdmin.from("menu_itens").select("nome, metodo_kind, banco, dia_fechamento").eq("tipo", "Método").eq("status", "Ativo").eq("user_id", tgUser.user_id).order("ordem"),
       ]);
 
-      const { valor, tipo, resto } = achado;
-      const descricao = resto ? resto.charAt(0).toUpperCase() + resto.slice(1) : (tipo === "entradas" ? "Recebido" : "Gasto");
-      const categoria = sugerirCategoriaTexto(texto, tipo, categoriasApp ?? []);
+      const { valor, tipo, resto, parcelas } = achado;
+      const cat = sugerirCategoriaTexto(texto, tipo, categoriasApp ?? []);
+      const categoria = cat.nome;
 
       // Forma de pgto.: só faz sentido perguntar/usar em despesa — receita
       // não pede método no formulário do app (só Estorno/Reembolso, caso
@@ -583,7 +717,14 @@ Deno.serve(async (req: Request) => {
           || lista.find((m) => m.metodo_kind === "Dinheiro")
           || lista[0]
           || null;
+        // Parcelado só existe no crédito (igual ao formulário do app).
+        if (parcelas && metodoObj?.metodo_kind !== "Crédito") {
+          metodoObj = lista.find((m) => m.metodo_kind === "Crédito") || metodoObj;
+        }
       }
+      const parcelasFinal = tipo === "saidas" && parcelas && metodoObj?.metodo_kind === "Crédito" ? parcelas : null;
+
+      const descricao = extrairDescricao(resto, [cat.termo, metodoObj?.nome, metodoObj?.banco]);
 
       const rascunho: RascunhoLancamento = {
         tipo, valor, descricao, categoria,
@@ -591,6 +732,7 @@ Deno.serve(async (req: Request) => {
         metodoKind: metodoObj?.metodo_kind ?? null,
         diaFechamento: metodoObj?.dia_fechamento ?? null,
         data: hojeBrasiliaISO(),
+        parcelas: parcelasFinal,
       };
 
       // Só 1 rascunho pendente por vez por chat — um novo texto substitui o anterior.
@@ -605,31 +747,7 @@ Deno.serve(async (req: Request) => {
         return json({ ok: true });
       }
 
-      const sinal = tipo === "entradas" ? "💰 Receita" : "💸 Despesa";
-      const dataFmt = new Date(`${rascunho.data}T00:00:00`).toLocaleDateString("pt-BR");
-      const linhas = [
-        sinal,
-        `Valor: ${formatarMoedaBR(valor)}`,
-        `Data: ${dataFmt}`,
-        `Categoria: ${categoria}`,
-        `Descrição: ${descricao}`,
-        tipo === "saidas" ? `Forma de pgto.: ${rascunho.metodo || "nenhuma cadastrada — ajuste no app"}` : null,
-        "",
-        "Confirma?",
-      ].filter((l) => l !== null).join("\n");
-      // Teclado (embaixo, onde se digita) em vez de botão dentro da
-      // mensagem — as opções ficam no MESMO lugar de sempre, junto do
-      // teclado numérico, em vez de ter que rolar até a mensagem certa pra
-      // tocar. "one_time_keyboard" some sozinho depois de usado.
-      await tg(token, "sendMessage", {
-        chat_id: chatId,
-        text: linhas,
-        reply_markup: {
-          keyboard: [[{ text: "✅ Confirmar" }, { text: "❌ Cancelar" }]],
-          resize_keyboard: true,
-          one_time_keyboard: true,
-        },
-      });
+      await enviarRascunho(token, chatId, rascunho);
       return json({ ok: true });
     }
 
