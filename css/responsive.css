@@ -79,7 +79,10 @@
 /* ============ SMARTPHONE (480px) ============ */
 @media (max-width: 480px) {
     /* Reset */
-    * {
+    /* Só no corpo e nos controles que NÃO herdam fonte sozinhos — antes era
+       "*", que cravava esse tamanho até nos <span> de dentro de chips e
+       botões (ex.: "CC Brad.", "Próximos"), inflando-os acima do pai. */
+    body, button, input, select, textarea {
         font-size: calc(var(--font-size-base) * 0.95);
     }
 
@@ -374,6 +377,6 @@
    por último no arquivo de propósito, pra ganhar o empate de especificidade
    com ".tabs .tab-btn"/".tabs-dir .tab-btn" (mesmo peso, 2 classes cada). */
 @media (max-width: 480px) {
-    .tabs [data-tab="adicionar"] { font-size: 0.85rem; }
-    .tabs-dir .tab-btn { font-size: 0.78rem; }
+    .tabs [data-tab="adicionar"],
+    .tabs-dir .tab-btn { font-size: 0.85rem; }
 }
