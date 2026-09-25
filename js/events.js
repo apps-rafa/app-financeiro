@@ -39,6 +39,18 @@ function configurarEventListeners() {
         estadoApp.mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
         recarregarDados();
     });
+    // Saldo em contas: com mais de uma conta, tocar na faixa mostra/esconde o saldo de cada uma.
+    const saldoContasEl = document.getElementById('saldoContas');
+    if (saldoContasEl) {
+        const alternar = () => {
+            if (!saldoContasEl.classList.contains('saldo-contas--toggle')) return;
+            estadoApp.saldoContasAberto = !estadoApp.saldoContasAberto;
+            atualizarResumo();
+        };
+        saldoContasEl.addEventListener('click', alternar);
+        saldoContasEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(); } });
+    }
+
     // Swipe no dashboard troca o mês, com animação: o painel acompanha o dedo,
     // ao soltar (além de ~25% da largura ou gesto rápido) o mês atual sai pro
     // lado e o novo entra vindo do lado oposto — como se cada mês fosse um

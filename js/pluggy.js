@@ -173,10 +173,11 @@ async function finalizarConexaoPluggy(itemId) {
  *  "Saldo em contas" do dashboard; sem nenhuma conta com saldo, esconde. */
 async function carregarSaldoContas() {
     const { data, error } = await sb.from('pluggy_contas')
-        .select('saldo, tipo_conta').eq('tipo_conta', 'BANK').in('status', ['ativo', 'erro']);
+        .select('*').eq('tipo_conta', 'BANK').in('status', ['ativo', 'erro']).order('id');
     if (error) { console.error(error); return; }
-    const saldos = (data || []).map(c => c.saldo).filter(s => typeof s === 'number');
-    estadoApp.saldoContas = saldos.length ? saldos.reduce((a, b) => a + b, 0) : null;
+    const contas = (data || []).filter(c => typeof c.saldo === 'number');
+    estadoApp.saldoContasLista = contas.map(c => ({ nome: tituloContaPluggyCurto(c), saldo: c.saldo }));
+    estadoApp.saldoContas = contas.length ? contas.reduce((a, c) => a + c.saldo, 0) : null;
     if (typeof atualizarResumo === 'function') atualizarResumo();
 }
 

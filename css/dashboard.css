@@ -404,3 +404,19 @@
 .saldo-contas .sc-hoje { font-style: italic; font-weight: 400; text-transform: none; opacity: .6; margin-left: .25rem; }
 /* Animação do swipe de mês (ver events.js): o painel não pode estourar a tela */
 .dashboard { will-change: transform, opacity; }
+
+/* Vários saldos: a faixa vira toggle (▸/▾) e a lista descortina embaixo */
+.saldo-contas--toggle { cursor: pointer; user-select: none; }
+.saldo-contas--toggle .sc-rot::after { content: ' ▸'; opacity: .6; }
+.saldo-contas--toggle[aria-expanded="true"] .sc-rot::after { content: ' ▾'; }
+.saldo-contas-lista {
+    padding: .15rem var(--pad-main) .35rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+.saldo-contas-lista[hidden] { display: none; }
+.saldo-contas-lista .sc-linha {
+    display: flex; justify-content: space-between; gap: .5rem;
+    font-size: .72rem; padding: .15rem 0; color: var(--text-muted);
+}
+.saldo-contas-lista .sc-linha b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
