@@ -669,6 +669,7 @@ function _atualizarTotalMesPluggy() {
 /** Botão "Sincronizar agora": busca transações novas em todas as contas. */
 async function sincronizarPluggyAgora() {
     _telaLimpaPluggy = false; // sincronizar mostra tudo de novo, como está no banco
+    for (const k of Object.keys(_abertosPluggy)) delete _abertosPluggy[k]; // e tudo fechado, como no padrão
     const btn = document.getElementById('btnSincronizarPluggy');
     const textoOriginal = btn ? btn.textContent : '';
     if (btn) { btn.dataset.ocupado = '1'; btn.disabled = true; btn.textContent = 'Sincronizando...'; }
@@ -913,7 +914,7 @@ async function carregarRevisaoPluggy() {
     // Despesas/Receitas → tabela X/Data/Valor/Categoria/Descrição. Sem
     // "Forma de pgto." — o método já vem fixado pela conta em "Método do app".
     const grupo = (id, titulo, itens, nota = '') => htmlGrupoRevisao({
-        id, titulo: titulo, abertos: _abertosPluggy, padraoAberto: true, itens, nota,
+        id, titulo: titulo, abertos: _abertosPluggy, padraoAberto: false, subAberto: false, itens, nota,
         tipoDe: i => i.tipo, colunas: ['Data', 'Valor', 'Categoria', 'Descrição'],
         htmlLinha: gerarHTMLImportadaPluggy,
     });
@@ -923,11 +924,9 @@ async function carregarRevisaoPluggy() {
     const _abertoHist = (id, padrao) => (_abertosPluggy[id] !== undefined ? _abertosPluggy[id] : padrao);
     const _somaHist = l => l.reduce((acc, i) => acc + (parseFloat(i.transacao.valor) || 0), 0);
     const tabelaHistorico = !historicoValido.length ? '' : `
-        <details class="rec-grupo" data-grupo-id="pluggy-historico" style="--cor-rec: var(--primary)" ${_abertoHist('pluggy-historico', false) ? 'open' : ''}>
+        <details class="rec-grupo rec-grupo--plano" data-grupo-id="pluggy-historico" ${_abertoHist('pluggy-historico', false) ? 'open' : ''}>
           <summary>
-            <span class="rec-grupo-nome">📜 Já lançados (histórico)</span>
-            <span class="rec-grupo-espaco"></span>
-            <span class="rec-grupo-contagem">${historicoValido.length}</span>
+            <span class="rec-grupo-nome">📜 Já lançados (histórico) (${historicoValido.length})</span>
           </summary>
           <div class="rec-grupo-itens">${['saidas', 'entradas'].map(tipo => {
             const lista = historicoValido.filter(i => (i.transacao.tipo === 'entradas') === (tipo === 'entradas'))
@@ -935,11 +934,10 @@ async function carregarRevisaoPluggy() {
             if (!lista.length) return '';
             const id = `pluggy-historico-${tipo}`;
             return `
-            <details class="subgrupo" data-grupo-id="${id}" ${_abertoHist(id, true) ? 'open' : ''}>
+            <details class="subgrupo" data-grupo-id="${id}" ${_abertoHist(id, false) ? 'open' : ''}>
               <summary class="subgrupo-cab">
-                <span class="subgrupo-nome">${tipo === 'entradas' ? 'Receitas' : 'Despesas'}</span>
+                <span class="subgrupo-nome">${tipo === 'entradas' ? 'Receitas' : 'Despesas'} (${lista.length})</span>
                 <span class="subgrupo-espaco"></span>
-                <span class="subgrupo-contagem">${lista.length}</span>
                 <span class="subgrupo-total"><span class="tot-valor">${formatarMoeda(_somaHist(lista))}</span></span>
               </summary>
               ${lista.map(gerarHTMLHistoricoPluggy).join('')}
@@ -966,7 +964,7 @@ async function carregarRevisaoPluggy() {
             const c = contasPorId[id];
             const nome = repetido && c && c.numero_mascarado ? `${nomes[k]} (${String(c.numero_mascarado).slice(-4)})` : nomes[k];
             return _grupoColapsavelConciliar({
-                id: `pluggy-conta-${id}`, abertos: _abertosPluggy, padraoAberto: true,
+                id: `pluggy-conta-${id}`, abertos: _abertosPluggy, padraoAberto: false,
                 titulo: `🏦 ${nome} (${total})`,
                 corpo: doisGrupos(`pluggy-c${id}-`, lRev, lDup),
             });
@@ -978,7 +976,7 @@ async function carregarRevisaoPluggy() {
     // sumir sem deixar rastro (ver query em cima). O ↺ manda de volta pra
     // "Para revisar" (bate no banco na hora, não é local como o X normal).
     const jaIgnoradasHTML = !jaIgnoradas.length ? '' : htmlGrupoRevisao({
-        id: 'pluggy-ja-ignoradas', titulo: '🗑️ Descartadas (não entraram)', abertos: _abertosPluggy, padraoAberto: false,
+        id: 'pluggy-ja-ignoradas', titulo: '🗑️ Descartadas (não entraram)', abertos: _abertosPluggy, padraoAberto: false, subAberto: false,
         itens: jaIgnoradas, tipoDe: i => i.tipo, colunas: ['Data', 'Valor', 'Categoria', 'Descrição'],
         htmlLinha: gerarHTMLIgnoradaDbPluggy,
         nota: `<p class="import-csv-nota">Ficam aqui riscadas — nunca somem da página, nem depois de "Limpar". Clique no ↺ pra mandar de volta pra "Para revisar".</p>`,

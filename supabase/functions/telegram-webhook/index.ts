@@ -492,6 +492,87 @@ async function enviarRascunho(token: string, chatId: number, r: RascunhoLancamen
   });
 }
 
+// ---------- Comandos de consulta: /resumo /diario /credito /pix ----------
+// Mesmas contas do dashboard do app (js/data.js:calcularResumoMes): mês = campo
+// "competencia"; receita com método de cartão de crédito é estorno/reembolso e
+// abate a despesa desse cartão em vez de contar como receita.
+
+const MESES_PT = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+async function responderComandoConsulta(
+  admin: ReturnType<typeof createClient>,
+  token: string,
+  chatId: number,
+  comando: string,
+): Promise<void> {
+  const { data: tgUser } = await admin.from("telegram_users").select("user_id").eq("chat_id", chatId).maybeSingle();
+  if (!tgUser) {
+    await tg(token, "sendMessage", { chat_id: chatId, text: "Conta não vinculada — mande /start com o código do app primeiro." });
+    return;
+  }
+  const hoje = hojeBrasiliaISO();
+  const [ano, mes, dia] = hoje.split("-").map(Number);
+  const ini = `${ano}-${String(mes).padStart(2, "0")}-01`;
+  const fim = addMeses(ini, 1);
+  const [{ data: trans, error }, { data: metodos }] = await Promise.all([
+    admin.from("transacoes").select("tipo, valor, metodo").eq("user_id", tgUser.user_id).gte("competencia", ini).lt("competencia", fim),
+    admin.from("menu_itens").select("nome, metodo_kind, banco").eq("tipo", "Método").eq("user_id", tgUser.user_id),
+  ]);
+  if (error) {
+    console.error(error);
+    await tg(token, "sendMessage", { chat_id: chatId, text: "Deu erro ao consultar seus lançamentos — tenta de novo." });
+    return;
+  }
+  const lista = (trans ?? []) as { tipo: string; valor: number; metodo: string | null }[];
+  const rotulosCredito = new Map<string, string>();
+  const rotulosPix = new Set<string>();
+  for (const m of (metodos ?? []) as { nome: string; metodo_kind: string | null; banco: string | null }[]) {
+    if (m.metodo_kind === "Crédito") rotulosCredito.set(rotuloMetodo(m), rotuloMetodo(m));
+    if (m.metodo_kind === "PIX") rotulosPix.add(rotuloMetodo(m));
+  }
+  const soma = (l: { valor: number }[]) => l.reduce((a, t) => a + (Number(t.valor) || 0), 0);
+  const saidas = lista.filter((t) => t.tipo === "saidas");
+  const entradas = lista.filter((t) => t.tipo === "entradas");
+  const estornos = entradas.filter((t) => t.metodo && rotulosCredito.has(t.metodo));
+  const receitas = soma(entradas.filter((t) => !(t.metodo && rotulosCredito.has(t.metodo))));
+  const despesas = soma(saidas) - soma(estornos);
+  const balanco = receitas - despesas;
+  const mesTxt = `${MESES_PT[mes - 1]}/${ano}`;
+
+  let texto: string;
+  if (comando === "resumo") {
+    texto = [
+      `📊 Resumo de ${mesTxt}`,
+      `Receitas: ${formatarMoedaBR(receitas)}`,
+      `Despesas: ${formatarMoedaBR(despesas)}`,
+      `Balanço: ${formatarMoedaBR(balanco)}`,
+    ].join("\n");
+  } else if (comando === "diario") {
+    const totalDias = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+    const dias = Math.max(1, totalDias - dia + 1);
+    texto = [
+      `📅 Gasto diário de ${mesTxt}`,
+      `Balanço: ${formatarMoedaBR(balanco)}`,
+      `Dias restantes: ${dias}`,
+      `Pode gastar por dia: ${formatarMoedaBR(balanco / dias)}`,
+    ].join("\n");
+  } else if (comando === "credito") {
+    const porCartao = new Map<string, number>();
+    for (const r of rotulosCredito.keys()) porCartao.set(r, 0);
+    for (const t of saidas) if (t.metodo && porCartao.has(t.metodo)) porCartao.set(t.metodo, porCartao.get(t.metodo)! + (Number(t.valor) || 0));
+    for (const t of estornos) porCartao.set(t.metodo!, (porCartao.get(t.metodo!) ?? 0) - (Number(t.valor) || 0));
+    const linhas = [...porCartao.entries()].map(([nome, v]) => `• ${nome}: ${formatarMoedaBR(v)}`);
+    const total = [...porCartao.values()].reduce((a, v) => a + v, 0);
+    texto = linhas.length
+      ? [`💳 Gasto no crédito em ${mesTxt}`, ...linhas, "", `Total: ${formatarMoedaBR(total)}`].join("\n")
+      : "Nenhum cartão de crédito cadastrado.";
+  } else {
+    const total = soma(saidas.filter((t) => t.metodo && rotulosPix.has(t.metodo)));
+    texto = `⚡ Gasto no PIX em ${mesTxt}: ${formatarMoedaBR(total)}`;
+  }
+  await tg(token, "sendMessage", { chat_id: chatId, text: texto });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") {
     return json({ error: "Método não suportado" }, 405);
@@ -625,6 +706,13 @@ Deno.serve(async (req: Request) => {
           text: `Qual conta você quer atualizar?\n\n${lista}`,
           reply_markup: { inline_keyboard: botoes },
         });
+        return json({ ok: true });
+      }
+
+      // Consultas rápidas do mês.
+      const cmd = texto.match(/^\/(resumo|diario|credito|pix)(?:@\w+)?(?:\s|$)/i);
+      if (cmd) {
+        await responderComandoConsulta(supabaseAdmin, token, chatId, cmd[1].toLowerCase());
         return json({ ok: true });
       }
 

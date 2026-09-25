@@ -544,3 +544,18 @@ body .header-info > #btnTema { width: 1.9rem; padding: 0; border-radius: 999px; 
 @media (max-width: 560px) {
     body .header-info > #btnApagarTudo, body .header-info > .modo-teste-badge { width: 1.9rem; padding: 0; }
 }
+
+/* Revisão Pluggy: grupos com a mesma fonte/peso (título e subgrupos), histórico
+   sem a faixa colorida; botão Importar em 100%; botões da barra em 50/50. */
+body .import-csv-grupo > .import-csv-grupo-titulo,
+body .rec-grupo > summary { font-size: .8rem; font-weight: 600; color: var(--text); }
+body .import-csv-grupo .import-csv-grupo > .import-csv-grupo-titulo,
+body .subgrupo-cab { font-size: .75rem; font-weight: 600; color: var(--text); }
+body .rec-grupo--plano { border-left-width: 1px; border-left-color: var(--border); }
+body #pluggyRevisaoLista .import-csv-acoes .btn-submit { width: 100%; flex: 1 1 100%; }
+
+body .pluggy-contas-sync, body .pluggy-toolbar-btns { gap: .5rem; }
+body .pluggy-conta-sync { flex: 1 1 calc(50% - .25rem); min-width: 0; height: var(--pluggy-toolbar-h); font-size: var(--pluggy-toolbar-fs); }
+@media (max-width: 600px) {
+    body .pluggy-toolbar-btns { flex: 1 1 100%; }
+}
