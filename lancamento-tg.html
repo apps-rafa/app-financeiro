@@ -1,92 +1,111 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Lançamento</title>
-<!-- Mini app do Telegram: mesmo formulário de lançamento do app, pré-preenchido
-     pelo bot. Sem login: ao tocar em "Adicionar" os dados voltam ao bot
-     (Telegram.WebApp.sendData) e ele grava no nome de quem já está vinculado
-     ao chat. -->
+<!-- Mini app do Telegram: o MESMO formulário de lançamento do app (mesmo CSS e
+     mesma estrutura), pré-preenchido pelo bot. Sem login: ao tocar em
+     "Adicionar" os dados voltam ao bot (Telegram.WebApp.sendData) e ele grava no
+     nome de quem já está vinculado ao chat. -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/animations.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/tabs.css">
+<link rel="stylesheet" href="css/forms.css">
+<link rel="stylesheet" href="css/responsive.css">
+<link rel="stylesheet" href="css/theme.css">
 <style>
-  /* Mesma paleta do tema escuro do app (css/variables.css) */
-  :root {
-    --bg: #0F1420; --surface: #1A2130; --surface-2: #232C3D;
-    --text: #E8EDF5; --muted: #9AA6B8; --border: #2E3A4E;
-    --primary: #818CF8; --receita: #86EFAC; --despesa: #FCA5A5;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--text); }
-  body { padding: 12px 12px 24px; font: 15px/1.35 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-  .form-header { margin-bottom: 12px; }
-  .tipo-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .tipo-btn { display: flex; align-items: center; justify-content: center; gap: .4rem; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: .95rem; font-weight: 700; }
-  .tipo-btn.active { background: var(--surface-2); color: var(--text); border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset; }
-  .form-row { display: grid; gap: 10px; margin-bottom: 10px; }
-  .par { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .form-group { min-width: 0; }
-  label { display: block; font-size: .72rem; color: var(--muted); margin: 0 0 4px; font-weight: 600; }
-  input, select { width: 100%; height: 44px; padding: 0 12px; font-size: 1rem; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
-  select option:disabled { color: #64748b; }
-  .stepper { display: grid; grid-template-columns: 1fr 34px; gap: 6px; }
-  .stepper .setas { display: grid; grid-template-rows: 1fr 1fr; gap: 3px; }
-  .stepper button { border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); border-radius: 8px; font-size: .7rem; padding: 0; }
-  [hidden] { display: none !important; }
-  #erro { color: #f87171; font-size: .85rem; margin: 4px 0 8px; min-height: 1em; }
-  .btn-submit { width: 100%; height: 48px; margin-top: 4px; border: 0; border-radius: 12px; font-size: 1rem; font-weight: 700; color: #fff; background: linear-gradient(135deg, #818CF8, #6366F1); }
-  .nota { font-size: .72rem; color: var(--muted); margin: -4px 0 8px; }
+  body { margin: 0; padding: 12px; min-height: 100vh; }
+  #adicionar { display: block !important; }
+  .erro-form { color: #f87171; font-size: .85rem; min-height: 1.1em; margin: 0 0 .4rem; }
 </style>
 </head>
 <body>
-<form id="form" autocomplete="off" novalidate>
-  <div class="form-header">
-    <div class="tipo-selector" id="tipo">
-      <button type="button" class="tipo-btn active" data-tipo="saidas">
-        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--despesa)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg><span>Despesa</span>
-      </button>
-      <button type="button" class="tipo-btn" data-tipo="entradas">
-        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita)" d="M12 20l-8-8h5V4h6v8h5z"/></svg><span>Receita</span>
-      </button>
+<section id="adicionar" class="tab-content active">
+  <form id="formTransacao" class="form-transacao" autocomplete="off" novalidate>
+    <div class="form-header">
+      <div class="tipo-selector">
+        <button type="button" class="tipo-btn active" data-tipo="saidas">
+          <svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--despesa-text)" d="M12 4l8 8h-5v8h-6v-8H4z"/></svg><span class="tipo-label">Despesa</span>
+        </button>
+        <button type="button" class="tipo-btn" data-tipo="entradas">
+          <svg class="seta-icone" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="var(--receita-text)" d="M12 20l-8-8h5V4h6v8h5z"/></svg><span class="tipo-label">Receita</span>
+        </button>
+      </div>
     </div>
-  </div>
 
-  <div class="form-row par">
-    <div class="form-group"><label for="data">Data</label><input id="data" type="text" inputmode="numeric" placeholder="dd/mm" maxlength="5"></div>
-    <div class="form-group"><label for="valor">Valor</label><input id="valor" type="text" inputmode="decimal" placeholder="0,00"></div>
-  </div>
-
-  <div class="form-row">
-    <div class="form-group">
-      <label for="metodo">Forma de pagamento</label>
-      <select id="metodo"></select>
-    </div>
-    <div class="form-group" id="blocoParcelas" hidden>
-      <label for="parcelas">Parcelas (o valor é o total da compra)</label>
-      <div class="stepper">
-        <input id="parcelas" type="text" inputmode="numeric" maxlength="2" value="1">
-        <div class="setas">
-          <button type="button" data-dir="1" tabindex="-1" aria-label="Aumentar">▲</button>
-          <button type="button" data-dir="-1" tabindex="-1" aria-label="Diminuir">▼</button>
+    <div class="form-row" id="linhaPrincipal">
+      <div id="dataValorBloco">
+        <div class="form-group" id="dataGroup">
+          <label for="data">Data</label>
+          <input type="text" id="data" inputmode="numeric" placeholder="dd/mm" maxlength="5" autocomplete="off">
+        </div>
+        <div id="valorTotalWrap">
+          <div class="form-group" id="valorGroup">
+            <label for="valor">Valor</label>
+            <input type="text" id="valor" inputmode="decimal" autocomplete="off" placeholder="0,00">
+          </div>
+          <div class="form-group" id="valorTotalGroup" hidden>
+            <label for="valorTotal">Total</label>
+            <input type="text" id="valorTotal" class="campo-travado" readonly tabindex="-1">
+          </div>
+        </div>
+      </div>
+      <div id="metodoBloco">
+        <div class="form-group" id="metodoGroup">
+          <label for="metodo">Forma de pagamento</label>
+          <div class="campo-com-add">
+            <select id="metodo"></select>
+            <button type="button" id="btnNovoMetodo" class="btn-mini-add" title="Nova forma de pagamento">+</button>
+          </div>
+        </div>
+        <div class="form-group campo-mini" id="competenciaGroup" hidden>
+          <label for="competencia">Mês</label>
+          <select id="competencia">
+            <option value="01">Jan</option><option value="02">Fev</option>
+            <option value="03">Mar</option><option value="04">Abr</option>
+            <option value="05">Mai</option><option value="06">Jun</option>
+            <option value="07">Jul</option><option value="08">Ago</option>
+            <option value="09">Set</option><option value="10">Out</option>
+            <option value="11">Nov</option><option value="12">Dez</option>
+          </select>
+        </div>
+        <div class="form-group campo-mini" id="parceleGroup" hidden>
+          <label for="parcelas">Parcelas</label>
+          <div class="campo-com-stepper">
+            <input type="text" id="parcelas" inputmode="numeric" maxlength="7" value="à vista" autocomplete="off">
+            <div class="stepper-v">
+              <button type="button" class="btn-icon btn-mini-seta" data-stepper="parcelas" data-dir="1" tabindex="-1" title="Aumentar">▲</button>
+              <button type="button" class="btn-icon btn-mini-seta" data-stepper="parcelas" data-dir="-1" tabindex="-1" title="Diminuir">▼</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="form-row">
-    <div class="form-group">
-      <label for="categoria">Categoria</label>
-      <select id="categoria"></select>
+    <div class="form-row" id="linhaCampos">
+      <div class="form-group">
+        <label for="categoria">Categoria</label>
+        <div class="campo-com-add">
+          <select id="categoria"></select>
+          <button type="button" id="btnNovaCategoria" class="btn-mini-add" title="Nova categoria">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="descricao">Descrição (opcional)</label>
+        <input type="text" id="descricao" placeholder="Ex: Mercado, Aluguel">
+      </div>
     </div>
-    <div class="form-group">
-      <label for="descricao">Descrição (opcional)</label>
-      <input id="descricao" type="text" placeholder="Ex: Mercado, Aluguel">
-    </div>
-  </div>
 
-  <div id="erro"></div>
-  <button id="enviar" type="submit" class="btn-submit">Adicionar</button>
-</form>
+    <div id="erro" class="erro-form"></div>
+    <div class="form-actions">
+      <button type="submit" class="btn-submit">Adicionar</button>
+    </div>
+  </form>
+</section>
 
 <script>
 (function () {
@@ -96,74 +115,201 @@
   const q = new URLSearchParams(location.search);
   const $ = id => document.getElementById(id);
   const lista = k => { try { return JSON.parse(q.get(k) || '[]'); } catch (_) { return []; } };
-  const catsR = lista('cr'), catsD = lista('cd');
-  const metodos = lista('mt'); // [[rótulo, tipo]]
   const CAT_ESTORNO = 'Estorno';
+
+  // Listas vindas do bot (+ o que for criado aqui no "+" e o bot cadastra ao lançar)
+  const cats = { entradas: lista('cr'), saidas: lista('cd') };
+  const metodos = lista('mt').map(m => ({ rotulo: m[0], kind: m[1], fech: m[2] || null })); // rótulo, tipo, dia de fechamento
+  const novasCats = [];   // {nome, descricao, tipo}
+  const novosMetodos = []; // {kind, banco, venc, fech, melhor, rotulo}
 
   let tipo = q.get('tipo') === 'entradas' ? 'entradas' : 'saidas';
   const anoBase = (q.get('d') || '').slice(0, 4) || String(new Date().getFullYear());
 
-  const ehCredito = rot => { const m = metodos.find(x => x[0] === rot); return !!m && m[1] === 'Crédito'; };
+  const fmt = n => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const numero = s => parseFloat(String(s).replace(/\./g, '').replace(',', '.')) || 0;
+  const parcelasTexto = n => (n > 1 ? `${n}x` : 'à vista');
+  const parcelasNumero = () => Math.max(1, parseInt($('parcelas').value, 10) || 1);
+  const metodoAtual = () => metodos.find(m => m.rotulo === $('metodo').value) || null;
+  const ehCredito = () => tipo === 'saidas' && !!metodoAtual() && metodoAtual().kind === 'Crédito';
 
-  /** Categorias do tipo atual, mantendo a escolha se ela ainda existir. */
-  function preencherCategorias(preferida) {
-    const cats = tipo === 'entradas' ? catsR : catsD;
-    const atual = preferida || $('categoria').value;
-    $('categoria').innerHTML = cats.map(c => `<option>${c}</option>`).join('');
-    if (cats.includes(atual)) $('categoria').value = atual;
+  /** Mesma regra do app (competenciaDe): a compra no/depois do dia de fechamento cai no mês seguinte. */
+  function competenciaMes(dia, mes, fech) {
+    let m = mes;
+    if (fech && dia >= fech) m = mes === 12 ? 1 : mes + 1;
+    return String(m).padStart(2, '0');
   }
 
-  /** Mesma regra do app: Despesa aceita qualquer forma (obrigatória). Receita:
-   *  forma opcional; só "Estorno" aceita crédito, as demais não. */
+  function preencherCategorias(preferida) {
+    const atual = preferida || $('categoria').value;
+    const l = cats[tipo];
+    $('categoria').innerHTML = '<option value="">Selecione...</option>' + l.map(c => `<option>${c}</option>`).join('');
+    if (l.includes(atual)) $('categoria').value = atual;
+  }
+
+  /** Despesa: qualquer forma (obrigatória). Receita: forma opcional; só "Estorno" aceita crédito. */
   function preencherMetodos(preferido) {
     const sel = $('metodo');
     const atual = preferido !== undefined ? preferido : sel.value;
     const receita = tipo === 'entradas';
     const estorno = $('categoria').value === CAT_ESTORNO;
-    sel.innerHTML = (receita ? '<option value="">Selecione...</option>' : '') +
-      metodos.map(m => {
-        const bloqueado = receita && (estorno ? m[1] !== 'Crédito' : m[1] === 'Crédito');
-        return `<option value="${m[0]}"${bloqueado ? ' disabled' : ''}>${m[0]}</option>`;
-      }).join('');
+    sel.innerHTML = '<option value="">Selecione...</option>' + metodos.map(m => {
+      const bloq = receita && (estorno ? m.kind !== 'Crédito' : m.kind === 'Crédito');
+      return `<option value="${m.rotulo}"${bloq ? ' disabled' : ''}>${m.rotulo}</option>`;
+    }).join('');
     const op = [...sel.options].find(o => o.value === atual);
-    sel.value = op && !op.disabled ? atual : (receita ? '' : (sel.options[0] ? sel.options[0].value : ''));
+    sel.value = op && !op.disabled ? atual : '';
   }
 
-  function atualizarParcelas() {
-    $('blocoParcelas').hidden = !(tipo === 'saidas' && ehCredito($('metodo').value));
+  function recalcularCompetencia() {
+    const c = $('competencia');
+    if (c.dataset.editado) return;
+    const m = /^(\d{2})\/(\d{2})$/.exec($('data').value);
+    if (!m) return;
+    const mt = metodoAtual();
+    c.value = competenciaMes(+m[1], +m[2], mt && mt.kind === 'Crédito' ? mt.fech : null);
+  }
+
+  function atualizarCampoParcelas() {
+    const cred = ehCredito();
+    $('competenciaGroup').hidden = !cred;
+    $('parceleGroup').hidden = !cred;
+    if (!cred) $('parcelas').value = parcelasTexto(1);
+    const n = parcelasNumero();
+    if (document.activeElement !== $('parcelas')) $('parcelas').value = parcelasTexto(n);
+    $('valorTotalGroup').hidden = !(cred && n > 1);
+    $('valorTotal').value = fmt(numero($('valor').value) * n);
+    if (cred) recalcularCompetencia();
   }
 
   function atualizarTipo() {
-    document.querySelectorAll('#tipo .tipo-btn').forEach(b => b.classList.toggle('active', b.dataset.tipo === tipo));
+    document.querySelectorAll('.tipo-btn').forEach(b => b.classList.toggle('active', b.dataset.tipo === tipo));
     preencherCategorias();
     preencherMetodos();
-    atualizarParcelas();
+    atualizarCampoParcelas();
   }
 
-  // ---- valores iniciais vindos do bot
+  // ---- valores iniciais vindos do bot (o bot manda o TOTAL; o campo Valor é o de CADA parcela)
   const d0 = q.get('d') || '';
   $('data').value = /^\d{4}-\d{2}-\d{2}$/.test(d0) ? `${d0.slice(8, 10)}/${d0.slice(5, 7)}` : '';
-  $('valor').value = q.get('v') ? String(q.get('v')).replace('.', ',') : '';
+  const pIni = Math.max(1, Number(q.get('p')) || 1);
+  const vIni = Number(q.get('v')) || 0;
+  $('valor').value = vIni ? (vIni / pIni).toFixed(2).replace('.', ',') : '';
   $('descricao').value = q.get('desc') || '';
-  if (Number(q.get('p')) > 1) $('parcelas').value = q.get('p');
+  $('parcelas').value = parcelasTexto(pIni);
   preencherCategorias(q.get('c') || '');
   preencherMetodos(q.get('m') || '');
-  document.querySelectorAll('#tipo .tipo-btn').forEach(b => b.classList.toggle('active', b.dataset.tipo === tipo));
-  atualizarParcelas();
+  document.querySelectorAll('.tipo-btn').forEach(b => b.classList.toggle('active', b.dataset.tipo === tipo));
+  atualizarCampoParcelas();
+  if (q.get('comp')) { $('competencia').value = q.get('comp'); $('competencia').dataset.editado = '1'; }
 
   // ---- interações
-  document.querySelectorAll('#tipo .tipo-btn').forEach(b => b.addEventListener('click', () => { tipo = b.dataset.tipo; atualizarTipo(); }));
+  document.querySelectorAll('.tipo-btn').forEach(b => b.addEventListener('click', () => { tipo = b.dataset.tipo; atualizarTipo(); }));
   $('categoria').addEventListener('change', () => preencherMetodos());
-  $('metodo').addEventListener('change', atualizarParcelas);
+  $('metodo').addEventListener('change', () => { delete $('competencia').dataset.editado; atualizarCampoParcelas(); });
+  $('competencia').addEventListener('change', () => { $('competencia').dataset.editado = '1'; });
   $('data').addEventListener('input', e => {
     let v = e.target.value.replace(/\D/g, '').slice(0, 4);
     if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2);
     e.target.value = v;
+    delete $('competencia').dataset.editado;
+    if (ehCredito()) recalcularCompetencia();
   });
-  document.querySelectorAll('.stepper button').forEach(b => b.addEventListener('click', () => {
-    const n = Math.min(48, Math.max(1, (parseInt($('parcelas').value, 10) || 1) + Number(b.dataset.dir)));
-    $('parcelas').value = n;
+  $('valor').addEventListener('input', () => { $('valorTotal').value = fmt(numero($('valor').value) * parcelasNumero()); });
+  $('parcelas').addEventListener('focus', () => { $('parcelas').value = parcelasNumero() > 1 ? String(parcelasNumero()) : ''; });
+  $('parcelas').addEventListener('input', () => { $('parcelas').value = $('parcelas').value.replace(/\D/g, '').slice(0, 2); $('valorTotal').value = fmt(numero($('valor').value) * parcelasNumero()); $('valorTotalGroup').hidden = !(ehCredito() && parcelasNumero() > 1); });
+  $('parcelas').addEventListener('blur', atualizarCampoParcelas);
+  document.querySelectorAll('[data-stepper="parcelas"]').forEach(b => b.addEventListener('click', () => {
+    $('parcelas').value = Math.min(48, Math.max(1, parcelasNumero() + Number(b.dataset.dir)));
+    atualizarCampoParcelas();
   }));
+
+  // ---- diálogos "+" (mesmos campos e classes do app; o bot cadastra ao lançar)
+  function dialogo({ titulo, corpoHTML, aoAdicionar }) {
+    const ov = document.createElement('div');
+    ov.className = 'dialogo-overlay';
+    ov.innerHTML = `<div class="dialogo"><h3>${titulo}</h3><div class="dialogo-corpo">${corpoHTML}</div><div class="dialogo-acoes"></div></div>`;
+    const fechar = () => ov.remove();
+    const acoes = ov.querySelector('.dialogo-acoes');
+    const bC = document.createElement('button'); bC.type = 'button'; bC.className = 'btn-cancelar'; bC.textContent = 'Cancelar'; bC.onclick = fechar;
+    const bA = document.createElement('button'); bA.type = 'button'; bA.className = 'btn-add'; bA.textContent = 'Adicionar';
+    bA.onclick = () => { if (aoAdicionar(ov) !== true) fechar(); };
+    acoes.append(bC, bA);
+    ov.addEventListener('click', e => { if (e.target === ov) fechar(); });
+    document.body.appendChild(ov);
+    const primeiro = ov.querySelector('input, select'); if (primeiro) primeiro.focus();
+    return ov;
+  }
+  const aviso = t => { $('erro').textContent = t; };
+
+  $('btnNovaCategoria').addEventListener('click', () => {
+    const rotulo = tipo === 'entradas' ? 'receita' : 'despesa';
+    dialogo({
+      titulo: `Nova categoria de ${rotulo}`,
+      corpoHTML: `<div class="campo"><label for="dlgCatNome">Nome</label><input type="text" id="dlgCatNome" placeholder="Ex: Mercado" autocomplete="off"></div>
+        <div class="campo"><label for="dlgCatDesc">Descrição <span class="opt">(opcional)</span></label><input type="text" id="dlgCatDesc" autocomplete="off"></div>`,
+      aoAdicionar: ov => {
+        const nome = ov.querySelector('#dlgCatNome').value.trim();
+        if (!nome) { aviso('Informe o nome'); return true; }
+        if (!cats[tipo].some(c => c.toLowerCase() === nome.toLowerCase())) {
+          cats[tipo].push(nome);
+          cats[tipo].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+          novasCats.push({ nome, descricao: ov.querySelector('#dlgCatDesc').value.trim(), tipo });
+        }
+        preencherCategorias(nome);
+        $('categoria').value = cats[tipo].find(c => c.toLowerCase() === nome.toLowerCase());
+        preencherMetodos();
+        aviso('');
+      },
+    });
+  });
+
+  $('btnNovoMetodo').addEventListener('click', () => {
+    const ov = dialogo({
+      titulo: 'Nova forma de pagamento',
+      corpoHTML: `<div class="campo"><label for="dlgMetKind">Tipo</label>
+          <select id="dlgMetKind"><option value="">Selecione...</option><option value="PIX">PIX</option><option value="Crédito">Crédito</option></select></div>
+        <div class="campo"><label for="dlgMetBanco">Banco <span class="opt" id="dlgMetBancoOpt">(opcional)</span></label>
+          <input type="text" id="dlgMetBanco" placeholder="Ex: Nubank" autocomplete="off"></div>
+        <div class="campo" id="dlgMetVencWrap" hidden><label for="dlgMetVenc">Vencimento (dia)</label>
+          <input type="text" id="dlgMetVenc" inputmode="numeric" maxlength="2"></div>
+        <div id="dlgMetCartao" hidden>
+          <div class="campo"><label for="dlgMetFech">Fechamento (dia) <span class="opt">(opcional)</span></label>
+            <input type="text" id="dlgMetFech" inputmode="numeric" maxlength="2"></div>
+          <div class="campo"><label for="dlgMetMelhor">Melhor dia <span class="opt">(opcional)</span></label>
+            <input type="text" id="dlgMetMelhor" inputmode="numeric" maxlength="2"></div>
+        </div>`,
+      aoAdicionar: o => {
+        const kind = o.querySelector('#dlgMetKind').value;
+        const banco = o.querySelector('#dlgMetBanco').value.trim();
+        if (!kind) { aviso('Escolha o tipo'); return true; }
+        if (kind === 'Crédito' && !banco) { aviso('Informe o banco'); return true; }
+        const venc = parseInt(o.querySelector('#dlgMetVenc').value, 10);
+        const fechTxt = o.querySelector('#dlgMetFech').value.trim();
+        const fech = parseInt(fechTxt, 10);
+        if (kind === 'Crédito') {
+          if (!(venc >= 1 && venc <= 31)) { aviso('Vencimento inválido'); return true; }
+          if (fechTxt && !(fech >= 1 && fech <= 31)) { aviso('Fechamento inválido'); return true; }
+        }
+        const rotulo = banco ? `${kind} ${banco}` : kind;
+        if (!metodos.some(m => m.rotulo === rotulo)) {
+          metodos.push({ rotulo, kind, fech: fech >= 1 && fech <= 31 ? fech : null });
+          novosMetodos.push({ kind, banco, venc: venc || null, fech: fech || null, melhor: parseInt(o.querySelector('#dlgMetMelhor').value, 10) || null, rotulo });
+        }
+        preencherMetodos(rotulo);
+        delete $('competencia').dataset.editado;
+        atualizarCampoParcelas();
+        aviso('');
+      },
+    });
+    const kindSel = ov.querySelector('#dlgMetKind');
+    kindSel.addEventListener('change', () => {
+      const cred = kindSel.value === 'Crédito';
+      ov.querySelector('#dlgMetVencWrap').hidden = !cred;
+      ov.querySelector('#dlgMetCartao').hidden = !cred;
+      ov.querySelector('#dlgMetBancoOpt').hidden = cred;
+    });
+  });
 
   function paraISO(ddmm) {
     const m = /^(\d{2})\/(\d{2})$/.exec(ddmm);
@@ -173,25 +319,30 @@
     return `${anoBase}-${m[2]}-${m[1]}`;
   }
 
-  function enviar(e) {
+  $('formTransacao').addEventListener('submit', e => {
     e.preventDefault();
-    const valor = parseFloat(String($('valor').value).replace(/\./g, '').replace(',', '.'));
     const data = paraISO($('data').value);
-    if (!data) { $('erro').textContent = 'Informe a data (dd/mm).'; return; }
-    if (!(valor > 0)) { $('erro').textContent = 'Informe um valor maior que zero.'; return; }
-    if (!$('categoria').value) { $('erro').textContent = 'Escolha a categoria.'; return; }
-    if (tipo === 'saidas' && !$('metodo').value) { $('erro').textContent = 'Escolha a forma de pagamento.'; return; }
-    $('erro').textContent = '';
+    const n = ehCredito() ? parcelasNumero() : 1;
+    const valorParcela = numero($('valor').value);
+    if (!data) { aviso('Informe a data (dd/mm).'); return; }
+    if (!(valorParcela > 0)) { aviso('Informe um valor maior que zero.'); return; }
+    if (!$('categoria').value) { aviso('Escolha a categoria.'); return; }
+    if (tipo === 'saidas' && !$('metodo').value) { aviso('Escolha a forma de pagamento.'); return; }
+    aviso('');
+    const cat = $('categoria').value, met = $('metodo').value;
     const dados = {
-      tipo, valor, data, categoria: $('categoria').value,
-      metodo: $('metodo').value || null,
+      tipo, data, categoria: cat,
+      valor: Math.round(valorParcela * n * 100) / 100,   // o bot recebe o TOTAL da compra
+      metodo: met || null,
       descricao: $('descricao').value.trim(),
-      parcelas: tipo === 'saidas' && ehCredito($('metodo').value) ? Math.max(1, parseInt($('parcelas').value, 10) || 1) : 1,
+      parcelas: n,
+      comp: ehCredito() ? $('competencia').value : null,
+      novaCategoria: novasCats.filter(c => c.tipo === tipo && c.nome.toLowerCase() === cat.toLowerCase())[0] || null,
+      novoMetodo: novosMetodos.filter(m => m.rotulo === met)[0] || null,
     };
     if (tg) tg.sendData(JSON.stringify(dados));   // o bot grava e fecha o app
-    else $('erro').textContent = 'Abra esta tela pelo botão do bot no Telegram.';
-  }
-  $('form').addEventListener('submit', enviar);
+    else aviso('Abra esta tela pelo botão do bot no Telegram.');
+  });
 
   if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor && tg.setHeaderColor('#0F1420'); tg.setBackgroundColor && tg.setBackgroundColor('#0F1420'); }
 })();
