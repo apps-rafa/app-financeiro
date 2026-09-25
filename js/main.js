@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Carregar dados iniciais
     console.log('📊 Carregando dados...');
     await carregarDados();
+    if (typeof iniciarVisaoAnual === 'function' && !window._anualIniciado) { window._anualIniciado = true; iniciarVisaoAnual(); }
     if (typeof carregarSaldoContas === 'function') carregarSaldoContas();
     if (typeof carregarFaturasBanco === 'function') carregarFaturasBanco();
     // Já mostra o último saldo guardado e, em seguida, busca o atual na Pluggy

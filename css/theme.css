@@ -599,3 +599,8 @@ body .fatura-banco, body .grupo-barra { padding-left: .8rem; padding-right: .8re
 /* Botões Sincronizar/Limpar: metade e metade, alinhados com os das contas */
 body .pluggy-toolbar-btns > .pluggy-toolbar-btn { flex: 1 1 calc(50% - .25rem); width: auto; min-width: 0; padding: 0 .5rem; }
 body .pluggy-origem { margin: .2rem 0 .5rem; }
+
+/* E-mail do cabeçalho alinhado com a linha do título do app */
+.user-email { position: relative; top: 3px; }
+/* Botão da visão anual: mesma medida do botão de tema */
+body .header-info > #btnAnual { width: 1.9rem; padding: 0; border-radius: 999px; }
