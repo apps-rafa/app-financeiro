@@ -822,11 +822,15 @@ async function carregarRevisaoPluggy() {
     const tabelaHistorico = !historicoValido.length ? '' : _grupoColapsavelConciliar({
         id: 'pluggy-historico', abertos: _abertosPluggy, padraoAberto: false,
         titulo: `📜 Já lançados (histórico) (${historicoValido.length})`,
-        corpo: htmlSubgruposRevisao({
-            idPai: 'pluggy-historico', abertos: _abertosPluggy, itens: historicoValido,
-            tipoDe: i => i.transacao.tipo, colunas: ['Data', 'Valor', 'Categoria', 'Descrição'],
-            htmlLinha: gerarHTMLHistoricoPluggy,
-        }),
+        corpo: ['saidas', 'entradas'].map(tipo => {
+            const lista = historicoValido.filter(i => (i.transacao.tipo === 'entradas') === (tipo === 'entradas'))
+                .sort((a, b) => String(b.transacao.data).localeCompare(String(a.transacao.data)));
+            return !lista.length ? '' : _grupoColapsavelConciliar({
+                id: `pluggy-historico-${tipo}`, abertos: _abertosPluggy, padraoAberto: true,
+                titulo: `${tipo === 'entradas' ? 'Receitas' : 'Despesas'} (${lista.length})`,
+                corpo: `<div class="historico-lista">${lista.map(gerarHTMLHistoricoPluggy).join('')}</div>`,
+            });
+        }).join(''),
     });
 
     // Com mais de uma conta na fila, cada conta vira um grupo (Nubank: Crédito,
@@ -933,13 +937,11 @@ function gerarHTMLImportadaPluggy(item) {
  *  editar/excluir o lançamento direto daqui. */
 function gerarHTMLHistoricoPluggy(item) {
     const t = item.transacao;
-    return htmlLinhaRevisao({
-        atributos: `data-historico-id="${item.id}"`,
-        celulaAcao: `<button class="btn-icon" data-act="editar-historico" data-id="${item.id}" title="Editar">✏️</button><button class="btn-icon btn-danger" data-act="excluir-historico" data-id="${item.id}" title="Excluir">🗑️</button>`,
-        dataISO: t.data, valor: t.valor,
-        celulasMeio: `<td>${escAttrRevisao(t.categoria || 'Sem categoria')}</td>`,
-        descricao: t.descricao || '',
-    });
+    // Mesmo card dos lançamentos das páginas de Receitas/Despesas; só as ações
+    // são trocadas pelas do histórico (editar/excluir pelo id da fila).
+    const html = gerarHTMLTransacao(mapearTransacao(t), t.tipo === 'entradas' ? 'entrada' : 'saida', { semAcoes: true });
+    const acoes = `<button class="btn-icon" data-act="editar-historico" data-id="${item.id}" title="Editar">✏️</button><button class="btn-icon btn-danger" data-act="excluir-historico" data-id="${item.id}" title="Excluir">🗑️</button>`;
+    return html.replace('<div class="despesa-actions"></div>', `<div class="despesa-actions">${acoes}</div>`);
 }
 
 /** Leva pro mês da transação e abre o formulário de edição — mesma tela
