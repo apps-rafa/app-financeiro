@@ -680,7 +680,7 @@
 }
 .pluggy-contas-sync[hidden] { display: none; }
 .pluggy-conta-sync {
-  flex: 1 1 9rem;
+  flex: 1 1 calc(50% - .2rem);
   box-sizing: border-box;
   min-height: 2rem;
   padding: .3rem .6rem;

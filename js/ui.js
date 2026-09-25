@@ -1611,7 +1611,7 @@ function renderFaturasCartao(container, termo = '', soNaoRealizadas = false) {
     }).filter(Boolean).join('');
 
     return linhas
-        ? `<div class="faturas-cartao"><h3 class="faturas-titulo">Faturas de cartão de crédito</h3>${linhas}</div>`
+        ? `<div class="faturas-cartao">${linhas}</div>`
         : '';
 }
 
