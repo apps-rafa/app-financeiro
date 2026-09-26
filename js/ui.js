@@ -2301,3 +2301,62 @@ function _mesFuturo() {
     return mesRef.getFullYear() > hoje.getFullYear()
         || (mesRef.getFullYear() === hoje.getFullYear() && mesRef.getMonth() > hoje.getMonth());
 }
+
+// ---------------------------------------------------------------------------
+// Grupos mostram só 5 itens por vez ("Carregar mais 5"), em qualquer lista de grupos das abas
+// Receitas/Despesas/Próximos. Aplicado no DOM depois de cada renderização (MutationObserver);
+// a quantidade aberta de cada grupo é lembrada entre atualizações.
+const _limitesLista = {};
+let _aplicandoLimite = false;
+let _observadorLimite = null;
+
+function _chaveLista(pai) {
+    const partes = [];
+    for (let el = pai; el && !el.classList.contains('tab-content'); el = el.parentElement) {
+        if (el.tagName === 'DETAILS') {
+            partes.push(el.dataset.nome || el.dataset.pend || el.querySelector(':scope > summary')?.textContent.replace(/\s+/g, ' ').trim().slice(0, 40) || 'g');
+        }
+    }
+    return (pai.closest('.tab-content')?.id || '') + '>' + partes.reverse().join('>');
+}
+
+function _aplicarLimiteListas(raiz) {
+    _aplicandoLimite = true;
+    const pais = new Set();
+    raiz.querySelectorAll('.despesa-item').forEach(i => { if (i.parentElement) pais.add(i.parentElement); });
+    pais.forEach(pai => {
+        pai.querySelectorAll(':scope > .lista-mais-btn').forEach(b => b.remove());
+        const itens = [...pai.children].filter(c => c.classList.contains('despesa-item'));
+        const chave = _chaveLista(pai);
+        const lim = _limitesLista[chave] || 5;
+        itens.forEach((it, i) => { it.hidden = i >= lim; });
+        if (itens.length > lim) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'busca-ampla-btn lista-mais-btn';
+            btn.dataset.listaChave = chave;
+            btn.innerHTML = `Carregar mais 5 <small>restam ${itens.length - lim}</small>`;
+            itens[itens.length - 1].after(btn);
+        }
+    });
+    if (_observadorLimite) _observadorLimite.takeRecords(); // ignora as mudanças feitas aqui
+    _aplicandoLimite = false;
+}
+
+function iniciarLimiteListas() {
+    const raizes = ['entradas', 'saidas', 'proximas'].map(id => document.getElementById(id)).filter(Boolean);
+    if (!raizes.length) return;
+    _observadorLimite = new MutationObserver(() => {
+        if (_aplicandoLimite) return;
+        raizes.forEach(r => _aplicarLimiteListas(r));
+    });
+    raizes.forEach(r => _observadorLimite.observe(r, { childList: true, subtree: true }));
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('.lista-mais-btn');
+        if (!btn) return;
+        e.preventDefault();
+        _limitesLista[btn.dataset.listaChave] = (_limitesLista[btn.dataset.listaChave] || 5) + 5;
+        _aplicarLimiteListas(btn.closest('.tab-content') || document);
+    });
+}
+window.addEventListener('load', iniciarLimiteListas);
