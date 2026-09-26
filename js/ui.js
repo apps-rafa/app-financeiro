@@ -995,17 +995,10 @@ function renderListaPorCategoria(container, transacoes, tipoUI, msgVazia) {
  *  (A receber / A pagar) — cartão de crédito só "realiza" depois que o
  *  vencimento da fatura daquela competência já passou. */
 function _transacaoRealizada(t) {
-    const metodos = (estadoApp.menus && estadoApp.menus.metodos) || [];
-    const cartao = metodos.find(m => m.metodoKind === 'Crédito'
-        && (typeof rotuloMetodo === 'function' ? rotuloMetodo(m) : m.nome) === t.metodo);
     // Hoje (data local) já conta como realizado: o que tem data <= hoje sai de
-    // "Próximos" e fica só em Despesas/Receitas.
+    // "Próximos" e fica só em Despesas/Receitas — vale também pro cartão de crédito
+    // (o vencimento da fatura não muda isso).
     const hoje = hojeISO();
-    if (cartao) {
-        const venc = (cartao.diaVencimento && t.competencia)
-            ? dataVencimento(t.competencia, cartao.diaVencimento) : null;
-        return !!(venc && venc <= hoje);
-    }
     return !t.pendente && String(t.data).slice(0, 10) <= hoje;
 }
 
@@ -1768,15 +1761,21 @@ function renderPendentesProximas(abertos = {}, termo = '') {
         <details class="fatura-item" data-pend="${chave}" ${(abertos[chave] !== undefined ? abertos[chave] : !!termo) ? 'open' : ''}>
           <summary>
             <span class="fatura-nome">${nome}</span>
-            <span class="fatura-espaco"></span>
             <span class="subgrupo-contagem">${lista.length}</span>
+            <span class="fatura-espaco"></span>
             <span class="fatura-total">${formatarMoeda(total)}</span>
           </summary>
           <div class="fatura-itens">${lista.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}</div>
         </details>`;
     };
-    return grupo('A receber', 'receber', pend(estadoApp.transacoes.entradas), 'entrada')
-         + grupo('A pagar', 'pagar', pend(estadoApp.transacoes.saidas), 'saida');
+    // Despesas a pagar: um grupo por forma de pagamento ("PIX", "Dinheiro"...; todo "PIX <banco>" é PIX)
+    const nomeForma = t => (/^pix(\s|$)/i.test(String(t.metodo || '').trim()) ? 'PIX' : (t.metodo || 'Sem forma de pgto.'));
+    const porForma = new Map();
+    pend(estadoApp.transacoes.saidas).forEach(t => { const k = nomeForma(t); porForma.set(k, [...(porForma.get(k) || []), t]); });
+    const gruposPagar = [...porForma.entries()]
+        .sort((a, b) => b[1].reduce((x, t) => x + valorDe(t), 0) - a[1].reduce((x, t) => x + valorDe(t), 0))
+        .map(([nome, lista]) => grupo(nome, 'pagar:' + nome, lista, 'saida')).join('');
+    return grupo('A receber', 'receber', pend(estadoApp.transacoes.entradas), 'entrada') + gruposPagar;
 }
 
 /** Bloco "Faturas de cartão de crédito": cada cartão com o total lançado no
