@@ -1455,11 +1455,14 @@ function irParaMes(competencia) {
 /** Carrega a transação no formulário da aba Adicionar em modo edição */
 function iniciarEdicaoTransacao(trans, tipoTransacao) {
     estadoApp.editandoId = trans.id;
-    const buscaEl = document.getElementById('buscaGlobal');
-    if (buscaEl && buscaEl.value) {
-        estadoApp.buscaAntesEdicao = buscaEl.value; // volta quando a edição fechar
-        buscaEl.value = '';
+    // Guarda a tela de busca/Recém-lançados (com o modo e o que estava por cima) pra devolver
+    // exatamente igual quando a edição fechar; o formulário precisa da área livre.
+    estadoApp.telaAntesEdicao = _capturarTelaBusca();
+    if (estadoApp.telaAntesEdicao) {
+        const buscaEl = document.getElementById('buscaGlobal');
+        if (buscaEl) buscaEl.value = '';
         document.getElementById('buscaLimpar')?.setAttribute('hidden', '');
+        document.body.classList.remove('aba-por-cima');
         atualizarBuscaGlobal();
     }
     sincronizarModoEdicao();
@@ -1504,20 +1507,54 @@ function iniciarEdicaoTransacao(trans, tipoTransacao) {
 /** Esconde a busca enquanto um lançamento está sendo editado (só o form aparece). */
 function sincronizarModoEdicao() {
     document.body.classList.toggle('editando-lancamento', !!estadoApp.editandoId);
-    // Fechou a edição: devolve a busca (e o resultado) de onde ela estava
-    if (!estadoApp.editandoId && estadoApp.buscaAntesEdicao) {
-        const buscaEl = document.getElementById('buscaGlobal');
-        if (buscaEl) {
-            buscaEl.value = estadoApp.buscaAntesEdicao;
-            document.getElementById('buscaLimpar')?.removeAttribute('hidden');
-            atualizarBuscaGlobal();
-        }
-        estadoApp.buscaAntesEdicao = null;
+    // Fechou a edição: devolve a busca (e o resultado) de onde ela estava. Nos fluxos "explícitos"
+    // (salvar/cancelar/apagar) quem chama devolve a tela inteira depois (voltarTelaAposEdicao).
+    if (!estadoApp.editandoId && estadoApp.telaAntesEdicao) {
+        const snap = estadoApp.telaAntesEdicao;
+        estadoApp.telaAntesEdicao = null;
+        if (estadoApp.voltandoDaEdicao) estadoApp.telaPendente = snap;
+        else _aplicarTelaBusca(snap, false);
     }
+}
+
+/** Foto da tela de busca atual (null se não há busca/Recém-lançados na tela). */
+function _capturarTelaBusca() {
+    if (!document.body.classList.contains('buscando')) return null;
+    const box = document.getElementById('resultadoBusca');
+    return {
+        termo: document.getElementById('buscaGlobal')?.value || '',
+        recentes: box?.dataset.recentes === '1' ? (Number(box.dataset.recentesQtd) || 5) : 0,
+        ampla: box?.dataset.modo === 'ampla' && box?.dataset.recentes !== '1',
+        porCima: document.body.classList.contains('aba-por-cima'),
+    };
+}
+
+/** Devolve a busca/Recém-lançados como estavam (mesmo modo; por cima ou por baixo da aba). */
+function _aplicarTelaBusca(snap, restaurarPorCima) {
+    const buscaEl = document.getElementById('buscaGlobal');
+    if (buscaEl) buscaEl.value = snap.termo;
+    const limpar = document.getElementById('buscaLimpar');
+    if (limpar) limpar.hidden = !snap.termo;
+    if (snap.recentes) mostrarRecemLancados(snap.recentes);
+    else if (snap.ampla && snap.termo) { atualizarBuscaGlobal(); buscarAmpla(snap.termo); }
+    else atualizarBuscaGlobal();
+    if (restaurarPorCima && snap.porCima && document.querySelector('.tab-content.active')) document.body.classList.add('aba-por-cima');
+}
+
+/** Depois de salvar/cancelar/apagar uma edição: volta EXATAMENTE pra tela de onde veio
+ *  (a aba de origem e a busca/Recém-lançados, com o que estava por cima). */
+function voltarTelaAposEdicao(origem) {
+    const snap = estadoApp.telaPendente;
+    estadoApp.telaPendente = null;
+    estadoApp.voltandoDaEdicao = false;
+    if (origem && typeof mudarAba === 'function') mudarAba(origem);
+    else if (typeof fecharAbas === 'function') fecharAbas();
+    if (snap) _aplicarTelaBusca(snap, true);
 }
 
 function cancelarEdicaoTransacao(voltarParaOrigem = true) {
     const origem = estadoApp.abaOrigemEdicao;
+    if (voltarParaOrigem) estadoApp.voltandoDaEdicao = true;
     estadoApp.editandoId = null;
     sincronizarModoEdicao();
     estadoApp.abaOrigemEdicao = null;
@@ -1527,7 +1564,7 @@ function cancelarEdicaoTransacao(voltarParaOrigem = true) {
     const excluir = document.getElementById('excluirEdicao');
     if (excluir) excluir.hidden = true;
     // Cancelar pelo botão: volta para a tela onde o usuário estava
-    if (voltarParaOrigem && origem && typeof mudarAba === 'function') mudarAba(origem);
+    if (voltarParaOrigem) voltarTelaAposEdicao(origem);
 }
 
 /** Sem "×" dedicado no formulário: sair da aba "Adicionar" (fechar ou trocar
@@ -1549,6 +1586,7 @@ async function excluirEdicaoTransacao() {
     const apagou = await excluirTransacao(id);
     if (!apagou) return; // erro real, ou o diálogo "só a 1ª parcela" — segue em edição
 
+    estadoApp.voltandoDaEdicao = true;
     estadoApp.editandoId = null;
     estadoApp.abaOrigemEdicao = null;
     sincronizarModoEdicao();
@@ -1556,7 +1594,7 @@ async function excluirEdicaoTransacao() {
     const submitBtn = document.querySelector('.btn-submit');
     if (submitBtn) submitBtn.textContent = 'Adicionar';
     btn.hidden = true;
-    if (voltarPara && typeof mudarAba === 'function') mudarAba(voltarPara);
+    voltarTelaAposEdicao(voltarPara);
 }
 
 /**

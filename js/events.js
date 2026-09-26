@@ -452,9 +452,12 @@ function fecharAbas() {
 function mudarAba(novaAba) {
     const ativa = document.querySelector('.tab-content.active')?.id;
 
+    // Saindo do formulário em edição por outra aba: a busca volta ANTES de decidir quem fica na frente
+    if (ativa === 'adicionar' && novaAba !== ativa && typeof _sairDoModoEdicaoSeAtivo === 'function') _sairDoModoEdicaoSeAtivo();
+
     // Busca / Recém-lançados na tela: a aba pedida abre POR CIMA dela (o resultado fica guardado
     // por baixo e volta quando essa aba for fechada).
-    const sobBusca = document.body.classList.contains('buscando') && !document.body.classList.contains('aba-por-cima');
+    const sobBusca = document.body.classList.contains('buscando') && !document.body.classList.contains('aba-por-cima') && !(novaAba === ativa && ativa === 'adicionar');
     if (sobBusca) {
         document.body.classList.add('aba-por-cima');
         _abaAnterior = null;
@@ -474,7 +477,6 @@ function mudarAba(novaAba) {
 
     // Trocar pra outra aba com uma edição em andamento em "Adicionar"
     // cancela essa edição sozinho (sem "×" dedicado, ver _sairDoModoEdicaoSeAtivo).
-    if (ativa === 'adicionar' && typeof _sairDoModoEdicaoSeAtivo === 'function') _sairDoModoEdicaoSeAtivo();
 
     // Abrir a nova aba fecha automaticamente qualquer outra.
     document.querySelectorAll('.tab-content').forEach(tab => {
@@ -541,6 +543,7 @@ async function submeterFormulario(e) {
         if (foiEdicao) {
             await editarTransacaoAPI({ id: estadoApp.editandoId, ...dados });
             mostrarNotificacao('✓ Transação atualizada!', 'sucesso');
+            estadoApp.voltandoDaEdicao = true; // a tela de origem (busca incluída) volta inteira depois
             cancelarEdicaoTransacao(false);
         } else {
             await adicionarTransacaoAPI(dados);
@@ -558,8 +561,8 @@ async function submeterFormulario(e) {
         await recarregarDados();
 
         if (foiEdicao) {
-            // Edição volta para a tela onde o usuário estava
-            setTimeout(() => mudarAba(abaOrigem || dados.tipo), 500);
+            // Edição volta EXATAMENTE para a tela onde o usuário estava
+            voltarTelaAposEdicao(abaOrigem);
         }
         // Lançamento novo: fica no formulário em branco (já foi limpo acima),
         // pra encadear vários lançamentos seguidos sem trocar de aba.
