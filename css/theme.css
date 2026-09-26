@@ -664,3 +664,24 @@ main.main > * { flex-shrink: 0; }
 .mini-box i { flex: 0 1 auto; min-width: 0; overflow: hidden; font-size: .58rem; }
 .mini-box .seta-icone { width: .62rem; height: .62rem; }
 .mini-box b { flex: none; }
+
+/* Ações do topo numa grade só (2 linhas x 3 colunas, as mesmas colunas do dashboard):
+     linha 1: "+ Lançamento" | Recém-lançados
+     linha 2: busca            | Próximos + lixeira
+   Cada linha estica as duas células pra mesma altura. */
+.acoes-topo { display: grid; grid-template-columns: 2fr 2fr 150px; gap: var(--spacing-md); margin-bottom: var(--spacing-md); align-items: stretch; --h-linha2: 2.25rem; }
+.acoes-topo > .tabs, .acoes-topo > .busca-global { display: contents; }
+.acoes-topo .tabs [data-tab="adicionar"] { grid-row: 1; grid-column: 1 / span 2; }
+.acoes-topo .busca-recentes { grid-row: 1; grid-column: 3; }
+.acoes-topo .busca-global .busca-campo { grid-row: 2; grid-column: 1 / span 2; }
+.acoes-topo .tabs-dir { grid-row: 2; grid-column: 3; }
+.acoes-topo .busca-campo .busca-lista { height: var(--h-linha2); box-sizing: border-box; }
+.acoes-topo .tabs-dir .tab-btn { height: var(--h-linha2); padding-top: 0; padding-bottom: 0; }
+@media (max-width: 480px) {
+  .acoes-topo { grid-template-columns: 1fr 1fr; }
+  .acoes-topo .tabs [data-tab="adicionar"] { grid-column: 1; }
+  .acoes-topo .busca-recentes { grid-column: 2; }
+  .acoes-topo .busca-global .busca-campo { grid-column: 1; }
+  .acoes-topo .tabs-dir { grid-column: 2; }
+}
+body.modo-anual .acoes-topo { display: none; }
