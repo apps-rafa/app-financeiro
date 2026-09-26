@@ -697,7 +697,7 @@ async function buscarAmpla(termo) {
         return `
         <details class="rec-grupo" style="--cor-rec:var(--primary)">
           <summary>
-            <span class="rec-grupo-nome">${nomesMes[m - 1]}/${a}</span>
+            <span class="rec-grupo-nome">${nomesMes[m - 1].slice(0, 3).toUpperCase()}/${a}</span>
             <span class="rec-grupo-contagem">${lista.length}</span>
             <span class="rec-grupo-total">${d ? `-${brl(d)}` : ''}${d && r ? ' · ' : ''}${r ? `+${brl(r)}` : ''}</span>
           </summary>
