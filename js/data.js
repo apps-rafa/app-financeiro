@@ -212,12 +212,8 @@ function calcularResumoMes() {
         lista.forEach(t => {
             const tot = (t.valorMes != null ? t.valorMes : t.valor) || 0;
             let realizado;
-            const cartao = metodosCredito.get(t.metodo);
-            if (cartao) {
-                const venc = (cartao.diaVencimento && t.competencia)
-                    ? dataVencimento(t.competencia, cartao.diaVencimento) : null;
-                realizado = (venc && venc <= hoje) ? tot : 0;
-            } else if (t.tipoRecorrencia === 'Semanal' && t.valorMes != null) {
+            // "A pagar" = só o que tem data DEPOIS de hoje (inclusive no cartão de crédito)
+            if (t.tipoRecorrencia === 'Semanal' && t.valorMes != null) {
                 realizado = t.valor || 0;                 // X (sessões já ocorridas)
             } else {
                 realizado = (!t.pendente && String(t.data).slice(0, 10) <= hoje) ? tot : 0;
