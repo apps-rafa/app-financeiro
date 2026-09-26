@@ -648,4 +648,8 @@ body.modo-anual main.main { padding-top: 0; }
 .busca-ampla-resumo .mini-btn { flex: none; margin-left: auto; white-space: nowrap; }
 
 /* Busca/Recém-lançados: fundo neutro mesmo em Despesas/Receitas (não tinge de vermelho/verde) */
-body.buscando .area-conteudo, body.buscando .area-conteudo:has(#saidas.active), body.buscando .area-conteudo:has(#entradas.active) { background: var(--surface); }
+body.buscando:not(.aba-por-cima) .area-conteudo, body.buscando:not(.aba-por-cima) .area-conteudo:has(#saidas.active), body.buscando:not(.aba-por-cima) .area-conteudo:has(#entradas.active) { background: var(--surface); }
+
+/* Aba aberta POR CIMA da busca/Recém-lançados: mostra a aba e guarda o resultado por baixo */
+body.buscando.aba-por-cima .area-conteudo > .tab-content.active { display: block !important; }
+body.aba-por-cima #resultadoBusca { display: none !important; }

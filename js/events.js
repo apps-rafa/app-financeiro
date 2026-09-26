@@ -183,6 +183,10 @@ function configurarEventListeners() {
     // igual em qualquer modo de visualização (ver _filtrarPorBusca em js/ui.js).
     const buscaGlobalEl = document.getElementById('buscaGlobal');
     document.getElementById('btnRecentes')?.addEventListener('click', () => {
+        if (document.body.classList.contains('aba-por-cima')) { // resultado estava por baixo de uma aba: traz pra frente
+            if (document.getElementById('resultadoBusca')?.dataset.recentes === '1') { document.body.classList.remove('aba-por-cima'); return; }
+        }
+        document.body.classList.remove('aba-por-cima');
         const box = document.getElementById('resultadoBusca');
         if (box && !box.hidden && box.dataset.recentes === '1') atualizarBuscaGlobal(); // toggle: fecha
         else mostrarRecemLancados(5);
@@ -190,10 +194,12 @@ function configurarEventListeners() {
     const buscaLimparEl = document.getElementById('buscaLimpar');
     const sincronizarBuscaLimpar = () => { if (buscaLimparEl) buscaLimparEl.hidden = !buscaGlobalEl.value; };
     if (buscaGlobalEl) buscaGlobalEl.addEventListener('input', () => {
+        document.body.classList.remove('aba-por-cima');
         sincronizarBuscaLimpar();
         if (typeof atualizarBuscaGlobal === 'function') atualizarBuscaGlobal();
     });
     if (buscaLimparEl) buscaLimparEl.addEventListener('click', () => {
+        document.body.classList.remove('aba-por-cima');
         buscaGlobalEl.value = '';
         sincronizarBuscaLimpar();
         if (typeof atualizarBuscaGlobal === 'function') atualizarBuscaGlobal();
@@ -434,6 +440,7 @@ function mudarTipoTransacao(tipo) {
 let _abaAnterior = null; // memória de 1 nível: a aba que estava aberta antes da atual
 function fecharAbas() {
     _abaAnterior = null;
+    document.body.classList.remove('aba-por-cima');
     document.body.classList.remove('modo-anual');
     if (typeof _sairDoModoEdicaoSeAtivo === 'function') _sairDoModoEdicaoSeAtivo();
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -445,21 +452,21 @@ function fecharAbas() {
 function mudarAba(novaAba) {
     const ativa = document.querySelector('.tab-content.active')?.id;
 
-    // "Recém-lançados" aberto: a aba pedida abre por cima (fecha a lista, sem alternar a aba)
-    const boxRec = document.getElementById('resultadoBusca');
-    if (boxRec && !boxRec.hidden && boxRec.dataset.recentes === '1') {
-        atualizarBuscaGlobal();
-        if (novaAba === ativa) return;
-    }
-
-    // Clicar na aba já aberta apenas fecha tudo (sem reabrir nada).
-    if (novaAba === ativa) {
-        const volta = _abaAnterior; // fechar a de cima devolve a que estava por baixo
-        fecharAbas();
+    // Busca / Recém-lançados na tela: a aba pedida abre POR CIMA dela (o resultado fica guardado
+    // por baixo e volta quando essa aba for fechada).
+    const sobBusca = document.body.classList.contains('buscando') && !document.body.classList.contains('aba-por-cima');
+    if (sobBusca) {
+        document.body.classList.add('aba-por-cima');
+        _abaAnterior = null;
+        if (novaAba === ativa) return; // já era a aba aberta por baixo: só passa pra frente
+    } else if (novaAba === ativa) {
+        // Clicar na aba já aberta a fecha; a que estava por baixo (memória de 1 nível) volta.
+        const volta = _abaAnterior;
+        fecharAbas(); // também tira 'aba-por-cima' (o resultado da busca reaparece)
         if (volta && volta !== novaAba) mudarAba(volta);
         return;
     }
-    if (ativa) _abaAnterior = ativa;
+    if (ativa && !sobBusca) _abaAnterior = ativa;
     console.log(`📑 Mudando para aba: ${novaAba}`);
     // Visão anual é página única: esconde o resto do app; qualquer outra aba a fecha
     document.body.classList.toggle('modo-anual', novaAba === 'anual');
