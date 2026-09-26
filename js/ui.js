@@ -576,9 +576,11 @@ const _MESES_BUSCA = {
  *  "jan"/"janeiro" (mês) e o resto, que continua sendo texto livre. */
 function _parseConsulta(termo) {
     const num = x => parseFloat(String(x).replace(/\./g, '').replace(',', '.'));
-    const q = { texto: '', min: null, max: null, ano: null, mes: null };
+    const q = { texto: '', frases: [], min: null, max: null, ano: null, mes: null };
     const texto = [];
-    for (const p of String(termo || '').trim().split(/\s+/).filter(Boolean)) {
+    // "frase exata" (entre aspas): palavra(s) inteira(s), na ordem — sai do texto antes de separar os filtros
+    const semAspas = String(termo || '').replace(/["“”]([^"“”]+)["“”]/g, (_, f) => { if (f.trim()) q.frases.push(_normalizarBusca(f.trim())); return ' '; });
+    for (const p of semAspas.replace(/["“”]/g, ' ').trim().split(/\s+/).filter(Boolean)) {
         let m;
         if ((m = p.match(/^>=?(\d[\d.,]*)$/))) q.min = num(m[1]);
         else if ((m = p.match(/^<=?(\d[\d.,]*)$/))) q.max = num(m[1]);
@@ -590,7 +592,7 @@ function _parseConsulta(termo) {
     q.texto = texto.join(' ');
     return q;
 }
-const _consultaVazia = q => !q.texto && q.min == null && q.max == null && q.ano == null && q.mes == null;
+const _consultaVazia = q => !q.texto && !(q.frases && q.frases.length) && q.min == null && q.max == null && q.ano == null && q.mes == null;
 
 /** O lançamento bate com a consulta (texto + valor + ano + mês)? */
 function _bateConsulta(tr, q, t) {
@@ -600,6 +602,12 @@ function _bateConsulta(tr, q, t) {
     const data = String(tr.data || '');
     if (q.ano != null && Number(data.slice(0, 4)) !== q.ano) return false;
     if (q.mes != null && Number(data.slice(5, 7)) - 1 !== q.mes) return false;
+    if (q.frases && q.frases.length) {
+        const campos = [tr.descricao, tr.categoria, tr.metodo, tr.formaPagamento].map(_normalizarBusca);
+        const escapa = f => f.replace(/[^a-z0-9 ]/g, m => '\\' + m);
+        const achou = f => campos.some(c => new RegExp('(^|[^a-z0-9])' + escapa(f) + '([^a-z0-9]|$)').test(c));
+        if (!q.frases.every(achou)) return false;
+    }
     if (!t) return true;
     const bateTexto = [tr.descricao, tr.categoria, tr.metodo, tr.formaPagamento]
         .some(campo => _normalizarBusca(campo).includes(t));
@@ -817,7 +825,7 @@ async function _linhasDoMesPorData() {
 /** Resultado da busca no mês: só os grupos Receitas e Despesas (por data do lançamento) + lixeira. */
 async function _renderBuscaDoMes(termo, box, abertos) {
     const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
-    const linkAmpla = `<button type="button" class="busca-ampla-btn" data-busca-ampla>🔎 Buscar em todos os meses <small>dica: &gt;100 &lt;50 100-200 2026 jan</small></button>`;
+    const linkAmpla = `<button type="button" class="busca-ampla-btn" data-busca-ampla>🔎 Buscar em todos os meses <small>dica: &gt;100 &lt;50 100-200 2026 jan &quot;frase exata&quot;</small></button>`;
     const atual = () => (document.getElementById('buscaGlobal')?.value || '').trim() === termo && box.dataset.modo !== 'ampla';
     if (!box.querySelector('.rec-grupo')) box.innerHTML = linkAmpla + '<p class="loading">Buscando...</p>';
     let itens;
