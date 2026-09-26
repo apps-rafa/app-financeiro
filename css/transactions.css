@@ -791,3 +791,13 @@
 .busca-ampla-resumo span { color: var(--text-muted); flex: 1 1 12rem; }
 
 /* Dica "buscar em todos os meses" acoplada à barra de busca */
+
+/* Grupos com 5 itens por vez */
+.despesa-item[hidden] { display: none !important; }
+.lista-mais-btn { margin: .4rem 0; }
+
+/* Fatura: título menor e vencimento alinhado à linha de base do valor */
+.fatura-item > summary { align-items: baseline; }
+@media (min-width: 601px) {
+  .fatura-nome, .fatura-total { font-size: .9rem; }
+}
