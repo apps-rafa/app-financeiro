@@ -28,6 +28,7 @@ function atualizarUI() {
     // Busca em todos os meses aberta: não refaz (voltar pra janela recarrega os dados e apagaria o resultado)
     const boxUI = document.getElementById('resultadoBusca');
     if (boxUI?.dataset.recentes === '1') mostrarRecemLancados(Number(boxUI.dataset.recentesQtd) || 5);
+    else if (boxUI?.dataset.modo === 'ampla' && boxUI.dataset.termoAmpla) buscarAmpla(boxUI.dataset.termoAmpla);
     else if (boxUI?.dataset.modo !== 'ampla') atualizarBuscaGlobal();
 
     // "Próximas" acompanha o mês em exibição
@@ -618,6 +619,28 @@ function _filtrarPorBusca(transacoes, termo) {
 
 /** "Recém-lançados": os últimos lançamentos CRIADOS (de qualquer mês), 5 por vez com
  *  "Carregar mais". Usa a mesma área dos resultados da busca. */
+/** Parcela que não é a 1ª: só o lançamento original edita o parcelamento — avisa e abre o original. */
+async function abrirOriginalDaParcela(parcela) {
+    const tipoDe = t => (_transacoesExtra.find(x => x.id === t.id)?.tipo) || (estadoApp.transacoes.entradas.some(x => x.id === t.id) ? 'entradas' : 'saidas');
+    let original = [...estadoApp.transacoes.entradas, ...estadoApp.transacoes.saidas, ..._transacoesExtra]
+        .find(t => t.grupoId && t.grupoId === parcela.grupoId && t.parcelaNum === 1);
+    let tipo = original ? tipoDe(original) : tipoDe(parcela);
+    if (!original) {
+        const { data, error } = await sb.from('transacoes').select('*').eq('grupo_id', parcela.grupoId).eq('parcela_num', 1).limit(1);
+        if (error || !data || !data.length) { mostrarNotificacao('Não achei o lançamento original desta parcela', 'erro'); return; }
+        original = mapearTransacao(data[0]);
+        tipo = data[0].tipo;
+    }
+    mostrarDialogo({
+        titulo: 'Editar parcelado',
+        texto: `Um parcelamento é editado pelo lançamento <strong>original</strong> (1/${parcela.parcelasTotal}). Abrir o original?`,
+        acoes: [
+            { label: 'Cancelar' },
+            { label: 'Abrir original', primario: true, onClick: () => { iniciarEdicaoTransacao(original, tipo); } },
+        ],
+    });
+}
+
 let _transacoesExtra = []; // itens mostrados fora do mês em tela (Recém-lançados) — editar/excluir precisam achá-los
 async function mostrarRecemLancados(qtd = 5) {
     const box = document.getElementById('resultadoBusca');
@@ -702,7 +725,7 @@ async function buscarAmpla(termo) {
             <span class="rec-grupo-contagem">${lista.length}</span>
             <span class="rec-grupo-total">${d ? `-${brl(d)}` : ''}${d && r ? ' · ' : ''}${r ? `+${brl(r)}` : ''}</span>
           </summary>
-          <div class="rec-grupo-itens">${lista.map(i => gerarHTMLTransacao(i, i.tipo === 'entradas' ? 'entrada' : 'saida', { semAcoes: true })).join('')}</div>
+          <div class="rec-grupo-itens">${lista.map(i => gerarHTMLTransacao(i, i.tipo === 'entradas' ? 'entrada' : 'saida')).join('')}</div>
         </details>`;
     }).join('');
     box.innerHTML = `
@@ -712,7 +735,12 @@ async function buscarAmpla(termo) {
             <button type="button" class="mini-btn" data-busca-mes>← só este mês</button>
         </div>
         ${grupos || `<div class="rec-grupo rec-grupo--vazio"><span class="rec-grupo-nome">🔎 Nada encontrado pra "${termo}"</span></div>`}`;
-    box.onclick = e => { if (e.target.closest('[data-busca-mes]')) atualizarBuscaGlobal(); };
+    _transacoesExtra = itens; // editar/excluir precisam achar lançamentos de qualquer mês
+    box.dataset.termoAmpla = termo;
+    box.onclick = e => {
+        if (e.target.closest('[data-busca-mes]')) { atualizarBuscaGlobal(); return; }
+        onListaTransacaoClick(e);
+    };
 }
 
 /** Itens que a aba Próximos mostraria (A receber / A pagar sem cartão + tudo
@@ -1266,9 +1294,7 @@ function gerarHTMLTransacao(trans, tipo, opts = {}) {
         if (opts.comAprovarDuplicata) {
             acoes += `<button class="btn-icon btn-success" data-act="aprovar-duplicata" data-id="${trans.id}" title="Não é duplicata — não avisar de novo sobre este lançamento">✓</button>`;
         }
-        if (!ehParcela || ehOriginal) {
-            acoes += `<button class="btn-icon" data-act="editar-trans" data-id="${trans.id}" title="Editar">✏️</button>`;
-        }
+        acoes += `<button class="btn-icon" data-act="editar-trans" data-id="${trans.id}" title="${ehParcela && !ehOriginal ? 'Editar (abre o lançamento original)' : 'Editar'}">✏️</button>`;
         if (!trans.quitada) {
             acoes += `<button class="btn-icon btn-danger" data-act="excluir-trans" data-id="${trans.id}" title="Excluir">🗑️</button>`;
         }
@@ -1347,6 +1373,7 @@ function onListaTransacaoClick(e) {
             quitarParcelamento(id, el.checked);
             break;
         case 'editar-trans': {
+            if (trans.parcelasTotal && trans.parcelaNum !== 1) { abrirOriginalDaParcela(trans); break; }
             const viaProximasEntrada = ctxProximas.some(c => c.trans.id === id && c.tipoUI === 'entrada');
             const extraTrans = _transacoesExtra.find(t => t.id === id);
             const tipo = extraTrans ? extraTrans.tipo : (estadoApp.transacoes.entradas.some(t => t.id === id) || viaProximasEntrada
