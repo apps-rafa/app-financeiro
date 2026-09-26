@@ -695,7 +695,7 @@ async function buscarAmpla(termo) {
         const d = lista.filter(i => i.tipo === 'saidas').reduce((x, i) => x + (Number(i.valor) || 0), 0);
         const r = lista.filter(i => i.tipo === 'entradas').reduce((x, i) => x + (Number(i.valor) || 0), 0);
         return `
-        <details class="rec-grupo" style="--cor-rec:var(--primary)">
+        <details class="rec-grupo" style="--cor-rec:var(--primary)" open>
           <summary>
             <span class="rec-grupo-nome">${nomesMes[m - 1].slice(0, 3).toUpperCase()}/${a}</span>
             <span class="rec-grupo-contagem">${lista.length}</span>
@@ -1754,7 +1754,7 @@ function renderFaturasCartao(container, termo = '', soNaoRealizadas = false) {
         }
 
         return `
-        <details class="fatura-item" data-nome="${rot.replace(/"/g, '&quot;')}" style="--cor-cartao:${cor}" ${abertos[rot] ? 'open' : ''}>
+        <details class="fatura-item" data-nome="${rot.replace(/"/g, '&quot;')}" style="--cor-cartao:${cor}" ${(abertos[rot] !== undefined ? abertos[rot] : !!termo) ? 'open' : ''}>
           <summary>
             <span class="fatura-nome">${rot}</span>
             <span class="fatura-espaco"></span>
