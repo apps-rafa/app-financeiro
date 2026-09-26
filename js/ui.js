@@ -1031,7 +1031,7 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
 
     const abertos = _lerAbertosRecGrupo(container);
     const abertosSub = _lerAbertosSubgrupo(container);
-    const ehDespesaCron = tipoUI === 'saida';
+    const ehDespesaCron = true; // Despesas e Receitas (Atual / A pagar | A receber)
     // Grupo vazio nunca abre — nem é clicável: sem <details>, é uma linha
     // estática (não tem nada pra mostrar, então não faz sentido nem deixar
     // "abrir" e ver "Nada aqui").
@@ -1051,7 +1051,7 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
             <span class="rec-grupo-total"><span class="tot-valor">${formatarMoeda(total)}</span>${totalGeral ? `<span class="tot-pct"><i class="tot-sep"> · </i>${formatarPct(pct)}%</span>` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
-            ${_barraGrupo(_renderOrdemCriacaoToggle(`${tipoUI}:cronologica:${nome}`) + (ehDespesaCron ? _renderOrganizadorInline(tipoUI, 'cronologica', nome, true) : ''))}
+            ${_barraGrupo(_renderOrdemCriacaoToggle(`${tipoUI}:cronologica:${nome}`) + (ehDespesaCron ? _renderOrganizadorInline(tipoUI, 'cronologica', nome, tipoUI === 'saida') : ''))}
             ${ehDespesaCron ? _corpoGrupoComSubmodo(itens, tipoUI, 'cronologica', nome, true, abertosSub) : itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
           </div>
         </details>`;
@@ -1239,6 +1239,8 @@ function _barraGrupo(html) {
  *  pgto., Categoria). Cronológica não chama isso (não tem grupos "de
  *  dimensão", tem "Atual"/"A pagar"/"A receber"). */
 function _renderOrganizadorInline(tipoUI, modo, grupoChave, ehDespesa) {
+    // Receitas agrupadas por categoria: sem filtro de forma de pagamento dentro das categorias
+    if (tipoUI === 'entrada' && modo === 'categoria') return '';
     const opcoes = _SUBMODOS_POR_MODO[modo];
     if (!opcoes) return '';
     const subAtual = _subModoGrupoDe(tipoUI, modo, grupoChave);
