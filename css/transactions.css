@@ -801,3 +801,7 @@
 @media (min-width: 601px) {
   .fatura-nome, .fatura-total { font-size: .9rem; }
 }
+
+/* Contagem de lançamentos ao lado do nome do grupo (Próximos: formas de pagamento e faturas) */
+.fatura-contagem { flex: none; font-size: .72rem; font-weight: 700; color: var(--text-muted); background: var(--surface-3); border-radius: 999px; padding: .05rem .45rem; }
+@media (max-width: 600px) { .fatura-contagem { font-size: .6rem; padding: .02rem .32rem; } }
