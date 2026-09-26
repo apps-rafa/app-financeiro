@@ -1030,6 +1030,8 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
     const pctPendente = totalGeral ? 100 - pctAtual : 0;
 
     const abertos = _lerAbertosRecGrupo(container);
+    const abertosSub = _lerAbertosSubgrupo(container);
+    const ehDespesaCron = tipoUI === 'saida';
     // Grupo vazio nunca abre — nem é clicável: sem <details>, é uma linha
     // estática (não tem nada pra mostrar, então não faz sentido nem deixar
     // "abrir" e ver "Nada aqui").
@@ -1049,8 +1051,8 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
             <span class="rec-grupo-total"><span class="tot-valor">${formatarMoeda(total)}</span>${totalGeral ? `<span class="tot-pct"><i class="tot-sep"> · </i>${formatarPct(pct)}%</span>` : ''}</span>
           </summary>
           <div class="rec-grupo-itens">
-            ${_barraGrupo(_renderOrdemCriacaoToggle(`${tipoUI}:cronologica:${nome}`))}
-            ${itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
+            ${_barraGrupo(_renderOrdemCriacaoToggle(`${tipoUI}:cronologica:${nome}`) + (ehDespesaCron ? _renderOrganizadorInline(tipoUI, 'cronologica', nome, true) : ''))}
+            ${ehDespesaCron ? _corpoGrupoComSubmodo(itens, tipoUI, 'cronologica', nome, true, abertosSub) : itens.map(t => gerarHTMLTransacao(t, tipoUI)).join('')}
           </div>
         </details>`;
     };
@@ -1067,7 +1069,26 @@ function renderListaCronologica(container, transacoes, tipoUI, msgVazia) {
         ${grupoHTML('Atual', corAtual, atuais, totalAtual, pctAtual)}
         ${grupoHTML(rotuloPendente, corPendente, pendentes, totalPendente, pctPendente)}
     `;
+    container.querySelectorAll('.subgrupo-organizador').forEach(_ajustarLabelsFiltro);
     container.onclick = e => {
+        const subBtn = e.target.closest('[data-submodo]');
+        if (subBtn) {
+            e.preventDefault();
+            const grupoChave = subBtn.closest('[data-grupo-chave]').dataset.grupoChave;
+            const atual = _subModoGrupoDe(tipoUI, 'cronologica', grupoChave);
+            _setSubModoGrupo(tipoUI, 'cronologica', grupoChave, subBtn.dataset.submodo === atual ? 'cronologica' : subBtn.dataset.submodo);
+            const det = subBtn.closest('details.rec-grupo');
+            if (det) det.open = true;
+            renderListaCronologica(container, transacoes, tipoUI, msgVazia);
+            return;
+        }
+        const subIcone = e.target.closest('[data-submodo-icone]');
+        if (subIcone) {
+            e.preventDefault();
+            _setSubModoGrupo(tipoUI, 'cronologica', subIcone.closest('[data-grupo-chave]').dataset.grupoChave, 'cronologica');
+            renderListaCronologica(container, transacoes, tipoUI, msgVazia);
+            return;
+        }
         const seg = e.target.closest('[data-cron-toggle]');
         if (seg) {
             const det = container.querySelector(`details.rec-grupo[data-nome="${CSS.escape(seg.dataset.cronToggle)}"]`);
@@ -1158,6 +1179,7 @@ function _renderOrdemCriacaoToggle(chave) {
 // escolhido — sempre as OUTRAS 2, nunca a mesma dimensão que já agrupa a
 // tela toda. Ordem = ordem dos botões.
 const _SUBMODOS_POR_MODO = {
+    cronologica: ['metodo'],   // grupos Atual / A pagar: filtro por forma de pagamento
     metodo: ['categoria'],
     categoria: ['metodo']
 };
