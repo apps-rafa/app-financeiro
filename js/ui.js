@@ -16,6 +16,7 @@ function formatarPct(pct) {
  * Atualiza toda a interface
  */
 function atualizarUI() {
+    _buscaMesCache = null; // dados podem ter mudado: a busca por data refaz a consulta
     atualizarCalendarioNav();
 
     // Atualizar resumo
@@ -740,60 +741,82 @@ function atualizarBuscaGlobal() {
     document.getElementById('btnRecentes')?.classList.remove('active');
     if (!termo) { box.innerHTML = ''; box.onclick = null; return; }
 
-    const abertos = _lerAbertosRecGrupo(box);
-    const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
-    // Cada lançamento aparece em UM grupo só: já aconteceu -> Receitas/Despesas;
-    // ainda não venceu/foi pago -> Próximos.
-    const receitas = _filtrarPorBusca(estadoApp.transacoes.entradas, termo).filter(_transacaoRealizada).sort(_porDataDesc);
-    const despesas = _filtrarPorBusca(estadoApp.transacoes.saidas, termo).filter(_transacaoRealizada).sort(_porDataDesc);
-    const proximosItens = _itensProximosBusca(termo);
-    const pendentesHTML = renderPendentesProximas({}, termo);
-    const faturasHTML = renderFaturasCartao(box, termo, true);
+    _renderBuscaDoMes(termo, box, _lerAbertosRecGrupo(box));
+}
 
-    const grupo = (nome, titulo, cor, qtd, total, corpo) => !qtd ? '' : `
+// Lançamentos do mês em exibição buscados PELA DATA (não pela competência): compras de cartão
+// feitas neste mês que só vencem no seguinte também aparecem. Cache curto, limpo a cada atualizarUI.
+let _buscaMesCache = null;
+async function _linhasDoMesPorData() {
+    const mes = estadoApp.mesAtual || new Date();
+    const chave = `${mes.getFullYear()}-${mes.getMonth()}`;
+    if (_buscaMesCache && _buscaMesCache.chave === chave) return _buscaMesCache.itens;
+    const ini = `${mes.getFullYear()}-${String(mes.getMonth() + 1).padStart(2, '0')}-01`;
+    const prox = new Date(mes.getFullYear(), mes.getMonth() + 1, 1);
+    const fim = `${prox.getFullYear()}-${String(prox.getMonth() + 1).padStart(2, '0')}-01`;
+    const linhas = [];
+    for (let de = 0; ; de += 1000) {
+        const { data, error } = await sb.from('transacoes').select('*').gte('data', ini).lt('data', fim).order('id').range(de, de + 999);
+        if (error) throw error;
+        linhas.push(...(data || []));
+        if (!data || data.length < 1000) break;
+    }
+    const itens = linhas.map(r => ({ ...mapearTransacao(r), tipo: r.tipo }));
+    _buscaMesCache = { chave, itens };
+    return itens;
+}
+
+/** Resultado da busca no mês: só os grupos Receitas e Despesas (por data do lançamento) + lixeira. */
+async function _renderBuscaDoMes(termo, box, abertos) {
+    const valorDe = t => (t.valorMes != null ? t.valorMes : t.valor) || 0;
+    const linkAmpla = `<button type="button" class="busca-ampla-btn" data-busca-ampla>🔎 Buscar em todos os meses <small>dica: &gt;100 &lt;50 100-200 2026 jan</small></button>`;
+    const atual = () => (document.getElementById('buscaGlobal')?.value || '').trim() === termo && box.dataset.modo !== 'ampla';
+    if (!box.querySelector('.rec-grupo')) box.innerHTML = linkAmpla + '<p class="loading">Buscando...</p>';
+    let itens;
+    try { itens = await _linhasDoMesPorData(); }
+    catch (e) { console.error(e); if (atual()) box.innerHTML = linkAmpla + '<p class="empty-message">Erro na busca</p>'; return; }
+    if (!atual()) return;
+    const q = _parseConsulta(termo);
+    const t = _normalizarBusca(q.texto).trim();
+    const achados = itens.filter(tr => _bateConsulta(tr, q, t)).sort(_porDataDesc);
+    _transacoesExtra = achados; // editar/excluir precisam achar itens que não são da competência em tela
+    const receitas = achados.filter(x => x.tipo === 'entradas');
+    const despesas = achados.filter(x => x.tipo !== 'entradas');
+
+    const grupo = (nome, titulo, cor, lista, tipoUI) => !lista.length ? '' : `
     <details class="rec-grupo" data-nome="${nome}" style="--cor-rec:${cor}" ${abertos[nome] !== false ? 'open' : ''}>
       <summary>
         <span class="rec-grupo-nome">${titulo}</span>
-        <span class="rec-grupo-contagem">${qtd}</span>
-        <span class="rec-grupo-total">${formatarMoeda(total)}</span>
+        <span class="rec-grupo-contagem">${lista.length}</span>
+        <span class="rec-grupo-total">${formatarMoeda(lista.reduce((s, x) => s + valorDe(x), 0))}</span>
       </summary>
-      <div class="rec-grupo-itens">${corpo}</div>
+      <div class="rec-grupo-itens">${lista.map(x => gerarHTMLTransacao(x, tipoUI)).join('')}</div>
     </details>`;
-
     const html =
-        grupo('__busca_receitas__', '⬇️ Receitas', 'var(--receita-text)', receitas.length,
-            receitas.reduce((s, t) => s + valorDe(t), 0), receitas.map(t => gerarHTMLTransacao(t, 'entrada')).join('')) +
-        grupo('__busca_despesas__', '⬆️ Despesas', 'var(--despesa-text)', despesas.length,
-            despesas.reduce((s, t) => s + valorDe(t), 0), despesas.map(t => gerarHTMLTransacao(t, 'saida')).join('')) +
-        grupo('__busca_proximos__', '⏰ Próximos', 'var(--primary)', proximosItens.length,
-            proximosItens.reduce((s, t) => s + (t.tipo === 'entradas' ? -valorDe(t) : valorDe(t)), 0),
-            pendentesHTML + (faturasHTML || ''));
+        grupo('__busca_receitas__', '⬇️ Receitas', 'var(--receita-text)', receitas, 'entrada') +
+        grupo('__busca_despesas__', '⬆️ Despesas', 'var(--despesa-text)', despesas, 'saida');
 
-    const linkAmpla = `<button type="button" class="busca-ampla-btn" data-busca-ampla>🔎 Buscar em todos os meses <small>dica: &gt;100 &lt;50 100-200 2026 jan</small></button>`;
     box.innerHTML = linkAmpla + html;
-    box.querySelectorAll('.subgrupo-organizador').forEach(_ajustarLabelsFiltro);
-    // Cliques: busca em todos os meses, itens da lixeira (restaurar/apagar) ou o resto (editar, excluir, faturas...)
     box.onclick = e => {
         if (e.target.closest('[data-busca-ampla]')) return buscarAmpla(termo);
         return e.target.closest('[data-lixeira-restaurar], [data-lixeira-apagar]') ? onCliqueLixeira(e) : _onCliqueProximas(e);
     };
 
-    // A lixeira (excluídos nos últimos 30 dias) também entra na busca — vem
-    // depois, de forma assíncrona; só aplica se o termo ainda for o mesmo.
+    // A lixeira (excluídos nos últimos 30 dias) também entra na busca.
     const vazio = () => `${linkAmpla}<div class="rec-grupo rec-grupo--vazio"><span class="rec-grupo-nome">🔎 Nada encontrado neste mês pra "${termo}"</span></div>`;
     if (typeof buscarLixeira !== 'function') { if (!html) box.innerHTML = vazio(); return; }
-    buscarLixeira(termo).then(itens => {
-        if ((document.getElementById('buscaGlobal')?.value || '').trim() !== termo || box.dataset.modo === 'ampla') return;
-        if (!itens.length) { if (!html) box.innerHTML = vazio(); return; }
-        const total = itens.reduce((s, i) => s + (Number((i.dados || {}).valor) || 0), 0);
+    buscarLixeira(termo).then(lix => {
+        if (!atual()) return;
+        if (!lix.length) { if (!html) box.innerHTML = vazio(); return; }
+        const total = lix.reduce((s, i) => s + (Number((i.dados || {}).valor) || 0), 0);
         box.innerHTML = linkAmpla + html + `
         <details class="rec-grupo" data-nome="__busca_lixeira__" style="--cor-rec:var(--text-muted)" ${abertos.__busca_lixeira__ !== false ? 'open' : ''}>
           <summary>
             <span class="rec-grupo-nome">🗑️ Lixeira</span>
-            <span class="rec-grupo-contagem">${itens.length}</span>
+            <span class="rec-grupo-contagem">${lix.length}</span>
             <span class="rec-grupo-total">${formatarMoeda(total)}</span>
           </summary>
-          <div class="rec-grupo-itens">${itens.map(htmlItemLixeira).join('')}</div>
+          <div class="rec-grupo-itens">${lix.map(htmlItemLixeira).join('')}</div>
         </details>`;
     });
 }
