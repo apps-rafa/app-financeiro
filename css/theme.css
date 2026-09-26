@@ -642,8 +642,6 @@ body.modo-anual main.main { padding-top: 0; }
   .busca-recentes { grid-column: 2; }
 }
 /* A dica acoplada acompanha a largura do campo de busca */
-#resultadoBusca > .busca-ampla-btn:first-child { width: calc(100% - 150px - var(--spacing-md)); }
-@media (max-width: 480px) { #resultadoBusca > .busca-ampla-btn:first-child { width: calc((100% - var(--spacing-md)) / 2); } }
 /* Recém-lançados: botão aceso quando aberto; o ✕ nunca cai pra outra linha */
 .busca-recentes.active { background: var(--primary); border-color: var(--primary); color: var(--primary-contrast, #fff); }
 .busca-ampla-resumo span { flex: 1 1 4rem; min-width: 0; }
