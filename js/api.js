@@ -288,10 +288,9 @@ async function adicionarParceladoAPI(dados) {
         const num = i + 1;
         const valor = valorParcelaOriginal(total, n, num);
         const competencia = i === 0 ? base.competencia : addMeses(base.competencia, i);
-        // Com dia de vencimento informado, cada parcela cai nesse dia (ajustado
-        // pro próximo dia útil); sem ele, cada parcela é 1 mês depois da anterior.
-        const data = i === 0 ? base.data
-            : (base.dia_recorrencia ? dataVencimento(competencia, base.dia_recorrencia) : addMeses(base.data, i));
+        // Cada parcela bate SEMPRE no mesmo dia da primeira (1 mês depois da anterior),
+        // independente do vencimento do cartão — o vencimento só afeta a competência (fatura).
+        const data = i === 0 ? base.data : addMeses(base.data, i);
         registros.push({
             ...base,
             valor,
