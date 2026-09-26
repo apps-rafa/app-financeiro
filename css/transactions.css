@@ -706,7 +706,6 @@
 .busca-global { margin: 0 0 var(--spacing-md); }
 /* (a busca fica sempre visível acima da aba aberta; só some ao limpar o campo)
    — exceto em Configurações, que abre por cima e esconde a busca. */
-.main:has(#menus.active) .busca-global,
 .area-conteudo:has(#menus.active) > #resultadoBusca { display: none !important; }
 
 /* Mobile (o "* { font-size }" global de responsive.css inflava os <span> soltos

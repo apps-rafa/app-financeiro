@@ -653,3 +653,14 @@ body.buscando:not(.aba-por-cima) .area-conteudo, body.buscando:not(.aba-por-cima
 /* Aba aberta POR CIMA da busca/Recém-lançados: mostra a aba e guarda o resultado por baixo */
 body.buscando.aba-por-cima .area-conteudo > .tab-content.active { display: block !important; }
 body.aba-por-cima #resultadoBusca { display: none !important; }
+
+/* Layout sem barra de rolagem à toa: o conteúdo ocupa o resto da altura (o fundo chega até o rodapé)
+   em vez de forçar uma altura mínima de 60vh */
+main.main { display: flex; flex-direction: column; padding-bottom: 0; }
+main.main > * { flex-shrink: 0; }
+.area-conteudo, .area-conteudo:has(.tab-content.active) { flex: 1 0 auto; min-height: 0; padding-bottom: var(--spacing-md); }
+
+/* Dashboard flutuante: setas e emojis menores; o valor tem prioridade (o emoji some se apertar) */
+.mini-box i { flex: 0 1 auto; min-width: 0; overflow: hidden; font-size: .58rem; }
+.mini-box .seta-icone { width: .62rem; height: .62rem; }
+.mini-box b { flex: none; }
