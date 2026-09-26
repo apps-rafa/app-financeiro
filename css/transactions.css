@@ -706,7 +706,7 @@
 .busca-global { margin: 0 0 var(--spacing-md); }
 /* (a busca fica sempre visível acima da aba aberta; só some ao limpar o campo)
    — exceto em Configurações, que abre por cima e esconde a busca. */
-.area-conteudo:has(#menus.active) > .busca-global,
+.main:has(#menus.active) .busca-global,
 .area-conteudo:has(#menus.active) > #resultadoBusca { display: none !important; }
 
 /* Mobile (o "* { font-size }" global de responsive.css inflava os <span> soltos
@@ -793,5 +793,3 @@
 .busca-ampla-resumo span { color: var(--text-muted); flex: 1 1 12rem; }
 
 /* Dica "buscar em todos os meses" acoplada à barra de busca */
-.busca-global:has(+ #resultadoBusca > .busca-ampla-btn:first-child) .busca-lista { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-#resultadoBusca > .busca-ampla-btn:first-child { margin-top: calc(-1 * var(--spacing-md)); border-top-left-radius: 0; border-top-right-radius: 0; border-top-style: solid; }
