@@ -16,6 +16,7 @@ function formatarPct(pct) {
  * Atualiza toda a interface
  */
 function atualizarUI() {
+    _amplaCache = null;
     _buscaMesCache = null; // dados podem ter mudado: a busca por data refaz a consulta
     atualizarCalendarioNav();
 
@@ -683,17 +684,33 @@ async function mostrarRecemLancados(qtd = 5) {
     };
 }
 
+// Resultados de busca mostram 5 por grupo, com "Carregar mais 5" (limites zeram quando a busca muda)
+let _limitesBusca = { chave: '', mapa: {} };
+function _limiteGrupoBusca(chaveBusca, grupo) {
+    if (_limitesBusca.chave !== chaveBusca) _limitesBusca = { chave: chaveBusca, mapa: {} };
+    return _limitesBusca.mapa[grupo] || 5;
+}
+function _maisNoGrupoBusca(chaveBusca, grupo) {
+    _limiteGrupoBusca(chaveBusca, grupo);
+    _limitesBusca.mapa[grupo] = (_limitesBusca.mapa[grupo] || 5) + 5;
+}
+function _htmlMaisGrupo(grupo, total, lim) {
+    return total > lim ? `<button type="button" class="busca-ampla-btn" data-mais-grupo="${String(grupo).replace(/"/g, '&quot;')}">Carregar mais 5 <small>restam ${total - lim}</small></button>` : '';
+}
+let _amplaCache = null; // { termo, linhas } — "Carregar mais" não refaz a consulta
+
 /** Busca em TODOS os meses (não só o que está em tela), com os mesmos filtros de
  *  texto/valor/ano/mês, e mostra os achados agrupados por mês com os totais. */
 async function buscarAmpla(termo) {
     const box = document.getElementById('resultadoBusca');
     if (!box) return;
     box.dataset.modo = 'ampla'; // impede que a busca da lixeira (assíncrona) sobrescreva o resultado
-    box.innerHTML = '<p class="loading">Buscando em todos os meses...</p>';
     const q = _parseConsulta(termo);
     const t = _normalizarBusca(q.texto).trim();
-    const linhas = [];
-    try {
+    let linhas = [];
+    if (_amplaCache && _amplaCache.termo === termo) linhas = _amplaCache.linhas;
+    else try {
+        box.innerHTML = '<p class="loading">Buscando em todos os meses...</p>';
         for (let ini = 0; ; ini += 1000) {
             let consulta = sb.from('transacoes').select('*');
             if (q.ano != null) consulta = consulta.gte('data', `${q.ano}-01-01`).lt('data', `${q.ano + 1}-01-01`);
@@ -707,6 +724,7 @@ async function buscarAmpla(termo) {
         box.innerHTML = '<p class="empty-message">Erro na busca</p>';
         return;
     }
+    _amplaCache = { termo, linhas };
     if ((document.getElementById('buscaGlobal')?.value || '').trim() !== termo) return;
     const itens = linhas.map(r => ({ ...mapearTransacao(r), tipo: r.tipo })).filter(tr => _bateConsulta(tr, q, t));
     const brl = v => formatarMoeda(v);
@@ -725,7 +743,7 @@ async function buscarAmpla(termo) {
             <span class="rec-grupo-contagem">${lista.length}</span>
             <span class="rec-grupo-total">${d ? `-${brl(d)}` : ''}${d && r ? ' · ' : ''}${r ? `+${brl(r)}` : ''}</span>
           </summary>
-          <div class="rec-grupo-itens">${lista.map(i => gerarHTMLTransacao(i, i.tipo === 'entradas' ? 'entrada' : 'saida')).join('')}</div>
+          <div class="rec-grupo-itens">${lista.slice(0, _limiteGrupoBusca('a:' + termo, k)).map(i => gerarHTMLTransacao(i, i.tipo === 'entradas' ? 'entrada' : 'saida')).join('')}${_htmlMaisGrupo(k, lista.length, _limiteGrupoBusca('a:' + termo, k))}</div>
         </details>`;
     }).join('');
     box.innerHTML = `
@@ -739,6 +757,8 @@ async function buscarAmpla(termo) {
     box.dataset.termoAmpla = termo;
     box.onclick = e => {
         if (e.target.closest('[data-busca-mes]')) { atualizarBuscaGlobal(); return; }
+        const mais = e.target.closest('[data-mais-grupo]');
+        if (mais) { _maisNoGrupoBusca('a:' + termo, mais.dataset.maisGrupo); buscarAmpla(termo); return; }
         onListaTransacaoClick(e);
     };
 }
@@ -818,7 +838,7 @@ async function _renderBuscaDoMes(termo, box, abertos) {
         <span class="rec-grupo-contagem">${lista.length}</span>
         <span class="rec-grupo-total">${formatarMoeda(lista.reduce((s, x) => s + valorDe(x), 0))}</span>
       </summary>
-      <div class="rec-grupo-itens">${lista.map(x => gerarHTMLTransacao(x, tipoUI)).join('')}</div>
+      <div class="rec-grupo-itens">${lista.slice(0, _limiteGrupoBusca('m:' + termo, nome)).map(x => gerarHTMLTransacao(x, tipoUI)).join('')}${_htmlMaisGrupo(nome, lista.length, _limiteGrupoBusca('m:' + termo, nome))}</div>
     </details>`;
     const html =
         grupo('__busca_receitas__', '⬇️ Receitas', 'var(--receita-text)', receitas, 'entrada') +
@@ -827,6 +847,8 @@ async function _renderBuscaDoMes(termo, box, abertos) {
     box.innerHTML = linkAmpla + html;
     box.onclick = e => {
         if (e.target.closest('[data-busca-ampla]')) return buscarAmpla(termo);
+        const mais = e.target.closest('[data-mais-grupo]');
+        if (mais) { _maisNoGrupoBusca('m:' + termo, mais.dataset.maisGrupo); return _renderBuscaDoMes(termo, box, _lerAbertosRecGrupo(box)); }
         return e.target.closest('[data-lixeira-restaurar], [data-lixeira-apagar]') ? onCliqueLixeira(e) : _onCliqueProximas(e);
     };
 
