@@ -1761,7 +1761,7 @@ function renderPendentesProximas(abertos = {}, termo = '') {
         <details class="fatura-item" data-pend="${chave}" ${(abertos[chave] !== undefined ? abertos[chave] : !!termo) ? 'open' : ''}>
           <summary>
             <span class="fatura-nome">${nome}</span>
-            <span class="subgrupo-contagem">${lista.length}</span>
+            <span class="fatura-contagem">${lista.length}</span>
             <span class="fatura-espaco"></span>
             <span class="fatura-total">${formatarMoeda(total)}</span>
           </summary>
@@ -1877,6 +1877,7 @@ function renderFaturasCartao(container, termo = '', soNaoRealizadas = false) {
         <details class="fatura-item" data-nome="${rot.replace(/"/g, '&quot;')}" style="--cor-cartao:${cor}" ${(abertos[rot] !== undefined ? abertos[rot] : !!termo) ? 'open' : ''}>
           <summary>
             <span class="fatura-nome">${rot}</span>
+            <span class="fatura-contagem">${despesas.length + estornos.length}</span>
             <span class="fatura-espaco"></span>
             <span class="fatura-venc">vcto. ${venc}</span>
             ${confereBadge}
