@@ -231,14 +231,49 @@ async function adicionarItemMenuAPI(tipo, nome, extra = {}) {
  */
 async function editarItemMenuAPI(linha, campos) {
     try {
+        // Lançamentos guardam o NOME (método/categoria) como texto: se o nome/rótulo mudar,
+        // os lançamentos antigos (e a fila de revisão) precisam acompanhar.
+        const { data: antes } = await sb.from('menu_itens').select('*').eq('id', linha).maybeSingle();
         const { error } = await sb.from('menu_itens').update(campos).eq('id', linha);
         if (error) throw error;
+        if (antes) await _propagarRenomeacaoMenu(antes, linha);
         mostrarNotificacao('Item atualizado com sucesso!', 'sucesso');
         return true;
     } catch (error) {
         console.error('Erro ao atualizar item:', error);
         mostrarNotificacao('Erro ao atualizar item', 'erro');
         return false;
+    }
+}
+
+async function _recarregarAposRenomear() {
+    if (typeof recarregarDados === 'function') await recarregarDados(); // os chips antigos acompanham o novo nome
+    if (typeof atualizarUI === 'function') atualizarUI();
+}
+
+/** Depois de editar um item de menu: se o rótulo mudou, atualiza os lançamentos que usam o rótulo antigo. */
+async function _propagarRenomeacaoMenu(antes, linha) {
+    try {
+        const { data: depois } = await sb.from('menu_itens').select('*').eq('id', linha).maybeSingle();
+        if (!depois) return;
+        const ant = mapearItemMenu(antes), dep = mapearItemMenu(depois);
+        if (antes.tipo === 'Método') {
+            const velho = rotuloMetodo(ant), novo = rotuloMetodo(dep);
+            if (velho && novo && velho !== novo) {
+                const { error } = await sb.from('transacoes').update({ metodo: novo }).eq('metodo', velho);
+                if (error) console.error('Erro ao atualizar lançamentos da forma de pagamento:', error);
+                else await _recarregarAposRenomear();
+            }
+        } else if (antes.tipo === 'Categoria') {
+            if (ant.nome && dep.nome && ant.nome !== dep.nome) {
+                const { error } = await sb.from('transacoes').update({ categoria: dep.nome }).eq('categoria', ant.nome);
+                if (error) console.error('Erro ao atualizar lançamentos da categoria:', error);
+                await sb.from('transacoes_importadas').update({ categoria_sugerida: dep.nome }).eq('categoria_sugerida', ant.nome);
+                if (!error) await _recarregarAposRenomear();
+            }
+        }
+    } catch (e) {
+        console.error('Falha ao propagar renomeação do menu:', e);
     }
 }
 
