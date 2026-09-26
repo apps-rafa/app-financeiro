@@ -758,7 +758,7 @@ async function buscarAmpla(termo) {
         <div class="busca-ampla-resumo">
             <b>Todos os meses</b>
             <span>${itens.length} lançamento${itens.length === 1 ? '' : 's'}${itens.length ? ` · Despesas ${brl(soma('saidas'))} · Receitas ${brl(soma('entradas'))}` : ''}</span>
-            <button type="button" class="mini-btn" data-busca-mes>← só este mês</button>
+            ${(q.mes != null || q.ano != null) ? '' : '<button type="button" class="mini-btn" data-busca-mes>← só este mês</button>'}
         </div>
         ${grupos || `<div class="rec-grupo rec-grupo--vazio"><span class="rec-grupo-nome">🔎 Nada encontrado pra "${termo}"</span></div>`}`;
     _transacoesExtra = itens; // editar/excluir precisam achar lançamentos de qualquer mês
@@ -797,6 +797,9 @@ function atualizarBuscaGlobal() {
     document.getElementById('btnRecentes')?.classList.remove('active');
     if (!termo) { box.innerHTML = ''; box.onclick = null; return; }
 
+    // Mês ou ano na busca ("uber agosto", "2025") pede outros períodos: vai direto pra todos os meses
+    const consulta = _parseConsulta(termo);
+    if (consulta.mes != null || consulta.ano != null) { buscarAmpla(termo); return; }
     _renderBuscaDoMes(termo, box, _lerAbertosRecGrupo(box));
 }
 
